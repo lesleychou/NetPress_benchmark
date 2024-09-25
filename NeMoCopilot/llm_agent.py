@@ -2,6 +2,7 @@ import os
 import warnings
 from langchain._api import LangChainDeprecationWarning
 from azure.identity import DefaultAzureCredential
+import time
 
 # Get the Azure Credential
 credential = DefaultAzureCredential()
@@ -42,12 +43,15 @@ llm = AzureChatOpenAI(
 template = """You are an expert Question Creator. You will receive an instance of network traffic analysis task, including a context, a question and its answer.
 You are tasked with creating an alternative question to explore a different aspect of the original problem.
 Please do not change the context but just edit the question and the answer.
-Please first generate the question. Then think step-by-step in one line to give an brief analysis of the question, Finally, directly present a short answer omitting the intermediate steps, in a single line.
+Please first generate the question. Then think step-by-step in one line to give an brief analysis of the question, Finally, you must present a answer omitting the intermediate steps, in the same format as original answer.
 
 Context: {context}
 Original Question: {question}
 Original Answer: {answer}
+
+For output, you must output the alternative question and answer in the following format:
 Alternative Question:
+Alternative Answer:
 """
 
 
@@ -71,9 +75,40 @@ with open('data/ta_query_samples.jsonl', 'r') as file:
     question = data['question']
     answer = data['answer']
 
-print(question)
-print(answer)
 
-response_1 = llm_chain.run(context=context, question=question, answer=answer)
 
-print(response_1)
+# For each question and answer pair in the data/ta_query_samples.jsonl file, run the LLMChain
+responses = []
+with open('data/ta_query_samples.jsonl', 'r') as file:
+    for line in file:
+        data = json.loads(line)
+        question = data['question']
+        answer = data['answer']
+        print(question)
+        print(answer)
+        response = llm_chain.run(context=context, question=question, answer=answer)
+        print(response)
+        # import pdb; pdb.set_trace()
+        # Parse the text response to a JSON object
+        alternative_question, alternative_answer = response.split("Alternative Answer:")
+        alternative_question = alternative_question.replace("Alternative Question:", "").strip()
+        alternative_answer = alternative_answer.strip()
+        response_data = {
+            "original_question": question,
+            "original_answer": answer,
+            "alternative_question": alternative_question.strip(),
+            "alternative_answer": alternative_answer.strip()
+        }
+        responses.append(response_data)
+      
+        # stop for 5 seconds to avoid rate limiting
+        time.sleep(3)
+
+# Output all the responses to a new jsonl file, with the same format as the input file
+with open('data/ta_query_samples_new.jsonl', 'w') as file:
+    for response in responses:
+        file.write(json.dumps(response) + '\n')
+
+# response_1 = llm_chain.run(context=context, question=question, answer=answer)
+
+# print(response_1)
