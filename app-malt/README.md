@@ -3,14 +3,18 @@
 ## Install env
 Initialize a new virtual env (conda or pip) by your self. I test it on Python 3.10
 
+I use conda
+
 ```
-cd app-malt
+conda create -n ai_gym_env python=3.10
+conda activate ai_gym_env
 pip install -r requirements.txt
 ```
 
 ## Run simulator
+Please read the run_simulator.py, your task is to connect this with other LLMs based on promptbench workflow.
+
 ```
-cd app-malt
 python run_simulator.py
 ```
 The prompt you can use for using other LLMs is below. You may adjust the format of prompt based on exact LLM usage (like how promptbench use prompts).
