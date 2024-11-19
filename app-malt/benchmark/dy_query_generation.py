@@ -90,8 +90,8 @@ def genarate_level_1_query(node_value_ranges, operation_type='add'):
 
         # genrate ground truth of the query based on solid_step_add_node_to_graph function
         new_node = {'name': child_node_name, 'type': child_node}
-        # ground truth is a python function in string, that name and input is ground_truth_process_graph(graph_data). please copy the function body from solid_step_add_node_to_graph
-        # and replace the input graph_data with malt_real_graph, and replace all the variable names with the corresponding values in the template
+        # ground truth is a python function in string, that name and input is ground_truth_process_graph(graph_data). 
+        # it use existing solid steps and replace all the variable names with the corresponding values in the template
         ground_truth = f"""def ground_truth_process_graph(graph_data):
                                 new_node = {new_node}
                                 parent_node_name = '{parent_node_name}'
@@ -136,20 +136,89 @@ def genarate_level_1_query(node_value_ranges, operation_type='add'):
         return template, ground_truth, None
 
 
+# # run the ground truth function to verify the correctness
+# query, ground_truth, new_node = genarate_level_1_query('remove')
+# print(query, ground_truth)
+# exec(ground_truth)
+# new_malt_graph = eval("ground_truth_process_graph(malt_real_graph)")
+# print(new_malt_graph)
+
+def genarate_level_2_query_sequential(node_value_ranges, operation_type_1='add', operation_type_2='count'):
+    """
+    Level-2 query: two operations, control sequence is sequential.
+    """
+    if operation_type_1=='add' and operation_type_2=='count':
+        # Constraints for "add" and "count": the first node should be a new child node that does not exist in the node_value_ranges yet, 
+        # the second node should be an existing parent node.
+        # based on the relationships and node_value_example_dict, we can generate a random child node
+        child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+        parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+        # the child_node_name should be a string start with 'new_' existing child node type, and a random number
+        child_node_name = f"new_{child_node}_{random.randint(1, 100)}"
+        # the parent node name should be an existing parent node name
+        parent_node_name = random.choice(node_value_ranges[parent_node])
+
+        template = f"Add {child_node_name} to {parent_node_name}. Count the {child_node} in {parent_node_name} in the updated graph. Return only the count number."
+
+        # genrate ground truth of the query based on solid_step_add_node_to_graph and solid_step_counting_query functions
+        new_node = {'name': child_node_name, 'type': child_node}
+        # ground truth is a python function in string, that name and input is ground_truth_process_graph(graph_data). 
+        # it use existing solid steps and replace all the variable names with the corresponding values in the template
+        ground_truth = f"""def ground_truth_process_graph(graph_data):
+                                new_node = {new_node}
+                                parent_node_name = '{parent_node_name}'
+                                graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)
+                                node1 = {{"type": "{parent_node}", "name": "{parent_node_name}"}}
+                                node2 = {{"type": "{child_node}", "name": None}}
+                                count = solid_step_counting_query(graph_data, node1, node2)
+                                return count"""
+        return template, ground_truth, new_node
+    
+    elif operation_type_1=='remove' and operation_type_2=='count':
+        # Constraints for "remove" and "count": the node should be a child node in MALT graph.
+        # based on the relationships and node_value_example_dict, we can generate a random child node
+        child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+        parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+        # the child_node_name should be an existing child node name
+        child_node_name = random.choice(node_value_ranges[child_node])
+        # the parent node name should be an existing parent node name
+        parent_node_name = random.choice(node_value_ranges[parent_node])
+
+        template = f"Remove {child_node_name} from the graph. Count the {child_node} in {parent_node_name} in the updated graph. Return only the count number."
+
+        # genrate ground truth of the query based on solid_step_remove_node_from_graph and solid_step_counting_query functions
+        ground_truth = f"""def ground_truth_process_graph(graph_data):
+                                child_node_name = '{child_node_name}'
+                                graph_data = solid_step_remove_node_from_graph(graph_data, child_node_name)
+                                node1 = {{"type": "{parent_node}", "name": "{parent_node_name}"}}
+                                node2 = {{"type": "{child_node}", "name": None}}
+                                count = solid_step_counting_query(graph_data, node1, node2)
+                                return count"""
+        return template, ground_truth, child_node_name
 
 
 # run the ground truth function to verify the correctness
-query, ground_truth, new_node = genarate_level_1_query('remove')
+node_value_ranges = get_node_value_ranges(malt_real_graph, 'data/node_value_ranges.json')
+query, ground_truth, new_node = genarate_level_2_query_sequential(node_value_ranges, operation_type_1='remove', operation_type_2='count')
 print(query, ground_truth)
 exec(ground_truth)
 new_malt_graph = eval("ground_truth_process_graph(malt_real_graph)")
 print(new_malt_graph)
 
 
+# def genarate_level_2_query_for_loop(node_value_ranges, operation_type_1='add', operation_type_2='count'):
+#     """
+#     Level-2 query: two operations, control sequence is for-loop.
+#     For each parent node in the graph, add a new child node to it. Count the total number of child nodes in the updated graph. Return the counts.
+#     """
+
+    
+
 # run genarate_level_1_query 10 times and write the query and ground_truth to a jsonl file, with the format of {"messages": [{"question": }, {"answer": }, {"task": "capacity planning"}]}
 queries = []
+NUM_EACH_TYPE = 5
 node_value_ranges = get_node_value_ranges(malt_real_graph, 'data/node_value_ranges.json')
-for _ in range(5):
+for _ in range(NUM_EACH_TYPE):
     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='add')
     queries.append({
         "messages": [
@@ -158,7 +227,7 @@ for _ in range(5):
             {"task": "capacity planning, level-1, add"}
         ]
     })
-for _ in range(5):
+for _ in range(NUM_EACH_TYPE):
     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='count')
     queries.append({
         "messages": [
@@ -167,8 +236,8 @@ for _ in range(5):
             {"task": "capacity planning, level-1, count"}
         ]
     })
-for _ in range(5):
-    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, node_value_ranges='remove')
+for _ in range(NUM_EACH_TYPE):
+    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='remove')
     queries.append({
         "messages": [
             {"question": query},
@@ -176,6 +245,27 @@ for _ in range(5):
             {"task": "capacity planning, level-1, remove"}
         ]
     })
+
+for _ in range(NUM_EACH_TYPE):
+    query, ground_truth, new_node = genarate_level_2_query_sequential(node_value_ranges, operation_type_1='add', operation_type_2='count')
+    queries.append({
+        "messages": [
+            {"question": query},
+            {"answer": ground_truth},
+            {"task": "capacity planning, level-2 sequential, add then count"}
+        ]
+    })
+
+for _ in range(NUM_EACH_TYPE):
+    query, ground_truth, new_node = genarate_level_2_query_sequential(node_value_ranges, operation_type_1='remove', operation_type_2='count')
+    queries.append({
+        "messages": [
+            {"question": query},
+            {"answer": ground_truth},
+            {"task": "capacity planning, level-2 sequential, remove then count"}
+        ]
+    })
+
 with open('data/benchmark_level_1.jsonl', 'w') as f:
     for item in queries:
         f.write(json.dumps(item) + "\n")

@@ -107,6 +107,9 @@ def solid_step_remove_node_from_graph(graph_data, node_name):
 
 # create a function for calculating the counting queries
 def solid_step_counting_query(graph_data, node1, node2):
+    """
+    Count the number of node2 contained within node1 in the graph.
+    """
     # Find the target node1
     target_node1 = None
     for node in graph_data.nodes:
