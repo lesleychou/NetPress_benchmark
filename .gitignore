@@ -10,3 +10,5 @@
 */.mypy_cache/*
 */.coverage
 */.coverage.*
+app-malt/benchmark/__pycache__/*
+app-malt/benchmark/data/*
