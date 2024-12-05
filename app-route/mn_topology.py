@@ -33,7 +33,7 @@ from mininet.net import Mininet
 from mininet.node import Node
 from mininet.log import setLogLevel, info
 from mininet.cli import CLI
-
+import random
 
 class LinuxRouter( Node ):
     "A Node with IP forwarding enabled."
@@ -85,10 +85,30 @@ class NetworkTopo(Topo):
             self.addLink(host, switches[i % num_switches])
 
 
+def error_disable_interface(router, subnets):
+    # Inject random errors
+    info('*** Injecting random errors\n')
+    interfaces = [f'r0-eth{i+1}' for i in range(len(subnets))]
+    interface_to_disable = random.choice(interfaces)
+    info(f'*** Disabling interface: {interface_to_disable}\n')
+    router.cmd(f'ifconfig {interface_to_disable} down')
+
+
+def error_remove_ip(router, subnets):
+    # Inject random errors
+    info('*** Injecting random errors: Removing a random IP address\n')
+    interfaces = [f'r0-eth{i+1}' for i in range(len(subnets))]
+    interface_to_modify = random.choice(interfaces)
+
+    # Remove the IP address assigned to the selected interface
+    info(f'*** Removing IP address from interface: {interface_to_modify}\n')
+    router.cmd(f'ip addr flush dev {interface_to_modify}')
+
+
 def run():
     "Test Linux router"
-    num_hosts = 6
-    num_switches = 6
+    num_hosts = 3
+    num_switches = 3
     subnets = []
     base_ip = [192, 168, 1, 1]
     for i in range(num_switches):
@@ -113,10 +133,18 @@ def run():
             if i != j:
                 router.cmd(f'ip route add {subnets[j][0]} dev r0-eth{i+1}')
 
+    # Display the routing table
+    info('*** Routing Table on Router:\n')
+    info(router.cmd('route'))
+    # Test connectivity
+    info('*** Testing network connectivity\n')
+    net.pingAll()
+
+    error_disable_interface(router, subnets)
+
     # Display the routing table for debugging
     info('*** Routing Table on Router:\n')
     info(router.cmd('route'))
-
     # Test connectivity
     info('*** Testing network connectivity\n')
     net.pingAll()
