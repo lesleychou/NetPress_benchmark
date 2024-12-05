@@ -87,15 +87,17 @@ class NetworkTopo(Topo):
 
 def run():
     "Test Linux router"
-    num_hosts = 5
-    num_switches = 5
-    subnets = [
-        ('192.168.1.1/24', '192.168.1.100/24'),
-        ('172.16.1.1/24', '172.16.1.100/24'),
-        ('10.0.1.1/24', '10.0.1.100/24'),
-        ('192.168.2.1/24', '192.168.2.100/24'),
-        ('172.17.1.1/24', '172.17.1.100/24')
-    ]
+    num_hosts = 6
+    num_switches = 6
+    subnets = []
+    base_ip = [192, 168, 1, 1]
+    for i in range(num_switches):
+        subnet_ip = base_ip.copy()
+        subnet_ip[2] += i  # Increment the third octet for each subnet
+        subnet = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.{subnet_ip[3]}/24'
+        host_ip = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.100/24'
+        subnets.append((subnet, host_ip))
+
     topo = NetworkTopo(num_hosts=num_hosts, num_switches=num_switches, subnets=subnets)
 
     net = Mininet(topo=topo, waitConnected=True)
