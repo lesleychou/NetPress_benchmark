@@ -85,40 +85,54 @@ class NetworkTopo(Topo):
             self.addLink(host, switches[i % num_switches])
 
 
+def error_disable_routing(router, subnets):
+    # Inject error: Disable IP forwarding (routing) on the router
+    info('*** Injecting error: Disabling IP forwarding\n')
+    router.cmd('sysctl -w net.ipv4.ip_forward=0')
+
+
 def error_disable_interface(router, subnets):
     # Inject random errors
-    info('*** Injecting random errors\n')
     interfaces = [f'r0-eth{i+1}' for i in range(len(subnets))]
     interface_to_disable = random.choice(interfaces)
-    info(f'*** Disabling interface: {interface_to_disable}\n')
+    info(f'*** Injecting error: Disabling interface {interface_to_disable}\n')
     router.cmd(f'ifconfig {interface_to_disable} down')
 
 
 def error_remove_ip(router, subnets):
-    # Inject random errors
-    info('*** Injecting random errors: Removing a random IP address\n')
     interfaces = [f'r0-eth{i+1}' for i in range(len(subnets))]
     interface_to_modify = random.choice(interfaces)
 
     # Remove the IP address assigned to the selected interface
-    info(f'*** Removing IP address from interface: {interface_to_modify}\n')
+    info(f'*** Injecting error: Removing IP address from interface: {interface_to_modify}\n')
     router.cmd(f'ip addr flush dev {interface_to_modify}')
 
 
 def error_drop_traffic_to_from_subnet(router, subnets):
     # Drop all traffic to/from one random subnet
-    info('*** Dropping all traffic to/from one random subnet\n')
     subnet_to_drop = random.choice(subnets)
     subnet_ip = subnet_to_drop[0].split('/')[0]
-    info(f'*** Dropping traffic to/from subnet: {subnet_ip}\n')
+    info(f'*** Injecting error: Dropping traffic to/from subnet: {subnet_ip}\n')
     router.cmd('iptables -A INPUT -s 192.168.3.0/24 -j DROP')
     router.cmd('iptables -A OUTPUT -d 192.168.3.0/24 -j DROP')
 
+# Complexty control: randomly pick given number error type to inject
+def inject_errors(router, subnets, error_number=1):
+    error_functions = [
+        error_disable_routing,
+        error_disable_interface,
+        error_remove_ip,
+        error_drop_traffic_to_from_subnet
+    ]
+    num_errors = min(error_number, len(error_functions))
+    errors_to_inject = random.sample(error_functions, num_errors)
+    for error in errors_to_inject:
+        error(router, subnets)
 
 def run():
     "Test Linux router"
-    num_hosts = 3
-    num_switches = 3
+    num_hosts = 10
+    num_switches = 10
     subnets = []
     base_ip = [192, 168, 1, 1]
     for i in range(num_switches):
@@ -138,12 +152,6 @@ def run():
     router = net.get('r0')
     router.cmd('sysctl -w net.ipv4.ip_forward=1')
 
-    # Add static routes for all subnets
-    for i in range(len(subnets)):
-        for j in range(len(subnets)):
-            if i != j:
-                router.cmd(f'ip route add {subnets[j][0]} dev r0-eth{i+1}')
-
     # Display the routing table
     info('*** Routing Table on Router:\n')
     info(router.cmd('route'))
@@ -151,7 +159,7 @@ def run():
     info('*** Testing network connectivity\n')
     net.pingAll()
 
-    drop_traffic_to_from_subnet(router, subnets)
+    inject_errors(router, subnets, error_number=1)
 
     # Display the routing table for debugging
     info('*** Routing Table on Router:\n')
