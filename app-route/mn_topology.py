@@ -105,6 +105,16 @@ def error_remove_ip(router, subnets):
     router.cmd(f'ip addr flush dev {interface_to_modify}')
 
 
+def error_drop_traffic_to_from_subnet(router, subnets):
+    # Drop all traffic to/from one random subnet
+    info('*** Dropping all traffic to/from one random subnet\n')
+    subnet_to_drop = random.choice(subnets)
+    subnet_ip = subnet_to_drop[0].split('/')[0]
+    info(f'*** Dropping traffic to/from subnet: {subnet_ip}\n')
+    router.cmd('iptables -A INPUT -s 192.168.3.0/24 -j DROP')
+    router.cmd('iptables -A OUTPUT -d 192.168.3.0/24 -j DROP')
+
+
 def run():
     "Test Linux router"
     num_hosts = 3
@@ -117,6 +127,7 @@ def run():
         subnet = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.{subnet_ip[3]}/24'
         host_ip = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.100/24'
         subnets.append((subnet, host_ip))
+    print(subnets)
 
     topo = NetworkTopo(num_hosts=num_hosts, num_switches=num_switches, subnets=subnets)
 
@@ -140,7 +151,7 @@ def run():
     info('*** Testing network connectivity\n')
     net.pingAll()
 
-    error_disable_interface(router, subnets)
+    drop_traffic_to_from_subnet(router, subnets)
 
     # Display the routing table for debugging
     info('*** Routing Table on Router:\n')
