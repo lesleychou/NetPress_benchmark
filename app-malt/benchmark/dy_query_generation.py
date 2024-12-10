@@ -4,7 +4,7 @@ import pandas as pd
 import random
 import matplotlib.pyplot as plt
 import json
-from helper import get_node_value_ranges, getGraphData, solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, solid_step_list_child_nodes
+from helper import get_node_value_ranges, getGraphData, solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, solid_step_list_child_nodes, solid_step_update_node_value
 
 # plot a networkx graph, that each node represent an entity and each edge represent a relationship
 # JUPITER contains SPINEBLOCK
@@ -151,6 +151,25 @@ def genarate_level_1_query(node_value_ranges, operation_type='add'):
                                 child_nodes = solid_step_list_child_nodes(graph_data, node)
                                 return child_nodes"""
         return template, ground_truth, None
+    
+    elif operation_type=='update':
+        # Constraints for "update": the node should be a child node in MALT graph.
+        # based on the relationships and node_value_example_dict, we can generate a random child node
+        child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+        # the child_node_name should be an existing child node name
+        child_node_name = random.choice(node_value_ranges[child_node])
+        # the new value should be a random value
+        new_value = random.randint(1, 100)
+
+        template = f"Update the value of {child_node_name} to {new_value}. Return a graph."
+
+        # genrate ground truth of the query based on solid_step_update_node_value function
+        ground_truth = f"""def ground_truth_process_graph(graph_data):
+                                child_node_name = '{child_node_name}'
+                                new_value = {new_value}
+                                graph_data = solid_step_update_node_value(graph_data, child_node_name, new_value)
+                                return graph_data"""
+        return template, ground_truth, child_node_name
 
 
 def genarate_level_2_query_sequential(node_value_ranges, operation_type_1='add', operation_type_2='count'):
@@ -276,21 +295,32 @@ queries = []
 NUM_EACH_TYPE = 5
 node_value_ranges = get_node_value_ranges(malt_real_graph, 'data/node_value_ranges.json')
 # run the ground truth function to verify the correctness
-query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='list')
-print(query, ground_truth)
+query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='update')
+print(query, ground_truth, new_node)
 exec(ground_truth)
 new_malt_graph = eval("ground_truth_process_graph(malt_real_graph)")
 print(new_malt_graph)
 
 for _ in range(NUM_EACH_TYPE):
-    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='list')
+    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='update')
     queries.append({
         "messages": [
             {"question": query},
             {"answer": ground_truth},
-            {"task": "capacity planning, level-1, list"}
+            {"task": "capacity planning, level-1, update"}
         ]
     })
+
+# for _ in range(NUM_EACH_TYPE):
+#     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='list')
+#     queries.append({
+#         "messages": [
+#             {"question": query},
+#             {"answer": ground_truth},
+#             {"task": "capacity planning, level-1, list"}
+#         ]
+#     })
+
 # for _ in range(NUM_EACH_TYPE):
 #     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='add')
 #     queries.append({

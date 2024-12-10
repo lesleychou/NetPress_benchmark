@@ -144,7 +144,9 @@ def solid_step_counting_query(graph_data, node1, node2):
     return node2_count
 
 def solid_step_list_child_nodes(graph_data, parent_node):
-    # list all nodes that are directly contained within the parent node
+    """
+    list all nodes that are directly contained within the parent node
+    """
     child_nodes = []
     parent_node_id = None
     for node in graph_data.nodes:
@@ -162,3 +164,22 @@ def solid_step_list_child_nodes(graph_data, parent_node):
 
     return child_nodes
     
+def solid_step_update_node_value(graph_data, child_node_name, new_value):
+    """
+    Update the value of a child node in the graph.
+    """
+    # Find the node ID by name
+    child_node_id = None
+    for node in graph_data.nodes:
+        if graph_data.nodes[node].get('name') == child_node_name:
+            child_node_id = node
+            break
+
+    if child_node_id is None:
+        print(f"Node with name '{child_node_name}' not found.")
+        return graph_data, child_node_name, new_value
+
+    # Update the node's value
+    graph_data.nodes[child_node_id]['name'] = new_value
+
+    return graph_data
