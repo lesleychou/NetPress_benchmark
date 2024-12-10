@@ -4,7 +4,8 @@ import pandas as pd
 import random
 import matplotlib.pyplot as plt
 import json
-from helper import get_node_value_ranges, getGraphData, solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, solid_step_list_child_nodes, solid_step_update_node_value
+from helper import get_node_value_ranges, getGraphData, \
+solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, solid_step_list_child_nodes, solid_step_update_node_value, solid_step_rank_child_nodes
 
 # plot a networkx graph, that each node represent an entity and each edge represent a relationship
 # JUPITER contains SPINEBLOCK
@@ -170,6 +171,19 @@ def genarate_level_1_query(node_value_ranges, operation_type='add'):
                                 graph_data = solid_step_update_node_value(graph_data, child_node_name, new_value)
                                 return graph_data"""
         return template, ground_truth, child_node_name
+    
+    elif operation_type=='rank':
+        # write code that rank all child nodes of a parent node based on a specific attribute value
+        parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+        parent_node_name = random.choice(node_value_ranges[parent_node])
+
+        template = f"Rank all child nodes of {parent_node} type {parent_node_name} based on physical_capacity_bps attribute. Return a list of child nodes name."
+
+        ground_truth = f"""def ground_truth_process_graph(graph_data):
+                    parent_node_name = '{parent_node_name}'
+                    ranked_child_nodes = solid_step_rank_child_nodes(graph_data, parent_node_name)
+                    return ranked_child_nodes"""
+        return template, ground_truth, None
 
 
 def genarate_level_2_query_sequential(node_value_ranges, operation_type_1='add', operation_type_2='count'):
@@ -294,22 +308,32 @@ def genarate_level_2_query_for_loop(node_value_ranges, operation_type_1='add', o
 queries = []
 NUM_EACH_TYPE = 5
 node_value_ranges = get_node_value_ranges(malt_real_graph, 'data/node_value_ranges.json')
-# run the ground truth function to verify the correctness
-query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='update')
-print(query, ground_truth, new_node)
-exec(ground_truth)
-new_malt_graph = eval("ground_truth_process_graph(malt_real_graph)")
-print(new_malt_graph)
+# # run the ground truth function to verify the correctness
+# query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='rank')
+# print(query, ground_truth, new_node)
+# exec(ground_truth)
+# new_malt_graph = eval("ground_truth_process_graph(malt_real_graph)")
+# print(new_malt_graph)
 
 for _ in range(NUM_EACH_TYPE):
-    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='update')
+    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='rank')
     queries.append({
         "messages": [
             {"question": query},
             {"answer": ground_truth},
-            {"task": "capacity planning, level-1, update"}
+            {"task": "capacity planning, level-1, rank"}
         ]
     })
+
+# for _ in range(NUM_EACH_TYPE):
+#     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='update')
+#     queries.append({
+#         "messages": [
+#             {"question": query},
+#             {"answer": ground_truth},
+#             {"task": "capacity planning, level-1, update"}
+#         ]
+#     })
 
 # for _ in range(NUM_EACH_TYPE):
 #     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='list')

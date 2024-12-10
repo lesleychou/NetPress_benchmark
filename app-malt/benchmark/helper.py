@@ -183,3 +183,40 @@ def solid_step_update_node_value(graph_data, child_node_name, new_value):
     graph_data.nodes[child_node_id]['name'] = new_value
 
     return graph_data
+
+def solid_step_rank_child_nodes(graph_data, parent_node_name):
+    """
+    Rank the child nodes of a parent node by their total physical capacity in descending order.
+    """
+    # Find the parent node ID by name
+    parent_node_id = None
+    for node in graph_data.nodes:
+        if graph_data.nodes[node].get('name') == parent_node_name:
+            parent_node_id = node
+            break
+    if parent_node_id is None:
+        print(f"Parent node with name '{parent_node_name}' not found.")
+        return []
+
+    # Initialize a list to store child nodes and their total physical capacity
+    child_nodes_capacity = []
+
+    # Find all child nodes and calculate their total physical capacity
+    for edge in graph_data.out_edges(parent_node_id, data=True):
+        if edge[2]['type'] == 'RK_CONTAINS':
+            child_node = edge[1]
+            total_physical_capacity_bps = 0
+            for child_edge in graph_data.out_edges(child_node, data=True):
+                if child_edge[2]['type'] == 'RK_CONTAINS':
+                    grandchild_node = child_edge[1]
+                    if 'EK_PORT' in graph_data.nodes[grandchild_node]['type']:
+                        total_physical_capacity_bps += graph_data.nodes[grandchild_node].get('physical_capacity_bps', 0)
+            child_nodes_capacity.append((graph_data.nodes[child_node], total_physical_capacity_bps))
+
+    # Sort the child nodes by their total physical capacity in descending order
+    child_nodes_capacity.sort(key=lambda x: x[1], reverse=True)
+
+    # return only the sorted child nodes name and each of total physical capacity
+    sorted_child_nodes_names = [(node['name'], capacity) for node, capacity in child_nodes_capacity]
+
+    return sorted_child_nodes_names
