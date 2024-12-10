@@ -142,3 +142,23 @@ def solid_step_counting_query(graph_data, node1, node2):
     # print(count)
 
     return node2_count
+
+def solid_step_list_child_nodes(graph_data, parent_node):
+    # list all nodes that are directly contained within the parent node
+    child_nodes = []
+    parent_node_id = None
+    for node in graph_data.nodes:
+        if graph_data.nodes[node].get('name') == parent_node['name']:
+            parent_node_id = node
+            break
+
+    if parent_node_id is None:
+        print(f"Parent node with name '{parent_node['name']}' not found.")
+        return child_nodes
+
+    for edge in graph_data.out_edges(parent_node_id, data=True):
+        if edge[2]['type'] == 'RK_CONTAINS':
+            child_nodes.append(graph_data.nodes[edge[1]])
+
+    return child_nodes
+    
