@@ -1,0 +1,522 @@
+Log Content:
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+X 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+X 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+X 
+r0 
+
+
+h4 -> 
+X 
+X 
+X 
+X 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+X 
+
+
+*** Results: 40% dropped (12/20 received)
+
+
+
+Machine: r0
+Commands: ip a
+==================================================
+Log Content:
+Machine: r0
+Command: ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: r0-eth1@if3031: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+Error: Peer netns reference is invalid.
+    link/ether 0e:ae:30:42:0c:54 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.1.1/24 brd 192.168.1.255 scope global r0-eth1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::cae:30ff:fe42:c54/64 scope link 
+       valid_lft forever preferred_lft forever
+3: r0-eth2@if3032: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 26:40:7b:d4:d7:ef brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.2.1/24 brd 192.168.2.255 scope global r0-eth2
+       valid_lft forever preferred_lft forever
+    inet6 fe80::2440:7bff:fed4:d7ef/64 scope link 
+       valid_lft forever preferred_lft forever
+4: r0-eth3@if3033: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 16:01:b4:16:26:38 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 192.168.3.1/24 brd 192.168.3.255 scope global r0-eth3
+       valid_lft forever preferred_lft forever
+    inet6 fe80::1401:b4ff:fe16:2638/64 scope link 
+       valid_lft forever preferred_lft forever
+5: r0-eth4@if3034: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 6e:30:45:47:72:e2 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+X 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+X 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+X 
+r0 
+
+
+h4 -> 
+X 
+X 
+X 
+X 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+X 
+
+
+*** Results: 40% dropped (12/20 received)
+
+
+
+Machine: r0
+Commands: ip route
+==================================================
+Log Content:
+Machine: r0
+Command: ip route
+192.168.1.0/24 dev r0-eth1 proto kernel scope link src 192.168.1.1 
+192.168.2.0/24 dev r0-eth2 proto kernel scope link src 192.168.2.1 
+192.168.3.0/24 dev r0-eth3 proto kernel scope link src 192.168.3.1 
+
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+X 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+X 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+X 
+r0 
+
+
+h4 -> 
+X 
+X 
+X 
+X 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+X 
+
+
+*** Results: 40% dropped (12/20 received)
+
+
+
+Machine: r0
+Commands: ip route add 192.168.4.0/24 via 192.168.3.1
+==================================================
+Log Content:
+Machine: r0
+Command: ip route add 192.168.4.0/24 via 192.168.3.1
+
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+X 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+X 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+X 
+r0 
+
+
+h4 -> 
+X 
+X 
+X 
+X 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+X 
+
+
+*** Results: 40% dropped (12/20 received)
+
+
+
+Machine: r0
+Commands: ip route
+==================================================
+Log Content:
+Machine: r0
+Command: ip route
+192.168.1.0/24 dev r0-eth1 proto kernel scope link src 192.168.1.1 
+192.168.2.0/24 dev r0-eth2 proto kernel scope link src 192.168.2.1 
+192.168.3.0/24 dev r0-eth3 proto kernel scope link src 192.168.3.1 
+192.168.4.0/24 via 192.168.3.1 dev r0-eth3 
+
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+X 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+X 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+X 
+r0 
+
+
+h4 -> 
+X 
+X 
+X 
+X 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+X 
+
+
+*** Results: 40% dropped (12/20 received)
+
+
+
+Machine: r0
+Commands: ip a show dev r0-eth4
+==================================================
+Log Content:
+Machine: r0
+Command: ip a show dev r0-eth4
+5: r0-eth4@if3034: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+Error: Peer netns reference is invalid.
+    link/ether 6e:30:45:47:72:e2 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+X 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+X 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+X 
+r0 
+
+
+h4 -> 
+X 
+X 
+X 
+X 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+X 
+
+
+*** Results: 40% dropped (12/20 received)
+
+
+
+Machine: r0
+Commands: ip addr show dev r0-eth4
+==================================================
+Log Content:
+Machine: r0
+Command: ip addr show dev r0-eth4
+5: r0-eth4@if3034: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+Error: Peer netns reference is invalid.
+    link/ether 6e:30:45:47:72:e2 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+X 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+X 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+X 
+r0 
+
+
+h4 -> 
+X 
+X 
+X 
+X 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+X 
+
+
+*** Results: 40% dropped (12/20 received)
+
+
+
+Machine: r0
+Commands: ip addr add 192.168.4.1/24 dev r0-eth4
+==================================================
+Log Content:
+Machine: r0
+Command: ip addr add 192.168.4.1/24 dev r0-eth4
+
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+X 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+X 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+X 
+r0 
+
+
+h4 -> 
+X 
+X 
+X 
+X 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+X 
+
+
+*** Results: 40% dropped (12/20 received)
+
+
+
+Machine: r0
+Commands: ip route
+==================================================
+Log Content:
+Machine: r0
+Command: ip route
+192.168.1.0/24 dev r0-eth1 proto kernel scope link src 192.168.1.1 
+192.168.2.0/24 dev r0-eth2 proto kernel scope link src 192.168.2.1 
+192.168.3.0/24 dev r0-eth3 proto kernel scope link src 192.168.3.1 
+192.168.4.0/24 via 192.168.3.1 dev r0-eth3 
+192.168.4.0/24 dev r0-eth4 proto kernel scope link src 192.168.4.1 
+
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+X 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+X 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+X 
+r0 
+
+
+h4 -> 
+X 
+X 
+X 
+X 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+X 
+
+
+*** Results: 40% dropped (12/20 received)
+
+
+
+Machine: r0
+Commands: ip route del 192.168.4.0/24 via 192.168.3.1
+==================================================
+Log Content:
+Machine: r0
+Command: ip route del 192.168.4.0/24 via 192.168.3.1
+
+*** Ping: testing ping reachability
+
+h1 -> 
+h2 
+h3 
+h4 
+r0 
+
+
+h2 -> 
+h1 
+h3 
+h4 
+r0 
+
+
+h3 -> 
+h1 
+h2 
+h4 
+r0 
+
+
+h4 -> 
+h1 
+h2 
+h3 
+r0 
+
+
+r0 -> 
+h1 
+h2 
+h3 
+h4 
+
+
+*** Results: 0% dropped (20/20 received)
+
+
+
+Machine: r0
+Commands: ip route
+==================================================
