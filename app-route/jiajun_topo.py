@@ -9,20 +9,16 @@ import re
 import os
 import logging
 import time
-import transformers
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from huggingface_hub import login
+from agent_call import llm_interface
 
 # Login huggingface
 login(token="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")
 
 # Define the path to store results
-file_path = "/home/ubuntu/result.txt"
-    
-# If the path does not exist, create a new one
-if os.path.exists(file_path):
-    with open(file_path, "w") as f:
-        pass
+root_path = "/home/ubuntu/nemo_benchmark/app-route/result" 
 
 class LinuxRouter( Node ):
     "A Node with IP forwarding enabled."
@@ -117,79 +113,20 @@ def error_wrong_routing_table(router, subnets):
 # Complexty control: randomly pick given number error type to inject
 def inject_errors(router, subnets, error_number=1):
     error_functions = [
-        error_disable_routing,
-        # error_disable_interface,
+        # error_disable_routing,
+        error_disable_interface,
         # error_remove_ip,
-        #error_drop_traffic_to_from_subnet
+        # error_drop_traffic_to_from_subnet
         # error_wrong_routing_table
     ]
     num_errors = min(error_number, len(error_functions))
     errors_to_inject = random.sample(error_functions, num_errors)
     for error in errors_to_inject:
         error(router, subnets)
+    return error_functions
 
-# Function to extract the value of a keyword from a JSON string
-def extract_value(text, keyword):
-    # Constructing a regex to match the keyword followed by a colon and then double quotes containing the desired value
-    pattern = rf'"{keyword}"\s*:\s*"([^"]+)"'
-    match = re.search(pattern, text)
-    if match:
-        return match.group(1)  # Return the matched content
-    return None  # Return None if no match is found
 
-# Initial model for global use
-model_id = "Qwen/Qwen2.5-72B-Instruct"
-global_pipeline = transformers.pipeline(
-    "text-generation",
-    model=model_id,
-    model_kwargs={
-        "torch_dtype": torch.bfloat16,
-        "quantization_config": {"load_in_4bit": True}
-    },
-    device_map="auto",
-)
-# Function to interact with the language model based on the log content
-def llm_interface(log_content):
-    # Defining the prompt with the necessary context for the language model
-    prompt = """There is a mininet network, but there are some kinds of problems in the router r0, so the PingAll() fails at some nodes, you need to fix it.
-    I highly recommend you to use some commands to know the infomation of the router and the network to know the cause of the problem. But if you think the infomation is enough and you know the reason to cause the problem, you have to give command to fix it.
-    You need to give the output in json format, which contains the machine and its command.
-    Then I will give you the latest PingAll() feedback from the network, and also your previous actions to the network and the actions' feedback to let you know more information.
-    """
-    with open(file_path, 'r', ) as f:  
-        file_content = f.read()
-
-    prompt = prompt + "Here is the previos actions and their feedbacks:\n" + file_content + "This is the latest feedback from the mininet:\n" + log_content + "Please only give me the json format output, with key machine and command and their value. You can only give one command at a time and don't include sudo."
-    print(prompt)
-    # Send the prompt to the model
-    messages = [
-        {"role": "user", "content": prompt},
-    ]
-    outputs = global_pipeline(
-        messages,
-        max_new_tokens=256,
-    )
-
-    # Extract the content and then extract the machine and command using the provided function
-    content = str(outputs[0]["generated_text"][-1])
-    machine = extract_value(content, "machine")
-    commands = extract_value(content, "command")
-    
-    # Print the extracted values
-    print(f"Machine: {machine}")
-    print(f"Commands: {commands}")
-
-    # Write results into results.txt
-    with open(file_path, "a") as f:
-        f.write("Log Content:\n")
-        f.write(log_content + "\n\n")
-        f.write(f"Machine: {machine}\n")
-        f.write(f"Commands: {commands}\n")
-        f.write("="*50 + "\n")
-    
-    return machine, commands
-
-def run():
+def run(test_taker, max_iter):
     "Test Linux router"
     num_hosts = 4
     num_switches = 4
@@ -202,11 +139,24 @@ def run():
         host_ip = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.100/24'
         subnet_address = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.0/24'
         subnets.append((subnet, host_ip, subnet_address))
-    print(subnets)
+    # If the path does not exist, create a new one
 
+    # Instantiate Mininet topo
     topo = NetworkTopo(num_hosts=num_hosts, num_switches=num_switches, subnets=subnets)
-
     net = Mininet(topo=topo, waitConnected=True)
+
+    # Instantiate LLM test taker
+    model_kwargs = {
+        "torch_dtype": torch.bfloat16,  
+        "quantization_config": {"load_in_4bit": True}  
+    }
+    model = AutoModelForCausalLM.from_pretrained(
+        test_taker,
+        device_map="auto",  
+        **model_kwargs  
+    )
+    tokenizer = AutoTokenizer.from_pretrained(test_taker)
+    
     net.start()
 
     # Enable IP forwarding on the router
@@ -220,15 +170,24 @@ def run():
     # info('*** Testing network connectivity\n')
     # net.pingAll()
 
-    inject_errors(router, subnets, error_number=1)
+    errors = str(inject_errors(router, subnets, error_number=1))
 
-    # # Display the routing table for debugging
+    file_path = root_path + '/' + 'Llama' + '/' + 'result.txt'
+    if os.path.exists(file_path):
+        with open(file_path, "w") as f:
+            pass
+    else:
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w") as f:
+            f.write("") 
+    # # Display the routing tab
+    # le for debugging
     # info('*** Routing Table on Router:\n')
     # info(router.cmd('route'))
     # # Test connectivity
     # info('*** Testing network connectivity\n')
     iter = 0
-    while iter < 10:
+    while iter < max_iter:
         # Clear the log file
         with open('mininet.log', 'w'):
             pass
@@ -263,7 +222,7 @@ def run():
             log_content = f.read()
             print("log_content:")
             print(log_content)
-        machine, commands = llm_interface(log_content)
+        machine, commands = llm_interface(log_content, model, tokenizer, file_path)
         match = re.search(r'(\d+)%', log_content)  
         if match:
             number = int(match.group(1))  
@@ -296,7 +255,6 @@ def debug():
         host_ip = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.100/24'
         subnet_address = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.0/24'
         subnets.append((subnet, host_ip, subnet_address))
-    print(subnets)
 
     topo = NetworkTopo(num_hosts=num_hosts, num_switches=num_switches, subnets=subnets)
 
@@ -318,5 +276,6 @@ def debug():
 
 if __name__ == '__main__':
     setLogLevel('info')
-    run()
+    max_iter = 10
+    run("Qwen/Qwen2.5-72B-Instruct", max_iter) # "meta-llama/Meta-Llama-3.1-70B-Instruct"
     # debug()
