@@ -18,7 +18,7 @@ import re
 import time
 import sys
 import numpy as np
-from gpt_agents import MaltAgent_GPT
+from llm_model import MaltAgent_GPT
 
 # output the evaluation results to a jsonl file
 OUTPUT_JSONL_DIR = 'logs/gpt_agents'
@@ -65,7 +65,6 @@ def userQuery(current_query, golden_answer, output_path):
 
     ground_truth_ret['reply'] = goldenAnswerCode
     ret['reply'] = llm_answer
-    import pdb; pdb.set_trace()
 
     # Ground truth comparision between the LLM output (ret) and the golden answer (ground_truth_ret)
     # check type "text", "list", "table", "graph" separately.
@@ -177,9 +176,6 @@ def main():
                 golden_answer = item['answer']
         userQuery(current_query, golden_answer, output_path)
 
-        # TODO: @Jiajun, once you connect llm_answer to real llm_output, you can remove the following break
-        break
-    
 
 if __name__=="__main__":
     main()

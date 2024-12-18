@@ -240,6 +240,9 @@ def clean_up_llm_output_func(answer):
         end = answer.find("```", index)
         index = end + 1
     clean_code = answer[start:end].strip()
+    # remove the line that has "import package" in the code
+    clean_code = '\n'.join([line for line in clean_code.split('\n') if not line.strip().startswith("import")])
+
     return clean_code
 
 def check_list_equal(lst1, lst2):

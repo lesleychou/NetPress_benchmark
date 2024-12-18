@@ -220,7 +220,8 @@ def genarate_level_2_query_sequential(node_value_ranges, operation_type_1='add',
                                 node1 = {{"type": "{parent_node}", "name": "{parent_node_name}"}}
                                 node2 = {{"type": "{child_node}", "name": None}}
                                 count = solid_step_counting_query(graph_data, node1, node2)
-                                return count"""
+                                return_object = {{'type': 'text', 'data': count}}
+                                return return_object"""
         return template, ground_truth, new_node
     
     elif operation_type_1=='remove' and operation_type_2=='count':
@@ -242,7 +243,8 @@ def genarate_level_2_query_sequential(node_value_ranges, operation_type_1='add',
                                 node1 = {{"type": "{parent_node}", "name": "{parent_node_name}"}}
                                 node2 = {{"type": "{child_node}", "name": None}}
                                 count = solid_step_counting_query(graph_data, node1, node2)
-                                return count"""
+                                return_object = {{'type': 'text', 'data': count}}
+                                return return_object"""
         return template, ground_truth, child_node_name
 
 
@@ -279,7 +281,8 @@ def genarate_level_2_query_for_loop(node_value_ranges, operation_type_1='add', o
                                     graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)
                                     count = solid_step_counting_query(graph_data, node1, node2)
                                     total_count += count
-                                return total_count"""
+                                return_object = {{'type': 'text', 'data': total_count}}
+                                return return_object"""
         return template, ground_truth, None
     
     # TODO: need further debug
@@ -297,7 +300,8 @@ def genarate_level_2_query_for_loop(node_value_ranges, operation_type_1='add', o
                                     graph_data = solid_step_remove_node_from_graph(graph_data, parent_node_name)
                                     count = solid_step_counting_query(graph_data, node1, node2)
                                     total_count += count
-                                return total_count"""
+                                return_object = {{'type': 'text', 'data': total_count}}
+                                return return_object"""
         return template, ground_truth, None
 
 
@@ -321,25 +325,25 @@ node_value_ranges = get_node_value_ranges(malt_real_graph, 'data/node_value_rang
 # new_malt_graph = eval("ground_truth_process_graph(malt_real_graph)")
 # print(new_malt_graph)
 
-# for _ in range(NUM_EACH_TYPE):
-#     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='rank')
-#     queries.append({
-#         "messages": [
-#             {"question": query},
-#             {"answer": ground_truth},
-#             {"task": "capacity planning, level-1, rank"}
-#         ]
-#     })
+for _ in range(NUM_EACH_TYPE):
+    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='rank')
+    queries.append({
+        "messages": [
+            {"question": query},
+            {"answer": ground_truth},
+            {"task": "capacity planning, level-1, rank"}
+        ]
+    })
 
-# for _ in range(NUM_EACH_TYPE):
-#     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='update')
-#     queries.append({
-#         "messages": [
-#             {"question": query},
-#             {"answer": ground_truth},
-#             {"task": "capacity planning, level-1, update"}
-#         ]
-#     })
+for _ in range(NUM_EACH_TYPE):
+    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='update')
+    queries.append({
+        "messages": [
+            {"question": query},
+            {"answer": ground_truth},
+            {"task": "capacity planning, level-1, update"}
+        ]
+    })
 
 for _ in range(NUM_EACH_TYPE):
     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='list')
@@ -360,24 +364,26 @@ for _ in range(NUM_EACH_TYPE):
             {"task": "capacity planning, level-1, add"}
         ]
     })
-# for _ in range(NUM_EACH_TYPE):
-#     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='count')
-#     queries.append({
-#         "messages": [
-#             {"question": query},
-#             {"answer": ground_truth},
-#             {"task": "capacity planning, level-1, count"}
-#         ]
-#     })
-# for _ in range(NUM_EACH_TYPE):
-#     query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='remove')
-#     queries.append({
-#         "messages": [
-#             {"question": query},
-#             {"answer": ground_truth},
-#             {"task": "capacity planning, level-1, remove"}
-#         ]
-#     })
+
+for _ in range(NUM_EACH_TYPE):
+    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='count')
+    queries.append({
+        "messages": [
+            {"question": query},
+            {"answer": ground_truth},
+            {"task": "capacity planning, level-1, count"}
+        ]
+    })
+    
+for _ in range(NUM_EACH_TYPE):
+    query, ground_truth, new_node = genarate_level_1_query(node_value_ranges, operation_type='remove')
+    queries.append({
+        "messages": [
+            {"question": query},
+            {"answer": ground_truth},
+            {"task": "capacity planning, level-1, remove"}
+        ]
+    })
 
 # for _ in range(NUM_EACH_TYPE):
 #     query, ground_truth, new_node = genarate_level_2_query_sequential(node_value_ranges, operation_type_1='add', operation_type_2='count')
