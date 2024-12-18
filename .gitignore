@@ -15,3 +15,5 @@ app-malt/benchmark/data/*
 app-malt/benchmark/.env
 app-malt/benchmark/logs/*
 app-route/result/*
+*.log
+app-route/*.txt
