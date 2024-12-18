@@ -2,6 +2,7 @@ import json
 import networkx as nx
 from networkx.readwrite import json_graph
 from prototxt_parser.prototxt import parse
+from collections import Counter
 
 
 def getGraphData():
@@ -49,6 +50,7 @@ def get_node_value_ranges(graph, saved_path):
 
     return node_value_ranges
 
+
 def solid_step_add_node_to_graph(graph_data, new_node, parent_node_name=None):
     """
     Adds a new node to the graph. Optionally adds an edge to a parent node with a specified relationship type.
@@ -78,6 +80,7 @@ def solid_step_add_node_to_graph(graph_data, new_node, parent_node_name=None):
     # new_node = {'name': 'new_port', 'type': 'EK_PORT'}
     # malt_graph = solid_step_add_node_to_graph(malt_real_graph, new_node, parent_node_name)
     return graph_data
+
 
 def solid_step_remove_node_from_graph(graph_data, node_name):
     """
@@ -161,8 +164,11 @@ def solid_step_list_child_nodes(graph_data, parent_node):
     for edge in graph_data.out_edges(parent_node_id, data=True):
         if edge[2]['type'] == 'RK_CONTAINS':
             child_nodes.append(graph_data.nodes[edge[1]])
+    
+    # only return the name of the child nodes
+    child_nodes_name = [node['name'] for node in child_nodes]
 
-    return child_nodes
+    return child_nodes_name
     
 def solid_step_update_node_value(graph_data, child_node_name, new_value):
     """
@@ -220,3 +226,49 @@ def solid_step_rank_child_nodes(graph_data, parent_node_name):
     sorted_child_nodes_names = [(node['name'], capacity) for node, capacity in child_nodes_capacity]
 
     return sorted_child_nodes_names
+
+def clean_up_llm_output_func(answer):
+    '''
+    Extract only the def process_graph() funtion from the output of LLM
+    :param answer: output of LLM
+    :return: cleaned function
+    '''
+    start = answer.find("def process_graph")
+    end = -1
+    index = 0
+    for _ in range(2):  # change the number 2 to any 'n' to find the nth occurrence
+        end = answer.find("```", index)
+        index = end + 1
+    clean_code = answer[start:end].strip()
+    return clean_code
+
+def check_list_equal(lst1, lst2):
+    if lst1 and isinstance(lst1[0], list):
+        return Counter(json.dumps(i) for i in lst1) == Counter(json.dumps(i) for i in lst2)
+    else:
+        return Counter(lst1) == Counter(lst2)
+
+
+def clean_up_output_graph_data(ret):
+    if isinstance(ret['data'], nx.Graph):
+        # Create a nx.graph copy, so I can compare two nx.graph later directly
+        ret_graph_copy = ret['data']
+        jsonGraph = nx.node_link_data(ret['data'])
+        ret['data'] = jsonGraph
+
+    else:  # Convert the jsonGraph back to nx.graph, to check if they are identical later
+        ret_graph_copy = json_graph.node_link_graph(ret['data'])
+
+    return ret_graph_copy
+
+def node_attributes_are_equal(node1_attrs, node2_attrs):
+    # Check if both nodes have the exact same set of attributes
+    if set(node1_attrs.keys()) != set(node2_attrs.keys()):
+        return False
+
+    # Check if all attribute values are equal
+    for attr_name, attr_value in node1_attrs.items():
+        if attr_value != node2_attrs[attr_name]:
+            return False
+
+    return True
