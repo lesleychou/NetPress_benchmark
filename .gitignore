@@ -14,3 +14,4 @@ app-malt/benchmark/__pycache__/*
 app-malt/benchmark/data/*
 app-malt/benchmark/.env
 app-malt/benchmark/logs/*
+app-route/result/*
