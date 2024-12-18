@@ -85,19 +85,4 @@ if __name__ == "__main__":
     num_hosts = 4 
     num_switches = 4
     run("Qwen/Qwen2.5-72B-Instruct", max_iter, num_hosts, num_switches)# "meta-llama/Meta-Llama-3.1-70B-Instruct"
-# from mininet.net import Mininet
-# from mininet.log import setLogLevel, info
 
-# def simple_test():
-#     setLogLevel('info')
-#     net = Mininet()
-#     net.addHost('h1')
-#     net.addHost('h2')
-#     net.addLink('h1', 'h2')
-#     net.start()
-#     info("Network started successfully!\n")
-#     net.pingAll()
-#     net.stop()
-
-# if __name__ == '__main__':
-#     simple_test()
