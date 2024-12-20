@@ -2,7 +2,7 @@
 ## Run the application
 Example usage.
 ```python
-python main.py --num_queries 10 --complexity_level level1 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
+python main.py --llm_agent_type AzureGPT4Agent --num_queries 10 --complexity_level level1 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
 ```
 
 ## Code structure
@@ -18,6 +18,12 @@ python main.py --num_queries 10 --complexity_level level1 --output_dir logs/llm_
 
 `main.py` is the end-to-end controller. It first generate a new set of benchmark, second run the LLM agent, third analyze the results.
 
+## LLM usage
+### Azure GPT
+Obtain GPT resources and endpoints
+
+### Google Gemini
+Obtain the gemini API key: https://ai.google.dev/gemini-api/docs/api-key
 
 
 

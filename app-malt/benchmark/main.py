@@ -3,6 +3,7 @@ import pandas as pd
 import jsonlines
 import random
 import os
+import time
 import matplotlib.pyplot as plt
 import json
 from solid_step_helper import get_node_value_ranges, getGraphData, \
@@ -76,6 +77,10 @@ def main(args):
             
         ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer, llm_agent_type=benchmark_config['llm_agent_type'])
         evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path)
+
+        # have to sleep for Gemini API quota
+        if benchmark_config['llm_agent_type'] == 'GoogleGeminiAgent':
+            time.sleep(5)
 
     # TODO: Analyze the results
 
