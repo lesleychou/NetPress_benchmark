@@ -23,7 +23,7 @@ from error_check import SafetyChecker
 
 
 # output the evaluation results to a jsonl file
-OUTPUT_JSONL_DIR = 'logs/gpt_agents'
+OUTPUT_JSONL_DIR = 'logs/llm_agents'
 OUTPUT_JSONL_FILE = 'gpt4.jsonl'
 
 
@@ -46,7 +46,7 @@ def userQuery(current_query, golden_answer):
         exec(llm_answer)
         ret = eval("process_graph(G)")
     except Exception:
-        raise Exception("Error in running the LLM generated code")
+        ret = {'type': "error", 'data': "Cannot run the LLM generated code"}
     
     query_run_latency = time.time() - start_time
 
@@ -60,12 +60,10 @@ def userQuery(current_query, golden_answer):
         ret_graph_copy = clean_up_output_graph_data(ret)
         verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
         verifier_results, verifier_error = verifier.evaluate_all()
-    elif ret['type'] == 'list':
-        verifier = SafetyChecker(ret_graph=None, ret_list=ret['data'])
-        verifier_results, verifier_error = verifier.evaluate_all()
     else:
         verifier_results = True
         verifier_error = ""
+    print("Verifier results: ", verifier_results, verifier_error)
 
     # Where we get the golden answer (ground truth) code for each query
     goldenAnswerCode = golden_answer
