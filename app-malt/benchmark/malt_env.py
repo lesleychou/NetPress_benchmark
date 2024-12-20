@@ -27,190 +27,162 @@ OUTPUT_JSONL_DIR = 'logs/llm_agents'
 OUTPUT_JSONL_FILE = 'gpt4.jsonl'
 
 
-def userQuery(current_query, golden_answer):
-    # for each prompt in the prompt_list, append it as the value of {'query': prompt}
-    print("Query: ", current_query)
-    requestData = {'query': current_query}
+class BenchmarkEvaluator:
+    def __init__(self):
+        self.prompt_accu = 0
 
-    # import pdb; pdb.set_trace()
-    prompt_accu = 0
-    _, G = getGraphData()
-    
-    # Call the output code from LLM agents file
+    def userQuery(self, current_query, golden_answer):
+        # for each prompt in the prompt_list, append it as the value of {'query': prompt}
+        print("Query: ", current_query)
+        requestData = {'query': current_query}
 
-    start_time = time.time()
-    llm_agent = MaltAgent_GPT()
-    llm_answer = llm_agent.call_agent(current_query)
+        # import pdb; pdb.set_trace()
+        _, G = getGraphData()
+        
+        # Call the output code from LLM agents file
 
-    try:
-        exec(llm_answer)
-        ret = eval("process_graph(G)")
-    except Exception:
-        ret = {'type': "error", 'data': "Cannot run the LLM generated code"}
-    
-    query_run_latency = time.time() - start_time
+        start_time = time.time()
+        llm_agent = MaltAgent_GPT()
+        llm_answer = llm_agent.call_agent(current_query)
 
-    # if the type of ret is string, turn it into a json object
-    if isinstance(ret, str):
-        ret = json.loads(ret)
-    
-    ret_graph_copy = None
+        try:
+            exec(llm_answer)
+            ret = eval("process_graph(G)")
+        except Exception:
+            ret = {'type': "error", 'data': "Cannot run the LLM generated code"}
+        
+        query_run_latency = time.time() - start_time
 
-    if ret['type'] == 'graph':
-        ret_graph_copy = clean_up_output_graph_data(ret)
-        verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
-        verifier_results, verifier_error = verifier.evaluate_all()
-    else:
-        verifier_results = True
-        verifier_error = ""
-    print("Verifier results: ", verifier_results, verifier_error)
+        # if the type of ret is string, turn it into a json object
+        if isinstance(ret, str):
+            ret = json.loads(ret)
+        
+        ret_graph_copy = None
 
-    # Where we get the golden answer (ground truth) code for each query
-    goldenAnswerCode = golden_answer
-
-    # ground truth answer should already be checked to ensure it can run successfully
-    exec(goldenAnswerCode)
-    ground_truth_ret = eval("ground_truth_process_graph(G)")
-    # if the type of ground_truth_ret is string, turn it into a json object
-    if isinstance(ground_truth_ret, str):
-        ground_truth_ret = json.loads(ground_truth_ret)
-    
-    print("Ground truth: ", ground_truth_ret)
-
-    ground_truth_ret['reply'] = goldenAnswerCode
-    ret['reply'] = llm_answer
-
-    print("=========Current query process is done!=========")
-
-    return ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy
-
-
-def ground_truth_check(requestData, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path):
-
-    # Ground truth comparision between the LLM output (ret) and the golden answer (ground_truth_ret)
-    # check type "text", "list", "table", "graph" separately.
-    if ground_truth_ret['type'] == 'text':
-        # if ret['data'] type is int, turn it into string
-        if isinstance(ret['data'], int):
-            ret['data'] = str(ret['data'])
-        if isinstance(ground_truth_ret['data'], int):
-            ground_truth_ret['data'] = str(ground_truth_ret['data'])
-
-        if ground_truth_ret['data'] == ret['data']:
-            prompt_accu = result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+        if ret['type'] == 'graph':
+            ret_graph_copy = clean_up_output_graph_data(ret)
+            verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
+            verifier_results, verifier_error = verifier.evaluate_all()
         else:
-            result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+            verifier_results = True
+            verifier_error = ""
+        print("Verifier results: ", verifier_results, verifier_error)
 
-    elif ground_truth_ret['type'] == 'list':
-        # Use Counter to check if two lists contain the same items, including duplicate items.
-        if check_list_equal(ground_truth_ret['data'], ret['data']):
-            prompt_accu = result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
-        else:
-            result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+        # Where we get the golden answer (ground truth) code for each query
+        goldenAnswerCode = golden_answer
 
-    elif ground_truth_ret['type'] == 'table':
-        if ground_truth_ret['data'] == ret['data']:
-            prompt_accu = result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
-        else:
-            result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+        # ground truth answer should already be checked to ensure it can run successfully
+        exec(goldenAnswerCode)
+        ground_truth_ret = eval("ground_truth_process_graph(G)")
+        # if the type of ground_truth_ret is string, turn it into a json object
+        if isinstance(ground_truth_ret, str):
+            ground_truth_ret = json.loads(ground_truth_ret)
+        
+        print("Ground truth: ", ground_truth_ret)
 
-    elif ground_truth_ret['type'] == 'graph':
-        # Undirected graphs will be converted to a directed graph
-        # with two directed edges for each undirected edge.
-        ground_truth_graph = nx.Graph(ground_truth_ret['data'])
-        # TODO: fix ret_graph_copy reference possible error, when it's not created.
-        ret_graph = nx.Graph(ret_graph_copy)
+        ground_truth_ret['reply'] = goldenAnswerCode
+        ret['reply'] = llm_answer
 
-        # Check if two graphs are identical, no weights considered
-        if nx.is_isomorphic(ground_truth_graph, ret_graph, node_match=node_attributes_are_equal):
-            prompt_accu = result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
-        else:
-            result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+        print("=========Current query process is done!=========")
 
+        return ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy
 
+    def ground_truth_check(self, requestData, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path):
 
-def result_log_wrong(current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
-    result_object = {
-        "Query": current_query,
-        "Label": task_label,
-        "Result-Correctness": "Fail",
-        "Result-Safety": "Pass" if verifier_results else "Fail",
-        "Result-Latency": query_run_latency,
-        "Ground truth code": ground_truth_ret['reply'],
-        "LLM code": ret['reply']
-    }
-    if ground_truth_ret['type'] == 'graph':
-        result_object["Error"] = "Two graphs are not identical."
-    else:
-        result_object["Ground truth exec"] = ground_truth_ret['data']
-        result_object["LLM code exec"] = ret['data']
-        result_object["Error"] = {
-            "Ground truth": ground_truth_ret['data'],
-            "Model output": ret['data']
+        # Ground truth comparision between the LLM output (ret) and the golden answer (ground_truth_ret)
+        # check type "text", "list", "table", "graph" separately.
+        if ground_truth_ret['type'] == 'text':
+            # if ret['data'] type is int, turn it into string
+            if isinstance(ret['data'], int):
+                ret['data'] = str(ret['data'])
+            if isinstance(ground_truth_ret['data'], int):
+                ground_truth_ret['data'] = str(ground_truth_ret['data'])
+
+            if ground_truth_ret['data'] == ret['data']:
+                self.result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+            else:
+                self.result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+
+        elif ground_truth_ret['type'] == 'list':
+            # Use Counter to check if two lists contain the same items, including duplicate items.
+            if check_list_equal(ground_truth_ret['data'], ret['data']):
+                self.result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+            else:
+                self.result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+
+        elif ground_truth_ret['type'] == 'table':
+            if ground_truth_ret['data'] == ret['data']:
+                self.result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+            else:
+                self.result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+
+        elif ground_truth_ret['type'] == 'graph':
+            # Undirected graphs will be converted to a directed graph
+            # with two directed edges for each undirected edge.
+            ground_truth_graph = nx.Graph(ground_truth_ret['data'])
+            # TODO: fix ret_graph_copy reference possible error, when it's not created.
+            ret_graph = nx.Graph(ret_graph_copy)
+
+            # Check if two graphs are identical, no weights considered
+            if nx.is_isomorphic(ground_truth_graph, ret_graph, node_match=node_attributes_are_equal):
+                self.result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+            else:
+                self.result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+
+    def result_log_wrong(self, current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
+        result_object = {
+            "Query": current_query,
+            "Label": task_label,
+            "Result-Correctness": "Fail",
+            "Result-Safety": "Pass" if verifier_results else "Fail",
+            "Result-Latency": query_run_latency,
+            "Ground truth code": ground_truth_ret['reply'],
+            "LLM code": ret['reply']
         }
+        if ground_truth_ret['type'] == 'graph':
+            result_object["Error"] = "Two graphs are not identical."
+        else:
+            result_object["Ground truth exec"] = ground_truth_ret['data']
+            result_object["LLM code exec"] = ret['data']
+            result_object["Error"] = {
+                "Ground truth": ground_truth_ret['data'],
+                "Model output": ret['data']
+            }
 
-    # Save result_object into a JsonLine file
-    with jsonlines.open(output_path, mode='a') as writer:
-        writer.write(result_object)
+        # Save result_object into a JsonLine file
+        with jsonlines.open(output_path, mode='a') as writer:
+            writer.write(result_object)
+        
+        return None
+
+    def result_log_correct(self, current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
+        result_object = {
+            "Query": current_query,
+            "Label": task_label,
+            "Result-Correctness": "Pass",
+            "Result-Safety": "Pass" if verifier_results else "Fail",
+            "Result-Latency": query_run_latency,
+            "Ground truth code": ground_truth_ret['reply'],
+            "LLM code": ret['reply']
+        }
+        if ground_truth_ret['type'] != 'graph':
+            result_object["Ground truth exec"] = ground_truth_ret['data']
+            result_object["LLM code exec"] = ret['data']
+        
+        # Save result_object into a JsonLine file
+        with jsonlines.open(output_path, mode='a') as writer:
+            writer.write(result_object)
+        
+        return None
     
-    return None
+# # example usage for the class
+# if __name__ == "__main__":
+#     evaluator = BenchmarkEvaluator()
+#     query = "What is the capital of France?"
+#     golden_answer = """
+#                     def ground_truth_process_graph(G):
+#                         return {'type': 'text', 'data': 'Paris'}
+#                     """
+#     ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = evaluator.userQuery(query, golden_answer)
+#     evaluator.ground_truth_check(query, "capital_question", ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, os.path.join(OUTPUT_JSONL_DIR, OUTPUT_JSONL_FILE))
 
-def result_log_correct(current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
-    result_object = {
-        "Query": current_query,
-        "Label": task_label,
-        "Result-Correctness": "Pass",
-        "Result-Safety": "Pass" if verifier_results else "Fail",
-        "Result-Latency": query_run_latency,
-        "Ground truth code": ground_truth_ret['reply'],
-        "LLM code": ret['reply']
-    }
-    if ground_truth_ret['type'] != 'graph':
-        result_object["Ground truth exec"] = ground_truth_ret['data']
-        result_object["LLM code exec"] = ret['data']
-    
-    # Save result_object into a JsonLine file
-    with jsonlines.open(output_path, mode='a') as writer:
-        writer.write(result_object)
-    
-    return None
-
-def main():
-    # create 'output.jsonl' file if it does not exist: 'logs/malt-benchmark/test.jsonl'
-    # create the directory if it does not exist
-    if not os.path.exists(OUTPUT_JSONL_DIR):
-        os.makedirs(OUTPUT_JSONL_DIR)
-
-    # create the file if it does not exist
-    output_path = os.path.join(OUTPUT_JSONL_DIR, OUTPUT_JSONL_FILE)
-    if not os.path.exists(output_path):
-        with open(output_path, 'w') as f:
-            pass
-    
-    # Load all objects from the benchmark dataset into a benchmark list, each object have "question" and "answer" keys
-    benchmark_filename = 'data/benchmark_level_1.jsonl'
-
-    # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
-    benchmark_data = []
-    with jsonlines.open(benchmark_filename) as reader:
-        for obj in reader:
-            benchmark_data.append(obj['messages'])
-    
-    # for each object in the benchmark list, get the question and answer
-    for obj in benchmark_data:
-        for item in obj:
-            if 'question' in item:
-                current_query = item['question']
-            # get the answer of the question
-            if 'answer' in item:
-                golden_answer = item['answer']
-            if 'task_label' in item:
-                task_label = item['task_label']
-
-        ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = userQuery(current_query, golden_answer)
-
-        ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path)
-
-
-if __name__=="__main__":
-    main()
