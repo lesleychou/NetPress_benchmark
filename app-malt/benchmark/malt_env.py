@@ -97,22 +97,22 @@ def ground_truth_check(requestData, task_label, ret, ground_truth_ret, ret_graph
             ground_truth_ret['data'] = str(ground_truth_ret['data'])
 
         if ground_truth_ret['data'] == ret['data']:
-            prompt_accu = ground_truth_check_accu(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+            prompt_accu = result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
         else:
-            ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path)
+            result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
 
     elif ground_truth_ret['type'] == 'list':
         # Use Counter to check if two lists contain the same items, including duplicate items.
         if check_list_equal(ground_truth_ret['data'], ret['data']):
-            prompt_accu = ground_truth_check_accu(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+            prompt_accu = result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
         else:
-            ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path)
+            result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
 
     elif ground_truth_ret['type'] == 'table':
         if ground_truth_ret['data'] == ret['data']:
-            prompt_accu = ground_truth_check_accu(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+            prompt_accu = result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
         else:
-            ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path)
+            result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
 
     elif ground_truth_ret['type'] == 'graph':
         # Undirected graphs will be converted to a directed graph
@@ -123,47 +123,56 @@ def ground_truth_check(requestData, task_label, ret, ground_truth_ret, ret_graph
 
         # Check if two graphs are identical, no weights considered
         if nx.is_isomorphic(ground_truth_graph, ret_graph, node_match=node_attributes_are_equal):
-            prompt_accu = ground_truth_check_accu(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+            prompt_accu = result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
         else:
-            ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path)
+            result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
 
 
 
-def ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path):
-    print("Fail the test, and here is more info: ")
+def result_log_wrong(current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
+    result_object = {
+        "Query": current_query,
+        "Label": task_label,
+        "Result-Correctness": "Fail",
+        "Result-Safety": "Pass" if verifier_results else "Fail",
+        "Result-Latency": query_run_latency,
+        "Ground truth code": ground_truth_ret['reply'],
+        "LLM code": ret['reply']
+    }
     if ground_truth_ret['type'] == 'graph':
-        print("Two graph are not identical.")
+        result_object["Error"] = "Two graphs are not identical."
     else:
-        print("ground truth: ", ground_truth_ret['data'])
-        print("model output: ", ret['data'])
+        result_object["Ground truth exec"] = ground_truth_ret['data']
+        result_object["LLM code exec"] = ret['data']
+        result_object["Error"] = {
+            "Ground truth": ground_truth_ret['data'],
+            "Model output": ret['data']
+        }
 
-    # Save requestData, code, ground_truth_ret['data'] into a JsonLine file
+    # Save result_object into a JsonLine file
     with jsonlines.open(output_path, mode='a') as writer:
-        writer.write(requestData)
-        writer.write({"Result-Correctness": "Fail"})
-        writer.write({"Ground truth code": ground_truth_ret['reply']})
-        writer.write({"LLM code": ret['reply']})
-        if ground_truth_ret['type'] != 'graph':
-            writer.write({"Ground truth exec": ground_truth_ret['data']})
-            writer.write({"LLM code exec": ret['data']})
+        writer.write(result_object)
+    
     return None
 
-def ground_truth_check_accu(current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
-    # Save requestData, code, ground_truth_ret['data'] into a JsonLine file
+def result_log_correct(current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
+    result_object = {
+        "Query": current_query,
+        "Label": task_label,
+        "Result-Correctness": "Pass",
+        "Result-Safety": "Pass" if verifier_results else "Fail",
+        "Result-Latency": query_run_latency,
+        "Ground truth code": ground_truth_ret['reply'],
+        "LLM code": ret['reply']
+    }
+    if ground_truth_ret['type'] != 'graph':
+        result_object["Ground truth exec"] = ground_truth_ret['data']
+        result_object["LLM code exec"] = ret['data']
+    
+    # Save result_object into a JsonLine file
     with jsonlines.open(output_path, mode='a') as writer:
-        writer.write({"Query": current_query})
-        writer.write({"Label": task_label})
-        writer.write({"Result-Correctness": "Pass"})
-        if verifier_results:
-            writer.write({"Result-Safety": "Pass"})
-        else:
-            writer.write({"Result-Safety": "Fail"})
-        writer.write({"Result-Latency": query_run_latency})
-        writer.write({"Ground truth code": ground_truth_ret['reply']})
-        writer.write({"LLM code": ret['reply']})
-        if ground_truth_ret['type'] != 'graph':
-            writer.write({"Ground truth exec": ground_truth_ret['data']})
-            writer.write({"LLM code exec": ret['data']})
+        writer.write(result_object)
+    
     return None
 
 def main():
