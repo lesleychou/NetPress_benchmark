@@ -9,7 +9,6 @@ import os
 from solid_step_helper import clean_up_llm_output_func
 import networkx as nx
 import jsonlines
-from langchain.callbacks import get_openai_callback
 import json
 import re
 import time
@@ -20,12 +19,13 @@ from azure.identity import DefaultAzureCredential
 from azure.core.credentials import AzureKeyCredential
 from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
-from langchain.callbacks import get_openai_callback
-# For GPT3.5 or GPT4
+import warnings
+from langchain._api import LangChainDeprecationWarning
+warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
+
+# For Azure GPT3.5 or GPT4
 from langchain.chat_models import AzureChatOpenAI
-
 credential = DefaultAzureCredential()
-
 #Set the API type to `azure_ad`
 os.environ["OPENAI_API_TYPE"] = "azure_ad"
 # Set the API_KEY to the token from the Azure credential
@@ -36,26 +36,16 @@ os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-fc.openai.azure.com/"
 # Load environ variables from .env, will not override existing environ variables
 load_dotenv()
 OPENAI_API_TYPE = os.getenv('OPENAI_API_TYPE')
-OPENAI_API_BASE = os.getenv('OPENAI_API_BASE')
 
-EACH_PROMPT_RUN_TIME = 1
+# For Google Gemini
+import getpass
+from langchain_google_genai import ChatGoogleGenerativeAI
+os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_API_KEY")
 
-# gpt-4o
-# 2024-08-01-preview
+if "GOOGLE_API_KEY" not in os.environ:
+    os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
 
-class MaltAgent_GPT:
-    def __init__(self):
-        self.llm = AzureChatOpenAI(
-            openai_api_type=OPENAI_API_TYPE,
-            openai_api_base=OPENAI_API_BASE,
-            openai_api_version="2024-08-01-preview",
-            deployment_name='gpt-4o',
-            model_name='gpt-4o',
-            temperature=0.0,
-            max_tokens=4000,
-            )
-
-        prefix = """
+prompt_prefix = """
         Generate the Python code needed to process the network graph to answer the user question or request. The network graph data is stored as a networkx graph object, the Python code you generate should be in the form of a function named process_graph that takes a single input argument graph_data and returns a single object return_object. The input argument graph_data will be a networkx graph object with nodes and edges.
         The graph is directed and each node has a 'name' attribute to represent itself.
         Each node has a 'type' attribute, in the format of EK_TYPE. 'type' must be a list, can include ['EK_SUPERBLOCK', 'EK_CHASSIS', 'EK_RACK', 'EK_AGG_BLOCK', 'EK_JUPITER', 'EK_PORT', 'EK_SPINEBLOCK', 'EK_PACKET_SWITCH', 'EK_CONTROL_POINT', 'EK_CONTROL_DOMAIN'].
@@ -76,7 +66,7 @@ class MaltAgent_GPT:
 
         The return_object will be a JSON object with two keys, 'type' and 'data'. The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table' or 'graph'.
         The 'data' key should contain the data needed to render the output. If the output type is 'text' then the 'data' key should contain a string. If the output type is 'list' then the 'data' key should contain a list of items.
-        If the output type is 'table' then the 'data' key should contain a list of lists where each list represents a row in the table.If the output type is 'graph' then the 'data' key should contain a JSON object that can be rendered using D3.js.
+        If the output type is 'table' then the 'data' key should contain a list of lists where each list represents a row in the table.If the output type is 'graph' then the 'data' key should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
 
         Context: When the user requests to make changes to the graph, it is generally appropriate to return the graph. 
         In the Python code you generate, you should process the networkx graph object to produce the needed output.
@@ -86,7 +76,7 @@ class MaltAgent_GPT:
         Do not include any package import in your answer.
         """
 
-        suffix = """Begin! Remember to ensure that you generate valid Python code in the following format:
+prompt_suffix = """Begin! Remember to ensure that you generate valid Python code in the following format:
 
         Answer:
         ```python
@@ -95,15 +85,56 @@ class MaltAgent_GPT:
         Question: {input}
         """
 
+
+
+class GoogleGeminiAgent:
+    def __init__(self):
+        self.llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-pro",
+            temperature=0,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2,
+        )
+
         prompt = PromptTemplate(
             input_variables=["input"],
-            template=prefix + suffix
+            template=prompt_prefix + prompt_suffix
         )
 
         self.pyGraphNetExplorer = LLMChain(llm=self.llm, prompt=prompt)
 
     def call_agent(self, query):
-        print("Calling model")
+        print("Calling Google Gemini")
+        answer = self.pyGraphNetExplorer.run(query)
+        print("model returned")
+        code = clean_up_llm_output_func(answer)
+        print(code)
+        return code
+
+
+class AzureGPT4Agent:
+    def __init__(self):
+        # gpt-4o
+        # 2024-08-01-preview
+        self.llm = AzureChatOpenAI(
+            openai_api_type=OPENAI_API_TYPE,
+            openai_api_version="2024-08-01-preview",
+            deployment_name='gpt-4o',
+            model_name='gpt-4o',
+            temperature=0.0,
+            max_tokens=4000,
+            )
+
+        prompt = PromptTemplate(
+            input_variables=["input"],
+            template=prompt_prefix + prompt_suffix
+        )
+
+        self.pyGraphNetExplorer = LLMChain(llm=self.llm, prompt=prompt)
+
+    def call_agent(self, query):
+        print("Calling GPT-4o")
         answer = self.pyGraphNetExplorer.run(query)
         print("model returned")
         code = clean_up_llm_output_func(answer)

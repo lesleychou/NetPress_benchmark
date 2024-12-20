@@ -18,7 +18,7 @@ import re
 import time
 import sys
 import numpy as np
-from llm_model import MaltAgent_GPT
+from llm_model import AzureGPT4Agent, GoogleGeminiAgent
 from error_check import SafetyChecker
 
 
@@ -31,7 +31,7 @@ class BenchmarkEvaluator:
     def __init__(self, graph_data):
         self.graph_data = graph_data
 
-    def userQuery(self, current_query, golden_answer):
+    def userQuery(self, current_query, golden_answer, llm_agent_type="AzureGPT4Agent"):
         # for each prompt in the prompt_list, append it as the value of {'query': prompt}
         print("Query: ", current_query)
 
@@ -39,7 +39,10 @@ class BenchmarkEvaluator:
         
         # Call the output code from LLM agents file
         start_time = time.time()
-        llm_agent = MaltAgent_GPT()
+        if llm_agent_type == "AzureGPT4Agent":
+            llm_agent = AzureGPT4Agent()
+        elif llm_agent_type == "GoogleGeminiAgent":
+            llm_agent = GoogleGeminiAgent()
         llm_answer = llm_agent.call_agent(current_query)
 
         try:

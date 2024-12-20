@@ -15,6 +15,7 @@ import argparse
 # define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
+    parser.add_argument('--llm_agent_type', type=str, default='AzureGPT4Agent', help='Choose the LLM agent', choices=['AzureGPT4Agent', 'GoogleGeminiAgent'])
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', nargs='+', default=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--output_dir', type=str, default='logs/llm_agents', help='Directory to save output JSONL file')
@@ -23,11 +24,13 @@ def parse_args():
     return parser.parse_args()
 
 # anexample of how to use main.py with input args
-# python main.py --num_queries 10 --complexity_level level1 level2 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
+# Example usage:
+# python main.py --llm_agent_type AzureGPT4Agent --num_queries 10 --complexity_level level1 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
 
 def main(args):
 
     benchmark_config = {
+        'llm_agent_type': args.llm_agent_type,
         'num_queries': args.num_queries,
         'complexity_level': args.complexity_level,
         'output_dir': args.output_dir,
@@ -71,7 +74,7 @@ def main(args):
             elif 'task_label' in item:
                 task_label = item['task_label']
             
-        ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer)
+        ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer, llm_agent_type=benchmark_config['llm_agent_type'])
         evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path)
 
     # TODO: Analyze the results
