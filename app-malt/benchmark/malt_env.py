@@ -19,13 +19,15 @@ import time
 import sys
 import numpy as np
 from llm_model import MaltAgent_GPT
+from error_check import SafetyChecker
+
 
 # output the evaluation results to a jsonl file
 OUTPUT_JSONL_DIR = 'logs/gpt_agents'
 OUTPUT_JSONL_FILE = 'gpt4.jsonl'
 
 
-def userQuery(current_query, golden_answer, output_path):
+def userQuery(current_query, golden_answer):
     # for each prompt in the prompt_list, append it as the value of {'query': prompt}
     print("Query: ", current_query)
     requestData = {'query': current_query}
@@ -34,7 +36,9 @@ def userQuery(current_query, golden_answer, output_path):
     prompt_accu = 0
     _, G = getGraphData()
     
-    # TODO: call the output code from LLM agents file
+    # Call the output code from LLM agents file
+
+    start_time = time.time()
     llm_agent = MaltAgent_GPT()
     llm_answer = llm_agent.call_agent(current_query)
 
@@ -43,13 +47,25 @@ def userQuery(current_query, golden_answer, output_path):
         ret = eval("process_graph(G)")
     except Exception:
         raise Exception("Error in running the LLM generated code")
+    
+    query_run_latency = time.time() - start_time
 
     # if the type of ret is string, turn it into a json object
     if isinstance(ret, str):
         ret = json.loads(ret)
+    
+    ret_graph_copy = None
 
     if ret['type'] == 'graph':
         ret_graph_copy = clean_up_output_graph_data(ret)
+        verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
+        verifier_results, verifier_error = verifier.evaluate_all()
+    elif ret['type'] == 'list':
+        verifier = SafetyChecker(ret_graph=None, ret_list=ret['data'])
+        verifier_results, verifier_error = verifier.evaluate_all()
+    else:
+        verifier_results = True
+        verifier_error = ""
 
     # Where we get the golden answer (ground truth) code for each query
     goldenAnswerCode = golden_answer
@@ -66,6 +82,13 @@ def userQuery(current_query, golden_answer, output_path):
     ground_truth_ret['reply'] = goldenAnswerCode
     ret['reply'] = llm_answer
 
+    print("=========Current query process is done!=========")
+
+    return ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy
+
+
+def ground_truth_check(requestData, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path):
+
     # Ground truth comparision between the LLM output (ret) and the golden answer (ground_truth_ret)
     # check type "text", "list", "table", "graph" separately.
     if ground_truth_ret['type'] == 'text':
@@ -76,20 +99,20 @@ def userQuery(current_query, golden_answer, output_path):
             ground_truth_ret['data'] = str(ground_truth_ret['data'])
 
         if ground_truth_ret['data'] == ret['data']:
-            prompt_accu = ground_truth_check_accu(prompt_accu, requestData, ground_truth_ret, ret, output_path)
+            prompt_accu = ground_truth_check_accu(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
         else:
             ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path)
 
     elif ground_truth_ret['type'] == 'list':
         # Use Counter to check if two lists contain the same items, including duplicate items.
         if check_list_equal(ground_truth_ret['data'], ret['data']):
-            prompt_accu = ground_truth_check_accu(prompt_accu, requestData, ground_truth_ret, ret, output_path)
+            prompt_accu = ground_truth_check_accu(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
         else:
             ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path)
 
     elif ground_truth_ret['type'] == 'table':
         if ground_truth_ret['data'] == ret['data']:
-            prompt_accu = ground_truth_check_accu(prompt_accu, requestData, ground_truth_ret, ret, output_path)
+            prompt_accu = ground_truth_check_accu(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
         else:
             ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path)
 
@@ -102,14 +125,10 @@ def userQuery(current_query, golden_answer, output_path):
 
         # Check if two graphs are identical, no weights considered
         if nx.is_isomorphic(ground_truth_graph, ret_graph, node_match=node_attributes_are_equal):
-            prompt_accu = ground_truth_check_accu(prompt_accu, requestData, ground_truth_ret, ret, output_path)
+            prompt_accu = ground_truth_check_accu(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
         else:
             ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path)
 
-
-    print("=========Current query process is done!=========")
-
-    return ret
 
 
 def ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path):
@@ -123,7 +142,7 @@ def ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path):
     # Save requestData, code, ground_truth_ret['data'] into a JsonLine file
     with jsonlines.open(output_path, mode='a') as writer:
         writer.write(requestData)
-        writer.write({"Result": "Fail"})
+        writer.write({"Result-Correctness": "Fail"})
         writer.write({"Ground truth code": ground_truth_ret['reply']})
         writer.write({"LLM code": ret['reply']})
         if ground_truth_ret['type'] != 'graph':
@@ -131,19 +150,23 @@ def ground_truth_check_debug(requestData, ground_truth_ret, ret, output_path):
             writer.write({"LLM code exec": ret['data']})
     return None
 
-def ground_truth_check_accu(count, requestData, ground_truth_ret, ret, output_path):
-    print("Pass the test!")
-    count += 1
+def ground_truth_check_accu(current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
     # Save requestData, code, ground_truth_ret['data'] into a JsonLine file
     with jsonlines.open(output_path, mode='a') as writer:
-        writer.write(requestData)
-        writer.write({"Result": "Pass"})
+        writer.write({"Query": current_query})
+        writer.write({"Label": task_label})
+        writer.write({"Result-Correctness": "Pass"})
+        if verifier_results:
+            writer.write({"Result-Safety": "Pass"})
+        else:
+            writer.write({"Result-Safety": "Fail"})
+        writer.write({"Result-Latency": query_run_latency})
         writer.write({"Ground truth code": ground_truth_ret['reply']})
         writer.write({"LLM code": ret['reply']})
         if ground_truth_ret['type'] != 'graph':
             writer.write({"Ground truth exec": ground_truth_ret['data']})
             writer.write({"LLM code exec": ret['data']})
-    return count
+    return None
 
 def main():
     # create 'output.jsonl' file if it does not exist: 'logs/malt-benchmark/test.jsonl'
@@ -174,7 +197,12 @@ def main():
             # get the answer of the question
             if 'answer' in item:
                 golden_answer = item['answer']
-        userQuery(current_query, golden_answer, output_path)
+            if 'task_label' in item:
+                task_label = item['task_label']
+
+        ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = userQuery(current_query, golden_answer)
+
+        ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path)
 
 
 if __name__=="__main__":

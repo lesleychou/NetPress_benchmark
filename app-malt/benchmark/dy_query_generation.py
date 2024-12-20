@@ -331,7 +331,7 @@ for _ in range(NUM_EACH_TYPE):
         "messages": [
             {"question": query},
             {"answer": ground_truth},
-            {"task": "capacity planning, level-1, rank"}
+            {"task_label": "capacity planning, level-1, rank"}
         ]
     })
 
@@ -341,7 +341,7 @@ for _ in range(NUM_EACH_TYPE):
         "messages": [
             {"question": query},
             {"answer": ground_truth},
-            {"task": "capacity planning, level-1, update"}
+            {"task_label": "capacity planning, level-1, update"}
         ]
     })
 
@@ -351,7 +351,7 @@ for _ in range(NUM_EACH_TYPE):
         "messages": [
             {"question": query},
             {"answer": ground_truth},
-            {"task": "capacity planning, level-1, list"}
+            {"task_label": "capacity planning, level-1, list"}
         ]
     })
 
@@ -361,7 +361,7 @@ for _ in range(NUM_EACH_TYPE):
         "messages": [
             {"question": query},
             {"answer": ground_truth},
-            {"task": "capacity planning, level-1, add"}
+            {"task_label": "capacity planning, level-1, add"}
         ]
     })
 
@@ -371,7 +371,7 @@ for _ in range(NUM_EACH_TYPE):
         "messages": [
             {"question": query},
             {"answer": ground_truth},
-            {"task": "capacity planning, level-1, count"}
+            {"task_label": "capacity planning, level-1, count"}
         ]
     })
     
@@ -381,7 +381,7 @@ for _ in range(NUM_EACH_TYPE):
         "messages": [
             {"question": query},
             {"answer": ground_truth},
-            {"task": "capacity planning, level-1, remove"}
+            {"task_label": "capacity planning, level-1, remove"}
         ]
     })
 
@@ -391,7 +391,7 @@ for _ in range(NUM_EACH_TYPE):
 #         "messages": [
 #             {"question": query},
 #             {"answer": ground_truth},
-#             {"task": "capacity planning, level-2 sequential, add then count"}
+#             {"task_label": "capacity planning, level-2 sequential, add then count"}
 #         ]
 #     })
 
@@ -401,7 +401,7 @@ for _ in range(NUM_EACH_TYPE):
 #         "messages": [
 #             {"question": query},
 #             {"answer": ground_truth},
-#             {"task": "capacity planning, level-2 sequential, remove then count"}
+#             {"task_label": "capacity planning, level-2 sequential, remove then count"}
 #         ]
 #     })
 
@@ -411,7 +411,7 @@ for _ in range(NUM_EACH_TYPE):
 #         "messages": [
 #             {"question": query},
 #             {"answer": ground_truth},
-#             {"task": "capacity planning, level-2 for-loop, add then count"}
+#             {"task_label": "capacity planning, level-2 for-loop, add then count"}
 #         ]
 #     })
 

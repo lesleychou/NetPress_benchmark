@@ -1,0 +1,1 @@
+## Run the MALT app

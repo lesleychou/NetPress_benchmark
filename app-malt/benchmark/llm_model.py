@@ -40,15 +40,17 @@ OPENAI_API_BASE = os.getenv('OPENAI_API_BASE')
 
 EACH_PROMPT_RUN_TIME = 1
 
+# gpt-4o
+# 2024-08-01-preview
 
 class MaltAgent_GPT:
     def __init__(self):
         self.llm = AzureChatOpenAI(
             openai_api_type=OPENAI_API_TYPE,
             openai_api_base=OPENAI_API_BASE,
-            openai_api_version="2023-12-01-preview",
-            deployment_name='gpt-4-32k',
-            model_name='gpt-4-32k',
+            openai_api_version="2024-08-01-preview",
+            deployment_name='gpt-4o',
+            model_name='gpt-4o',
             temperature=0.0,
             max_tokens=4000,
             )
