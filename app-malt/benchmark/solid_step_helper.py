@@ -6,7 +6,7 @@ from collections import Counter
 
 
 def getGraphData():
-    input_string = open("../data/malt-example-final.textproto.txt").read()
+    input_string = open("data/malt-graph.textproto.txt").read()
     parsed_dict = parse(input_string)
 
     # Load MALT data
