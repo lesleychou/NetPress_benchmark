@@ -144,11 +144,11 @@ def solid_step_counting_query(graph_data, node1, node2):
             if node2['type'] in graph_data.nodes[destination_node]['type']:
                 node2_count += 1
     
-    # Find node2 contained within node1 recursively, there is heirarchy in the graph
-    for edge in graph_data.out_edges(target_node1, data=True):
-        if edge[2]['type'] == 'RK_CONTAINS':
-            destination_node = edge[1]
-            node2_count += solid_step_counting_query(graph_data, graph_data.nodes[destination_node], node2)
+    # # Find node2 contained within node1 recursively, there is heirarchy in the graph
+    # for edge in graph_data.out_edges(target_node1, data=True):
+    #     if edge[2]['type'] == 'RK_CONTAINS':
+    #         destination_node = edge[1]
+    #         node2_count += solid_step_counting_query(graph_data, graph_data.nodes[destination_node], node2)
 
     # For testing
     # node1 = {'type': 'EK_AGG_BLOCK', 'name': 'ju1.a1.m1'}

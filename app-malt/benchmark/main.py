@@ -26,7 +26,7 @@ def parse_args():
 
 # anexample of how to use main.py with input args
 # Example usage:
-# python main.py --llm_agent_type AzureGPT4Agent --num_queries 10 --complexity_level level1 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
+# python main.py --llm_agent_type AzureGPT4Agent --num_queries 2 --complexity_level level1 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
 
 def main(args):
 
@@ -82,8 +82,60 @@ def main(args):
         if benchmark_config['llm_agent_type'] == 'GoogleGeminiAgent':
             time.sleep(5)
 
-    # TODO: Analyze the results
+    # Analyze the results
+    # load the data from output_path
+    results = []
+    with jsonlines.open(output_path) as reader:
+        for obj in reader:
+            results.append(obj)
 
+    # group the results by task label
+    grouped_results = {}
+    for result in results:
+        task_label = result["Label"]
+        if task_label not in grouped_results:
+            grouped_results[task_label] = []
+        grouped_results[task_label].append(result)
+
+    task_labels = list(grouped_results.keys())
+    avg_latencies = [sum(result["Result-Latency"] for result in grouped_results[task_label]) / len(grouped_results[task_label]) for task_label in task_labels]
+
+     # plot the average query run latency for each task label
+    plt.figure(figsize=(10, 6))
+    plt.bar(task_labels, avg_latencies, color='skyblue')
+    plt.xlabel('Task Label')
+    plt.ylabel('Average Query Run Latency (seconds)')
+    plt.title('Average Query Run Latency by Task Label')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(args.output_dir, f'figs/average_latency_{args.llm_agent_type}.png'), dpi=300)
+    plt.show()
+
+    # plot the pass rate of correctness for each task label
+    correctness_pass_rates = [sum(1 for result in grouped_results[task_label] if result["Result-Correctness"] == "Pass") / len(grouped_results[task_label]) * 100 for task_label in task_labels]
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(task_labels, correctness_pass_rates, color='green')
+    plt.xlabel('Task Label')
+    plt.ylabel('Correctness Pass Rate (%)')
+    plt.title('Correctness Pass Rate by Task Label')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(args.output_dir, f'figs/correctness_pass_rate_{args.llm_agent_type}.png'), dpi=300)
+    plt.show()
+
+    # plot the pass rate of safety for each task label
+    safety_pass_rates = [sum(1 for result in grouped_results[task_label] if result["Result-Safety"] == "Pass") / len(grouped_results[task_label]) * 100 for task_label in task_labels]
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(task_labels, safety_pass_rates, color='orange')
+    plt.xlabel('Task Label')
+    plt.ylabel('Safety Pass Rate (%)')
+    plt.title('Safety Pass Rate by Task Label')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(args.output_dir, f'figs/safety_pass_rate_{args.llm_agent_type}.png'), dpi=300)
+    plt.show()
 
 
 # run the main function
