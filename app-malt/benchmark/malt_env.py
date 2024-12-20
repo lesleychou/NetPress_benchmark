@@ -28,19 +28,16 @@ OUTPUT_JSONL_FILE = 'gpt4.jsonl'
 
 
 class BenchmarkEvaluator:
-    def __init__(self):
-        self.prompt_accu = 0
+    def __init__(self, graph_data):
+        self.graph_data = graph_data
 
     def userQuery(self, current_query, golden_answer):
         # for each prompt in the prompt_list, append it as the value of {'query': prompt}
         print("Query: ", current_query)
-        requestData = {'query': current_query}
 
-        # import pdb; pdb.set_trace()
-        _, G = getGraphData()
+        G = self.graph_data
         
         # Call the output code from LLM agents file
-
         start_time = time.time()
         llm_agent = MaltAgent_GPT()
         llm_answer = llm_agent.call_agent(current_query)

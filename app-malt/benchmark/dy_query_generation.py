@@ -13,7 +13,7 @@ class QueryGenerator:
         self.node_value_ranges = get_node_value_ranges(self.malt_real_graph, node_value_ranges_path)
         self.queries = []
 
-    def generate_level_1_query(self, operation_type='add'):
+    def generate_level_1_query_groundtruth(self, operation_type='add'):
         if operation_type == 'add':
             child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
             parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
@@ -97,46 +97,23 @@ class QueryGenerator:
                                 return return_object"""
             return template, ground_truth, None
 
-    def generate_queries(self, num_each_type=3):
-        for _ in range(num_each_type):
-            query, ground_truth, new_node = self.generate_level_1_query(operation_type='update')
-            self.queries.append({
-                "messages": [
-                    {"question": query},
-                    {"answer": ground_truth},
-                    {"task_label": "capacity planning, level-1, update"}
-                ]
-            })
 
-        for _ in range(num_each_type):
-            query, ground_truth, new_node = self.generate_level_1_query(operation_type='add')
-            self.queries.append({
-                "messages": [
+    def create_level_one_dataset(self, num_each_type):
+        operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
+        for operation in operations:
+            for _ in range(num_each_type):
+                query, ground_truth, new_node = self.generate_level_1_query_groundtruth(operation_type=operation)
+                self.queries.append({
+                    "messages": [
                     {"question": query},
                     {"answer": ground_truth},
-                    {"task_label": "capacity planning, level-1, add"}
-                ]
-            })
-
-        for _ in range(num_each_type):
-            query, ground_truth, new_node = self.generate_level_1_query(operation_type='count')
-            self.queries.append({
-                "messages": [
-                    {"question": query},
-                    {"answer": ground_truth},
-                    {"task_label": "capacity planning, level-1, count"}
-                ]
-            })
-
-        for _ in range(num_each_type):
-            query, ground_truth, new_node = self.generate_level_1_query(operation_type='remove')
-            self.queries.append({
-                "messages": [
-                    {"question": query},
-                    {"answer": ground_truth},
-                    {"task_label": "capacity planning, level-1, remove"}
-                ]
-            })
+                    {"task_label": f"capacity planning, level-1, {operation}"}
+                    ]
+                })
+    
+    def generate_queries(self, num_each_type=3, complexity_level=['level1', 'level2']):
+        if 'level1' in complexity_level:
+            self.create_level_one_dataset(num_each_type)
 
     def save_queries_to_file(self, file_path):
         with open(file_path, 'w') as f:
