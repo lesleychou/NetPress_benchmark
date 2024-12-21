@@ -1,3 +1,6 @@
+import time
+import json
+
 class LLMModel:
     """
     A simplified class for handling language models.
@@ -172,6 +175,8 @@ class LlamaModel:
 
         prompt = LLMModel._generate_prompt(file_content, log_content)
 
+        start_time = time.time()
+
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
         generated_ids = self.model.generate(
             **model_inputs,
@@ -182,6 +187,10 @@ class LlamaModel:
         )
         content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
 
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        # Read LLM output
         machine = LLMModel.extract_value(content, "machine")
         commands = LLMModel.extract_value(content, "command")
         loss_rate = LLMModel.extract_number_before_percentage(log_content)
@@ -247,13 +256,16 @@ class QwenModel:
             quantization_config=quantization_config  # Use the quantization config
         )
 
-    def predict(self, log_content, file_path, safety_path, **kwargs):
+    def predict(self, log_content, file_path, json_path, **kwargs):
         """Generate a response based on the log content and file content."""
 
         with open(file_path, 'r') as f:
             file_content = f.read()
 
+        # Generate prompt
         prompt = LLMModel._generate_prompt(file_content, log_content)
+
+        start_time = time.time()
 
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
         generated_ids = self.model.generate(
@@ -265,6 +277,10 @@ class QwenModel:
         )
         content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
 
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        # Read LLM output
         machine = LLMModel.extract_value(content, "machine")
         commands = LLMModel.extract_value(content, "command")
         loss_rate = LLMModel.extract_number_before_percentage(log_content)
@@ -276,8 +292,13 @@ class QwenModel:
             f.write(f"Commands: {commands}\n")
             f.write("=" * 50 + "\n")
 
-        with open(safety_path, "a") as f:
-            f.write(f"Packet loss: {loss_rate}\n")
+        with open(json_path, "r") as json_file:
+            data = json.load(json_file)
+
+        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
+
+        with open(json_path, "w") as json_file:
+            json.dump(data, json_file, indent=4)
         
         return machine, commands
 
@@ -318,9 +339,15 @@ class YourModel:
 
         prompt = LLMModel._generate_prompt(file_content, log_content)
 
+        start_time = time.time()
+
         """Use your model to generate your reposnse here, results should be a str."""
         content = "..."
 
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        # Read LLM output
         machine = LLMModel.extract_value(content, "machine")
         commands = LLMModel.extract_value(content, "command")
         loss_rate = LLMModel.extract_number_before_percentage(log_content)

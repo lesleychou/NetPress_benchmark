@@ -6,12 +6,9 @@ from llm_model import LLMModel
 from mininet.log import setLogLevel, info, lg
 from llm_model import LLMModel
 from mininet_logger import MininetLogger
-from file_utils import prepare_file
+from file_utils import prepare_file, initialize_json_file, summarize_results
 from error_function import inject_errors
 from topology import generate_subnets, NetworkTopo
-import time
-import sys
-from mininet.log import setLogLevel
 
 
 # Define the root path (you should set this to the correct path for your project)
@@ -40,10 +37,10 @@ def run(test_taker, max_iter, num_hosts, num_switches):
     Mininet_log = MininetLogger()
 
     # Create file to store result
-    result_file_path = root_path + '_result.txt'
-    safety_file_path = root_path + '_safety.txt'
+    result_file_path = root_path + '.txt'
+    json_path = root_path + '/' + 'result_2.json'
     prepare_file(result_file_path)
-    prepare_file(safety_file_path)
+    initialize_json_file(json_path)
 
     # Let LLM interact with Mininet
     iter = 0
@@ -69,7 +66,7 @@ def run(test_taker, max_iter, num_hosts, num_switches):
         log_content = Mininet_log.get_log_content()
 
         # Get LLM response
-        machine, commands = llm_model.model.predict(log_content, result_file_path, safety_file_path)
+        machine, commands = llm_model.model.predict(log_content, result_file_path, json_path)
         
         # # Read log content, if successful then breaks
         if Mininet_log.read_log_content(log_content, iter):
@@ -77,12 +74,13 @@ def run(test_taker, max_iter, num_hosts, num_switches):
 
         iter += 1
 
-    # net.stop()
+    net.stop()
 
 # Call the run function to run the test
 if __name__ == "__main__":
     max_iter = 10
     num_hosts = 4 
     num_switches = 4
-    run("Qwen/Qwen2.5-72B-Instruct", max_iter, num_hosts, num_switches)# "meta-llama/Meta-Llama-3.1-70B-Instruct"
-
+    # run("Qwen/Qwen2.5-72B-Instruct", max_iter, num_hosts, num_switches)# "meta-llama/Meta-Llama-3.1-70B-Instruct"
+    final_result = root_path + '_final.json'
+    summarize_results(root_path, final_result)

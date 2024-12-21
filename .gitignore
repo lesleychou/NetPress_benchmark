@@ -17,3 +17,5 @@ app-malt/benchmark/logs/*
 app-route/result/*
 *.log
 app-route/*.txt
+*/result/
+*.json
