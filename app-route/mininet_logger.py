@@ -53,8 +53,6 @@ class MininetLogger:
             if number == 0:
                 print(f"Success in {iter} iterations")  
                 return True
-            else:
-                print(f"{number}% packet loss.")  
         else:
             print("No '%' found in log content.")
         return False
