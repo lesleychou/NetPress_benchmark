@@ -157,8 +157,46 @@ class QueryGenerator:
                                     return return_object"""
             return template, ground_truth, child_node_name
         
+        elif operation_type_1 == 'add' and operation_type_2 == 'list':
+            child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+            parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            child_node_name = f"new_{child_node}_{random.randint(1, 100)}"
+            parent_node_name = random.choice(self.node_value_ranges[parent_node])
+
+            template = f"Add {child_node_name} to {parent_node_name}. List direct child nodes of {parent_node_name} in the updated graph. Return a list of child nodes."
+
+            new_node = {'name': child_node_name, 'type': child_node}
+            ground_truth = f"""def ground_truth_process_graph(graph_data):
+                                    new_node = {new_node}
+                                    parent_node_name = '{parent_node_name}'
+                                    graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)
+                                    node = {{"type": "{parent_node}", "name": "{parent_node_name}"}}
+                                    child_nodes = solid_step_list_child_nodes(graph_data, node)
+                                    return_object = {{'type': 'list', 'data': child_nodes}}
+                                    return return_object"""
+            return template, ground_truth, new_node
+        
+        elif operation_type_1 == 'add' and operation_type_2 == 'rank':
+            child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+            parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            child_node_name = f"new_{child_node}_{random.randint(1, 100)}"
+            parent_node_name = random.choice(self.node_value_ranges[parent_node])
+
+            template = f"Add {child_node_name} to {parent_node_name}. Rank direct child nodes of {parent_node_name} in the updated graph based on physical_capacity_bps attribute. Return a list of tuple, each tuple has node name and its total physical capacity."
+
+            new_node = {'name': child_node_name, 'type': child_node}
+            ground_truth = f"""def ground_truth_process_graph(graph_data):
+                                    new_node = {new_node}
+                                    parent_node_name = '{parent_node_name}'
+                                    graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)
+                                    ranked_child_nodes = solid_step_rank_child_nodes(graph_data, parent_node_name)
+                                    return_object = {{'type': 'list', 'data': ranked_child_nodes}}
+                                    return return_object"""
+            return template, ground_truth, new_node
+        
     def create_level_two_dataset(self, num_each_type):
-        operations = [('add', 'count'), ('remove', 'count')]
+        # operations = [('add', 'count'), ('remove', 'count')]
+        operations = [('add', 'list'), ('add', 'rank')]
         for operation1, operation2 in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_2_query_sequential(operation_type_1=operation1, operation_type_2=operation2)
