@@ -224,6 +224,8 @@ def solid_step_rank_child_nodes(graph_data, parent_node_name):
         if edge[2]['type'] == 'RK_CONTAINS':
             child_node = edge[1]
             total_physical_capacity_bps = 0
+            if 'EK_PORT' in graph_data.nodes[child_node]['type']:
+                total_physical_capacity_bps += graph_data.nodes[child_node].get('physical_capacity_bps', 0)
             for child_edge in graph_data.out_edges(child_node, data=True):
                 if child_edge[2]['type'] == 'RK_CONTAINS':
                     grandchild_node = child_edge[1]

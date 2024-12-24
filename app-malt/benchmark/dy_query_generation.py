@@ -194,9 +194,43 @@ class QueryGenerator:
                                     return return_object"""
             return template, ground_truth, new_node
         
+        elif operation_type_1 == 'remove' and operation_type_2 == 'list':
+            child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+            parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            child_node_name = random.choice(self.node_value_ranges[child_node])
+            parent_node_substring = '.'.join(child_node_name.split('.')[:-1])
+
+            template = f"Remove {child_node_name} from the graph. List direct child nodes of {parent_node_substring} in the updated graph. Return a list of child nodes."
+
+            ground_truth = f"""def ground_truth_process_graph(graph_data):
+                                    child_node_name = '{child_node_name}'
+                                    graph_data = solid_step_remove_node_from_graph(graph_data, child_node_name)
+                                    node = {{"type": "{parent_node}", "name": '{parent_node_substring}'}}
+                                    child_nodes = solid_step_list_child_nodes(graph_data, node)
+                                    return_object = {{'type': 'list', 'data': child_nodes}}
+                                    return return_object"""
+            return template, ground_truth, child_node_name
+        
+        elif operation_type_1 == 'remove' and operation_type_2 == 'rank':
+            child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+            parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            child_node_name = random.choice(self.node_value_ranges[child_node])
+            parent_node_substring = '.'.join(child_node_name.split('.')[:-1])
+
+            template = f"Remove {child_node_name} from the graph. Rank direct child nodes of {parent_node_substring} in the updated graph based on physical_capacity_bps attribute. Return a list of tuple, each tuple has node name and its total physical capacity."
+
+            ground_truth = f"""def ground_truth_process_graph(graph_data):
+                                    child_node_name = '{child_node_name}'
+                                    graph_data = solid_step_remove_node_from_graph(graph_data, child_node_name)
+                                    parent_node_name = '{parent_node_substring}'
+                                    ranked_child_nodes = solid_step_rank_child_nodes(graph_data, parent_node_name)
+                                    return_object = {{'type': 'list', 'data': ranked_child_nodes}}
+                                    return return_object"""
+            return template, ground_truth, child_node_name
+        
     def create_level_two_dataset(self, num_each_type):
         # operations = [('add', 'count'), ('remove', 'count')]
-        operations = [('add', 'list'), ('add', 'rank')]
+        operations = [('remove', 'rank')]
         for operation1, operation2 in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_2_query_sequential(operation_type_1=operation1, operation_type_2=operation2)
