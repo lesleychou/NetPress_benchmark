@@ -102,7 +102,8 @@ class QueryGenerator:
 
 
     def create_level_one_dataset(self, num_each_type):
-        operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
+        # operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
+        operations = [('add')]
         for operation in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_1_query_groundtruth(operation_type=operation)

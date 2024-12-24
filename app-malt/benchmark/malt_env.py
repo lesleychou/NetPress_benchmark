@@ -59,6 +59,7 @@ class BenchmarkEvaluator:
         
         ret_graph_copy = None
 
+        # TODO: the safety checker should be always called, even if the output is not a graph
         if ret['type'] == 'graph':
             ret_graph_copy = clean_up_output_graph_data(ret)
             verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
@@ -79,9 +80,10 @@ class BenchmarkEvaluator:
             ground_truth_ret = json.loads(ground_truth_ret)
         
         print("LLM answer: ", llm_answer)
-        print("LLM code result: ", ret)
         print("Ground truth code: ", goldenAnswerCode)
-        print("Ground truth result: ", ground_truth_ret)
+        if ret['type'] != 'graph':
+            print("LLM code result: ", ret)
+            print("Ground truth result: ", ground_truth_ret)
 
         ground_truth_ret['reply'] = goldenAnswerCode
         ret['reply'] = llm_answer
