@@ -49,7 +49,7 @@ class BenchmarkEvaluator:
             exec(llm_answer)
             ret = eval("process_graph(G)")
         except Exception:
-            ret = {'type': "error", 'data': "Cannot run the LLM generated code"}
+            ret = {'type': "error", 'data': traceback.format_exc()}
         
         query_run_latency = time.time() - start_time
 
@@ -78,7 +78,10 @@ class BenchmarkEvaluator:
         if isinstance(ground_truth_ret, str):
             ground_truth_ret = json.loads(ground_truth_ret)
         
-        print("Ground truth: ", ground_truth_ret)
+        print("LLM answer: ", llm_answer)
+        print("LLM code result: ", ret)
+        print("Ground truth code: ", goldenAnswerCode)
+        print("Ground truth result: ", ground_truth_ret)
 
         ground_truth_ret['reply'] = goldenAnswerCode
         ret['reply'] = llm_answer

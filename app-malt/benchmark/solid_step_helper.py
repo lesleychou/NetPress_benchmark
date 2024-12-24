@@ -133,28 +133,25 @@ def solid_step_counting_query(graph_data, node1, node2):
             break
 
     if target_node1 is None:
-        print(f"Node1 {target_node1} not found", )
-        return {node1, 'not found'}
+        print(f"Node1 {node1['name']} not found")
+        return {node1['name']: 'not found'}
 
-    # Find all node2 directly contained within node1
+    # Use BFS to count all node2 contained within node1
     node2_count = 0
-    for edge in graph_data.out_edges(target_node1, data=True):
-        if edge[2]['type'] == 'RK_CONTAINS':
-            destination_node = edge[1]
-            if node2['type'] in graph_data.nodes[destination_node]['type']:
-                node2_count += 1
-    
-    # # Find node2 contained within node1 recursively, there is heirarchy in the graph
-    # for edge in graph_data.out_edges(target_node1, data=True):
-    #     if edge[2]['type'] == 'RK_CONTAINS':
-    #         destination_node = edge[1]
-    #         node2_count += solid_step_counting_query(graph_data, graph_data.nodes[destination_node], node2)
+    queue = [target_node1]
+    visited = set()
 
-    # For testing
-    # node1 = {'type': 'EK_AGG_BLOCK', 'name': 'ju1.a1.m1'}
-    # node2 = {'type': 'EK_PORT', 'name': None}
-    # count = solid_step_counting_query(malt_real_graph, node1, node2)
-    # print(count)
+    while queue:
+        current_node = queue.pop(0)
+        if current_node in visited:
+            continue
+        visited.add(current_node)
+        for edge in graph_data.out_edges(current_node, data=True):
+            if edge[2]['type'] == 'RK_CONTAINS':
+                destination_node = edge[1]
+                if node2['type'] in graph_data.nodes[destination_node]['type']:
+                    node2_count += 1
+                queue.append(destination_node)
 
     return node2_count
 
