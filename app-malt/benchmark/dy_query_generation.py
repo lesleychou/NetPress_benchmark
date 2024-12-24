@@ -72,11 +72,11 @@ class QueryGenerator:
             return template, ground_truth, None
 
         elif operation_type == 'update':
-            child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+            child_node = random.choice(['EK_PORT'])
             child_node_name = random.choice(self.node_value_ranges[child_node])
             new_value = random.randint(1, 100)
 
-            template = f"Update the value of {child_node_name} to {new_value}. Return a graph."
+            template = f"Update the physical capacity value of {child_node_name} to {new_value}. Return a graph."
             ground_truth = f"""def ground_truth_process_graph(graph_data):
                                     child_node_name = '{child_node_name}'
                                     new_value = {new_value}
@@ -89,7 +89,7 @@ class QueryGenerator:
             parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
             parent_node_name = random.choice(self.node_value_ranges[parent_node])
 
-            template = f"Rank all child nodes of {parent_node} type {parent_node_name} based on physical_capacity_bps attribute. Return a list of child nodes name."
+            template = f"Rank all child nodes of {parent_node} type {parent_node_name} based on physical_capacity_bps attribute. Return a list of tuple, each tuple has child node name and its total physical capacity."
             ground_truth = f"""def ground_truth_process_graph(graph_data):
                                 parent_node_name = '{parent_node_name}'
                                 ranked_child_nodes = solid_step_rank_child_nodes(graph_data, parent_node_name)
@@ -99,7 +99,8 @@ class QueryGenerator:
 
 
     def create_level_one_dataset(self, num_each_type):
-        operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
+        # operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
+        operations = ['rank']
         for operation in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_1_query_groundtruth(operation_type=operation)

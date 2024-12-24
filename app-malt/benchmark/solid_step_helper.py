@@ -184,7 +184,7 @@ def solid_step_list_child_nodes(graph_data, parent_node):
     
 def solid_step_update_node_value(graph_data, child_node_name, new_value):
     """
-    Update the value of a child node in the graph.
+    Update the physical_capacity_bps attribute of a child node in the graph if it is of type EK_PORT.
     """
     # Find the node ID by name
     child_node_id = None
@@ -197,8 +197,11 @@ def solid_step_update_node_value(graph_data, child_node_name, new_value):
         print(f"Node with name '{child_node_name}' not found.")
         return graph_data, child_node_name, new_value
 
-    # Update the node's value
-    graph_data.nodes[child_node_id]['name'] = new_value
+    # Check if the node is of type EK_PORT and update its physical_capacity_bps attribute
+    if 'EK_PORT' in graph_data.nodes[child_node_id]['type']:
+        graph_data.nodes[child_node_id]['physical_capacity_bps'] = new_value
+    else:
+        print(f"Node with name '{child_node_name}' is not of type EK_PORT.")
 
     return graph_data
 
