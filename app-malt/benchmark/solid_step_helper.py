@@ -121,39 +121,51 @@ def solid_step_remove_node_from_graph(graph_data, node_name):
 
 
 # create a function for calculating the counting queries
-def solid_step_counting_query(graph_data, node1, node2):
+def solid_step_counting_query(graph_data, node1, node2=None):
     """
     Count the number of node2 contained within node1 in the graph.
+    or
+    Count the total number of node1 contained in the graph.
     """
-    # Find the target node1
-    target_node1 = None
-    for node in graph_data.nodes:
-        if graph_data.nodes[node].get('name') == node1['name']:
-            target_node1 = node
-            break
+    if node2 is None:
+        # directly count the total number of node1 in the graph
+        total_count_node1_type = 0
+        node1_type = node1['type']
+        for node in graph_data.nodes(data=True):
+            if node1_type in node[1]['type']:
+                total_count_node1_type += 1
+        return total_count_node1_type
+    
+    if node2:
+        # Find the target node1
+        target_node1 = None
+        for node in graph_data.nodes:
+            if graph_data.nodes[node].get('name') == node1['name']:
+                target_node1 = node
+                break
 
-    if target_node1 is None:
-        print(f"Node1 {node1['name']} not found")
-        return {node1['name']: 'not found'}
+        if target_node1 is None:
+            print(f"Node1 {node1['name']} not found")
+            return {node1['name']: 'not found'}
 
-    # Use BFS to count all node2 contained within node1
-    node2_count = 0
-    queue = [target_node1]
-    visited = set()
+        # Use BFS to count all node2 contained within node1
+        node2_count = 0
+        queue = [target_node1]
+        visited = set()
 
-    while queue:
-        current_node = queue.pop(0)
-        if current_node in visited:
-            continue
-        visited.add(current_node)
-        for edge in graph_data.out_edges(current_node, data=True):
-            if edge[2]['type'] == 'RK_CONTAINS':
-                destination_node = edge[1]
-                if node2['type'] in graph_data.nodes[destination_node]['type']:
-                    node2_count += 1
-                queue.append(destination_node)
+        while queue:
+            current_node = queue.pop(0)
+            if current_node in visited:
+                continue
+            visited.add(current_node)
+            for edge in graph_data.out_edges(current_node, data=True):
+                if edge[2]['type'] == 'RK_CONTAINS':
+                    destination_node = edge[1]
+                    if node2['type'] in graph_data.nodes[destination_node]['type']:
+                        node2_count += 1
+                    queue.append(destination_node)
 
-    return node2_count
+        return node2_count
 
 def solid_step_list_child_nodes(graph_data, parent_node):
     """

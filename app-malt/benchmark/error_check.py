@@ -72,6 +72,7 @@ class SafetyChecker():
     def verify_node_hierarchy(self):
         """
         Graph check: verify_node_hierarchy
+        TODO: Add more hierarchy checks, if adding a PORT, then it has be connected to a PACKET_SWITCH
         """
         hierarchy = {
             "EK_JUPITER": ["EK_SPINEBLOCK", "EK_SUPERBLOCK"],

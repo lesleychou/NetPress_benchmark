@@ -102,8 +102,7 @@ class QueryGenerator:
 
 
     def create_level_one_dataset(self, num_each_type):
-        # operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
-        operations = ['rank']
+        operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
         for operation in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_1_query_groundtruth(operation_type=operation)
@@ -228,9 +227,9 @@ class QueryGenerator:
                                     return return_object"""
             return template, ground_truth, child_node_name
         
+        
     def create_level_two_dataset(self, num_each_type):
-        # operations = [('add', 'count'), ('remove', 'count')]
-        operations = [('remove', 'rank')]
+        operations = [('add', 'count'), ('remove', 'count'), ('add', 'list'), ('add', 'rank'), ('remove', 'list'), ('remove', 'rank')]
         for operation1, operation2 in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_2_query_sequential(operation_type_1=operation1, operation_type_2=operation2)
@@ -241,12 +240,67 @@ class QueryGenerator:
                     {"task_label": f"capacity planning, level-2, {operation1}-{operation2}"}
                     ]
                 })
+
+    def genarate_level_3_query_for_loop(self, operation_type_1='add', operation_type_2='count'):
+        """
+        Level-2 query: two operations, control sequence is for-loop.
+        For each parent node in the graph, add a new child node to it. Count the total number of child nodes in the updated graph. Return the counts.
+        """
+        if operation_type_1 == 'add' and operation_type_2 == 'count':
+            parent_node_type = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            child_node_type = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+            parent_node_names = self.node_value_ranges[parent_node_type]
+
+            template = f"For each {parent_node_type}, add a new {child_node_type} to it. Count the total number of {child_node_type} in the updated graph. Return only the counts."
+            ground_truth = f"""def ground_truth_process_graph(graph_data):
+                                    for parent_node_name in {parent_node_names}:
+                                        new_node = {{"name": f"new_{child_node_type}_{{random.randint(1, 100)}}", "type": "{child_node_type}"}}
+                                        node2 = {{"type": "{child_node_type}", "name": None}}
+                                        graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)
+                                    count = solid_step_counting_query(graph_data, node2)
+                                    return_object = {{'type': 'text', 'data': count}}
+                                    return return_object"""
+            return template, ground_truth, None
+        
+        # TODO: need further debug
+        elif operation_type_1 == 'remove' and operation_type_2 == 'count':
+            child_node_type = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
+            parent_node_type = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            parent_node_names = self.node_value_ranges['EK_AGG_BLOCK']
+
+            template = f"For each {parent_node_type}, remove a {child_node_type} from it. Count the total number of {child_node_type} in the updated graph. Return the counts."
+            ground_truth = f"""def ground_truth_process_graph(graph_data):
+                                    total_count = 0
+                                    for parent_node_name in {parent_node_names}:
+                                        node1 = {{"type": "EK_AGG_BLOCK", "name": parent_node_name}}
+                                        node2 = {{"type": "{child_node_type}", "name": None}}
+                                        graph_data = solid_step_remove_node_from_graph(graph_data, parent_node_name)
+                                        count = solid_step_counting_query(graph_data, node1, node2)
+                                        total_count += count
+                                    return_object = {{'type': 'text', 'data': total_count}}
+                                    return return_object"""
+            return template, ground_truth, None
+        
+    def create_level_three_dataset(self, num_each_type):
+        operations = [('add', 'count'), ('remove', 'count')]
+        for operation1, operation2 in operations:
+            for _ in range(num_each_type):
+                query, ground_truth, new_node = self.genarate_level_3_query_for_loop(operation_type_1=operation1, operation_type_2=operation2)
+                self.queries.append({
+                    "messages": [
+                    {"question": query},
+                    {"answer": ground_truth},
+                    {"task_label": f"capacity planning, level-3, {operation1}-{operation2}"}
+                    ]
+                })
     
     def generate_queries(self, num_each_type=3, complexity_level=['level1', 'level2']):
         if 'level1' in complexity_level:
             self.create_level_one_dataset(num_each_type)
         if 'level2' in complexity_level:
             self.create_level_two_dataset(num_each_type)
+        if 'level3' in complexity_level:
+            self.create_level_three_dataset(num_each_type)
 
     def save_queries_to_file(self, file_path):
         with open(file_path, 'w') as f:
