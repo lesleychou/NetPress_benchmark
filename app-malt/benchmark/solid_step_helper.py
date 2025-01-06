@@ -68,13 +68,17 @@ def solid_step_add_node_to_graph(graph_data, new_node, parent_node_name=None):
         new_node['physical_capacity_bps'] = 1000
 
     # if new_node['type'] is EK_PACKET_SWITCH, add a EK_PORT node as its child node with a new attribute 'physical_capacity_bps'
-    if 'EK_PACKET_SWITCH' in new_node['type']:
+    if new_node['type'] == 'EK_PACKET_SWITCH':
         new_port_node = {'name': f'{new_node["name"]}_port', 'type': 'EK_PORT'}
-        new_port_node_id = len(graph_data.nodes) + 1
+        new_port_node_id = len(graph_data.nodes) + 2  # Ensure unique ID
         new_port_node['physical_capacity_bps'] = 1000
+        # Add the new node to the graph
+        graph_data.add_node(new_node_id, name=new_node['name'], type=new_node['type'])
+        # Add the new port node to the graph
         graph_data.add_node(new_port_node_id, name=new_port_node['name'], type=new_port_node['type'], physical_capacity_bps=new_port_node['physical_capacity_bps'])
+        # Add the edge between the new node and the new port node
         graph_data.add_edge(new_node_id, new_port_node_id, type='RK_CONTAINS')
-
+    
     # Add the new node to the graph
     graph_data.add_node(new_node_id, name=new_node['name'], type=new_node['type'])
 
@@ -121,42 +125,51 @@ def solid_step_remove_node_from_graph(graph_data, node_name):
 
 
 # create a function for calculating the counting queries
-def solid_step_counting_query(graph_data, node1, node2):
+def solid_step_counting_query(graph_data, node1, node2=None):
     """
     Count the number of node2 contained within node1 in the graph.
+    or
+    Count the total number of node1 contained in the graph.
     """
-    # Find the target node1
-    target_node1 = None
-    for node in graph_data.nodes:
-        if graph_data.nodes[node].get('name') == node1['name']:
-            target_node1 = node
-            break
-
-    if target_node1 is None:
-        print(f"Node1 {target_node1} not found", )
-        return {node1, 'not found'}
-
-    # Find all node2 directly contained within node1
-    node2_count = 0
-    for edge in graph_data.out_edges(target_node1, data=True):
-        if edge[2]['type'] == 'RK_CONTAINS':
-            destination_node = edge[1]
-            if node2['type'] in graph_data.nodes[destination_node]['type']:
-                node2_count += 1
+    if node2 is None:
+        # directly count the total number of node1 in the graph
+        total_count_node1_type = 0
+        node1_type = node1['type']
+        for node in graph_data.nodes(data=True):
+            if node1_type in node[1]['type']:
+                total_count_node1_type += 1
+        return total_count_node1_type
     
-    # # Find node2 contained within node1 recursively, there is heirarchy in the graph
-    # for edge in graph_data.out_edges(target_node1, data=True):
-    #     if edge[2]['type'] == 'RK_CONTAINS':
-    #         destination_node = edge[1]
-    #         node2_count += solid_step_counting_query(graph_data, graph_data.nodes[destination_node], node2)
+    if node2:
+        # Find the target node1
+        target_node1 = None
+        for node in graph_data.nodes:
+            if graph_data.nodes[node].get('name') == node1['name']:
+                target_node1 = node
+                break
 
-    # For testing
-    # node1 = {'type': 'EK_AGG_BLOCK', 'name': 'ju1.a1.m1'}
-    # node2 = {'type': 'EK_PORT', 'name': None}
-    # count = solid_step_counting_query(malt_real_graph, node1, node2)
-    # print(count)
+        if target_node1 is None:
+            print(f"Node1 {node1['name']} not found")
+            return {node1['name']: 'not found'}
 
-    return node2_count
+        # Use BFS to count all node2 contained within node1
+        node2_count = 0
+        queue = [target_node1]
+        visited = set()
+
+        while queue:
+            current_node = queue.pop(0)
+            if current_node in visited:
+                continue
+            visited.add(current_node)
+            for edge in graph_data.out_edges(current_node, data=True):
+                if edge[2]['type'] == 'RK_CONTAINS':
+                    destination_node = edge[1]
+                    if node2['type'] in graph_data.nodes[destination_node]['type']:
+                        node2_count += 1
+                    queue.append(destination_node)
+
+        return node2_count
 
 def solid_step_list_child_nodes(graph_data, parent_node):
     """
@@ -184,7 +197,7 @@ def solid_step_list_child_nodes(graph_data, parent_node):
     
 def solid_step_update_node_value(graph_data, child_node_name, new_value):
     """
-    Update the value of a child node in the graph.
+    Update the physical_capacity_bps attribute of a child node in the graph if it is of type EK_PORT.
     """
     # Find the node ID by name
     child_node_id = None
@@ -197,8 +210,11 @@ def solid_step_update_node_value(graph_data, child_node_name, new_value):
         print(f"Node with name '{child_node_name}' not found.")
         return graph_data, child_node_name, new_value
 
-    # Update the node's value
-    graph_data.nodes[child_node_id]['name'] = new_value
+    # Check if the node is of type EK_PORT and update its physical_capacity_bps attribute
+    if 'EK_PORT' in graph_data.nodes[child_node_id]['type']:
+        graph_data.nodes[child_node_id]['physical_capacity_bps'] = new_value
+    else:
+        print(f"Node with name '{child_node_name}' is not of type EK_PORT.")
 
     return graph_data
 
@@ -224,6 +240,8 @@ def solid_step_rank_child_nodes(graph_data, parent_node_name):
         if edge[2]['type'] == 'RK_CONTAINS':
             child_node = edge[1]
             total_physical_capacity_bps = 0
+            if 'EK_PORT' in graph_data.nodes[child_node]['type']:
+                total_physical_capacity_bps += graph_data.nodes[child_node].get('physical_capacity_bps', 0)
             for child_edge in graph_data.out_edges(child_node, data=True):
                 if child_edge[2]['type'] == 'RK_CONTAINS':
                     grandchild_node = child_edge[1]

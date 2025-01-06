@@ -40,7 +40,7 @@ solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_
 #                  'CONTROL_POINT contains PACKET_SWITCH', 
 #                  'RACK contains CHASSIS', 
 #                  'PACKET_SWITCH contains PORT', 
-#                  'SPINE_BLOCK contains PACKET_SWITCH', 
+#                  'SPINEBLOCK contains PACKET_SWITCH', 
 #                  'CONTROL_DOMAIN contains CONTROL_POINT', 
 #                  'CHASSIS contains PACKET_SWITCH', 
 #                  'JUPITER contains SUPER_BLOCK', 

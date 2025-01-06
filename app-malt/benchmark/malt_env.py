@@ -49,7 +49,7 @@ class BenchmarkEvaluator:
             exec(llm_answer)
             ret = eval("process_graph(G)")
         except Exception:
-            ret = {'type': "error", 'data': "Cannot run the LLM generated code"}
+            ret = {'type': "error", 'data': traceback.format_exc()}
         
         query_run_latency = time.time() - start_time
 
@@ -59,6 +59,7 @@ class BenchmarkEvaluator:
         
         ret_graph_copy = None
 
+        # TODO: the safety checker should be always called, even if the output is not a graph
         if ret['type'] == 'graph':
             ret_graph_copy = clean_up_output_graph_data(ret)
             verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
@@ -78,7 +79,11 @@ class BenchmarkEvaluator:
         if isinstance(ground_truth_ret, str):
             ground_truth_ret = json.loads(ground_truth_ret)
         
-        print("Ground truth: ", ground_truth_ret)
+        print("LLM answer: ", llm_answer)
+        print("Ground truth code: ", goldenAnswerCode)
+        if ret['type'] != 'graph':
+            print("LLM code result: ", ret)
+            print("Ground truth result: ", ground_truth_ret)
 
         ground_truth_ret['reply'] = goldenAnswerCode
         ret['reply'] = llm_answer

@@ -52,15 +52,14 @@ prompt_prefix = """
         Each node can have other attributes depending on its type.
         Each directed edge also has a 'type' attribute, include RK_CONTAINS, RK_CONTROL.
         You should check relationship based on edge, check name based on node attribute. 
-        Adding new nodes need to consider all hierarchy. For example, adding a new switch requires adding it to the corresponding jupiter, aggregation block, and domain. 
+        Nodes has hierarchy: CHASSIS contains PACKET_SWITCH, JUPITER contains SUPERBLOCK, SUPERBLOCK contains AGG_BLOCK, AGG_BLOCK contains PACKET_SWITCH, PACKET_SWITCH contains PORT
+        Adding new nodes need to consider attributes of the new node. Also consider adding edges based on their relationship with existing nodes. 
         The name to add on each layer can be inferred from new node name string.
         When adding new nodes, you should also add edges based on their relationship with existing nodes. 
-        Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3. 
+        Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3. Packet switch nodes also have switch location attribute 'switch_loc' in node attribute 'packet_switch_attr'. 
         When calculating capacity of a node, you need to sum the physical_capacity_bps on the PORT of each hierarchy contains in this node.
-        Hierarchy: CHASSIS contains PACKET_SWITCH, JUPITER contains SUPERBLOCK, SUPERBLOCK contains AGG_BLOCK, AGG_BLOCK contains PACKET_SWITCH, PACKET_SWITCH contains PORT
         When creating a new graph, need to filter nodes and edges with attributes from the original graph. 
         When update a graph, always create a graph copy, do not modify the input graph. 
-        packet switch nodes also have switch location attribute 'switch_loc' in node attribute 'packet_switch_attr'. 
         To find node based on type, check the name and type list. For example, [node[0] == 'ju1.a1.m1.s2c1' and 'EK_PACKET_SWITCH' in node[1]['type']].
 
 
@@ -109,7 +108,6 @@ class GoogleGeminiAgent:
         answer = self.pyGraphNetExplorer.run(query)
         print("model returned")
         code = clean_up_llm_output_func(answer)
-        print(code)
         return code
 
 
@@ -138,5 +136,4 @@ class AzureGPT4Agent:
         answer = self.pyGraphNetExplorer.run(query)
         print("model returned")
         code = clean_up_llm_output_func(answer)
-        print(code)
         return code
