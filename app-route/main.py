@@ -4,9 +4,10 @@ from llm_model import LLMModel
 from mininet.log import setLogLevel, info, lg
 from llm_model import LLMModel
 from mininet_logger import MininetLogger
-from file_utils import prepare_file, initialize_json_file, summarize_results, error_classification
+from file_utils import prepare_file, initialize_json_file, summarize_results, error_classification, plot_metrics_from_json, delete_result_folder
 from error_function import inject_errors
 from topology import generate_subnets, NetworkTopo
+from fast_ping import fastpingall
 import argparse
 import random
 
@@ -14,7 +15,7 @@ import random
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", help='Choose the LLM agent', choices=["meta-llama/Meta-Llama-3.1-70B-Instruct", "Qwen/Qwen2.5-72B-Instruct"])
+    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", help='Choose the LLM agent', choices=["meta-llama/Meta-Llama-3.1-70B-Instruct", "Qwen/Qwen2.5-72B-Instruct", "Phi4", "google/gemma-7b"])
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', nargs='+', default=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/nemo_benchmark/app-route", help='Directory to save output JSONL file')
@@ -25,10 +26,13 @@ def parse_args():
 def run(args):
     # Instantiate LLM test taker
     llm_model = LLMModel(model=args.llm_agent_type)
-
+    
+    # Delete the result folder if it exists
+    delete_result_folder(args.root_dir + '/result')
+    
     for i in range(args.num_queries):
-
         # Dynamically generate subnets and errors
+        random.seed(1)
         if 'level1' in args.complexity_level:
             error_number = 2
             num_hosts = num_switches = random.randint(5, 10)
@@ -51,6 +55,8 @@ def run(args):
         # Inject errors
         errors = inject_errors(router, subnets, error_number)
         print(errors)
+
+        # Start logging
         Mininet_log = MininetLogger()
 
         # Create file to store result
@@ -65,7 +71,7 @@ def run(args):
             # Set up logging
             Mininet_log.setup_logger()
 
-            # # Execute LLM command
+            # Execute LLM command
             if iter != 0:
                 lg.output(f"Machine: {machine}")
                 lg.output(f"Command: {commands}")
@@ -77,7 +83,7 @@ def run(args):
                     lg.output(f"Error occurred while executing command on {machine}: {e}") 
                     
             # Pinging all hosts in the network
-            net.pingAll()
+            fastpingall(net)
 
             # Read log file content
             log_content = Mininet_log.get_log_content()
@@ -94,6 +100,7 @@ def run(args):
         net.stop()
         error_classification(errors, json_path)
     summarize_results(args.root_dir+'/result', args.root_dir+'/final_result.json')
+    plot_metrics_from_json(args.root_dir+'/final_result.json', args.root_dir + '/final_result.png')
 
 # Call the run function to run the test
 if __name__ == "__main__":

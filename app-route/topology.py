@@ -5,8 +5,6 @@ from mininet.node import Node
 from mininet.cli import CLI
 
 
-# Define the path to store results
-root_path = "/home/ubuntu/nemo_benchmark/app-route/result" 
 
 class LinuxRouter( Node ):
     "A Node with IP forwarding enabled."
