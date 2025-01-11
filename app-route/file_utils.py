@@ -1,5 +1,7 @@
 import os
 import json
+import matplotlib.pyplot as plt
+import shutil
 
 def prepare_file(file_path):
     """
@@ -19,6 +21,10 @@ def prepare_file(file_path):
         with open(file_path, "w") as f:
             f.write("")
 
+def delete_result_folder(folder_path):
+    if os.path.exists(folder_path):
+        shutil.rmtree(folder_path)
+
 def initialize_json_file(json_path):
     """
     Create an empty JSON file and its directory if they don't exist.
@@ -37,15 +43,14 @@ def initialize_json_file(json_path):
             json.dump([], json_file, indent=4)
 
 
-import os
-import json
-
 def summarize_results(json_folder, output_file):
     """Summarize results from multiple JSON files in a folder and write to a new JSON file."""
     total_success = 0
     total_iterations = 0
     total_average_time = 0
     total_safe_files = 0
+    total_packet_loss_reduction = 0
+    total_files_with_reduction = 0
 
     # Initialize error-specific statistics
     router_errors_count = 0
@@ -68,9 +73,10 @@ def summarize_results(json_folder, output_file):
         with open(json_path, "r") as file:
             data = json.load(file)
 
-        # Analyze the last entry for error type and success
+        # Analyze the second-to-last entry for success
+        second_last_entry = data[-2]
         last_entry = data[-1]
-        success = 1 if last_entry.get("packet_loss", -1) == 0 else 0
+        success = 1 if second_last_entry.get("packet_loss", -1) == 0 else 0
 
         # Count total successes
         total_success += success
@@ -92,6 +98,14 @@ def summarize_results(json_folder, output_file):
         is_safe = all(x >= y for x, y in zip(packet_losses, packet_losses[1:]))
         total_safe_files += 1 if is_safe else 0
 
+        # Calculate packet loss reduction
+        if len(packet_losses) >= 2:
+            initial_packet_loss = packet_losses[0]
+            final_packet_loss = packet_losses[-1]
+            packet_loss_reduction = initial_packet_loss - final_packet_loss
+            total_packet_loss_reduction += packet_loss_reduction
+            total_files_with_reduction += 1
+
         total_average_time += average_time
         total_iterations += len(elapsed_times)
 
@@ -109,12 +123,19 @@ def summarize_results(json_folder, output_file):
         routing_table_errors_success / routing_table_errors_count if routing_table_errors_count > 0 else 0
     )
 
+    # Calculate average packet loss reduction
+    average_packet_loss_reduction = (
+        total_packet_loss_reduction / total_files_with_reduction
+        if total_files_with_reduction > 0 else 0
+    )
+
     # Prepare the summary
     summary = {
         "success_rate": round(success_rate, 2),
         "overall_average_time": round(overall_average_time, 2),
         "average_iterations": round(average_iterations, 2),
         "safety_rate": round(safety_rate, 2),
+        "average_packet_loss_reduction": round(average_packet_loss_reduction, 2),
         "error_statistics": {
             "routercheck": {
                 "count": router_errors_count,
@@ -126,6 +147,11 @@ def summarize_results(json_folder, output_file):
             }
         }
     }
+
+    # Write the summary to the output file
+    with open(output_file, "w") as out_file:
+        json.dump(summary, out_file, indent=4)
+
 
     # Write the summary to the output file
     with open(output_file, "w") as out_file:
@@ -166,7 +192,52 @@ def error_classification(errors, json_path):
     with open(json_path, 'w') as file:
         json.dump(data, file, indent=4)
 
+def plot_metrics_from_json(json_path, output_image_path):
+    """Plot success rates and other metrics from a JSON file and save to an image file."""
+    # Load data from JSON file
+    if not os.path.isfile(json_path):
+        raise ValueError("Invalid JSON file path.")
 
+    with open(json_path, "r") as file:
+        data = json.load(file)
+
+    # Extract success rates
+    success_rate = data.get("success_rate", 0) * 100
+    routercheck_success_rate = data.get("error_statistics", {}).get("routercheck", {}).get("success_rate", 0) * 100
+    routingtablecheck_success_rate = data.get("error_statistics", {}).get("routingtablecheck", {}).get("success_rate", 0) * 100
+
+    # Extract other metrics
+    overall_average_time = data.get("overall_average_time", 0)
+    average_iterations = data.get("average_iterations", 0)
+    average_packet_loss_reduction = data.get("average_packet_loss_reduction", 0)
+
+    # Plot success rates
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+
+    # First plot: Success rates
+    labels = ["Overall Success Rate", "Routercheck Success Rate", "Routingtablecheck Success Rate"]
+    values = [success_rate, routercheck_success_rate, routingtablecheck_success_rate]
+    ax[0].bar(labels, values, color=["blue", "orange", "green"])
+    ax[0].set_title("Success Rates")
+    ax[0].set_ylabel("Rate (%)")
+    ax[0].set_ylim(0, max(values) + 5)
+    ax[0].grid(axis="y", linestyle="--", alpha=0.7)
+    ax[0].set_xticks(range(len(labels)))
+    ax[0].set_xticklabels(labels, rotation=45, ha="right", fontsize=10)
+
+    # Second plot: Other metrics
+    metrics = ["Overall Avg Time (s)", "Avg Iterations (count)", "Avg Packet Loss Reduction (%)"]
+    values = [overall_average_time, average_iterations, average_packet_loss_reduction]
+    ax[1].bar(metrics, values, color=["blue", "orange", "red"])
+    ax[1].set_title("Other Metrics")
+    ax[1].set_ylabel("Value")
+    ax[1].grid(axis="y", linestyle="--", alpha=0.7)
+    ax[1].set_xticks(range(len(metrics)))
+    ax[1].set_xticklabels(metrics, rotation=45, ha="right", fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(output_image_path)
+    plt.close()
 
 
 
