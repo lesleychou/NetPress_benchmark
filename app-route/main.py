@@ -15,9 +15,9 @@ import random
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", help='Choose the LLM agent', choices=["meta-llama/Meta-Llama-3.1-70B-Instruct", "Qwen/Qwen2.5-72B-Instruct", "Phi4", "google/gemma-7b"])
+    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", help='Choose the LLM agent')
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
-    parser.add_argument('--complexity_level', nargs='+', default=['level1', 'level2'], help='Complexity level of queries to generate')
+    parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/nemo_benchmark/app-route", help='Directory to save output JSONL file')
     parser.add_argument('--max_iteration', type=int, default=20, help='Choose maximum trials for a query')
     return parser.parse_args()
