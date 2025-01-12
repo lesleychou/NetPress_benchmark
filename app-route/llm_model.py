@@ -1,5 +1,9 @@
 import time
 import json
+from huggingface_hub import login
+
+# Login huggingface
+login(token="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")
 
 class LLMModel:
     """
@@ -24,7 +28,8 @@ class LLMModel:
         return [
             "meta-llama/Meta-Llama-3.1-70B-Instruct",
             "Qwen/Qwen2.5-72B-Instruct",
-            "Phi4"
+            "Microsoft/Phi4",
+            "google/gemma-7b"
         ]
 
     def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None):
@@ -91,10 +96,12 @@ class LLMModel:
             return self._initialize_meta_llama()
         elif self.model_name == "Qwen/Qwen2.5-72B-Instruct":
             return self._initialize_qwen()
-        elif self.model_name == "Phi4":
+        elif self.model_name == "Microsoft/Phi4":
             return self._initialize_Phi4()
         elif self.model_name == "google/gemma-7b":
             return self._initialize_gemma()
+        elif self.model_name == "YourModel":
+            return self._initialize_YourModel()
         else:
             raise ValueError(f"Model '{self.model_name}' is not supported!")
 
@@ -170,11 +177,7 @@ class LlamaModel:
     def _load_model(self):
         """Load the model and tokenizer."""
         from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-        from huggingface_hub import login
         import torch
-
-        # Login huggingface
-        login(token="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")
 
         # Create BitsAndBytesConfig for 4-bit quantization
         quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
@@ -262,11 +265,7 @@ class QwenModel:
     def _load_model(self):
         """Load the Qwen model and tokenizer."""
         from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-        from huggingface_hub import login
         import torch
-
-        # Login to Hugging Face Hub
-        login(token="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")
 
         # Create BitsAndBytesConfig for 4-bit quantization
         quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
@@ -355,18 +354,23 @@ class Phi4Model:
 
     def _load_model(self):
         """Load the Phi-4 model and tokenizer."""
-        from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-        from huggingface_hub import login
-        import torch
+        # from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+        # import torch
 
-        # Login to Hugging Face Hub
-        model_path = "/home/ubuntu/Phi4"
+        # model_path = "/home/ubuntu/Phi4"
 
-        # Create BitsAndBytesConfig for 4-bit quantization
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        self.model = AutoModelForCausalLM.from_pretrained(model_path)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = self.model.to(self.device)
+        # # Create BitsAndBytesConfig for 4-bit quantization
+        # self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        # self.model = AutoModelForCausalLM.from_pretrained(model_path)
+        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # self.model = self.model.to(self.device)
+        import transformers
+        self.pipeline = transformers.pipeline(
+            "text-generation",
+            model="microsoft/phi-4",
+            model_kwargs={"torch_dtype": "auto"},
+            device_map="auto",
+        )
 
     def predict(self, log_content, file_path, json_path, **kwargs):
         """Generate a response based on the log content and file content."""
@@ -375,19 +379,21 @@ class Phi4Model:
             file_content = f.read()
 
         # Generate prompt
-        prompt = LLMModel._generate_prompt(file_content, log_content)
-
+        # prompt = LLMModel._generate_prompt(file_content, log_content)
+        prompt = "hello"
         start_time = time.time()
 
-        model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
-        generated_ids = self.model.generate(
-            **model_inputs,
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=self.temperature,
-            **kwargs
-        )
-        content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
+        # model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
+        # generated_ids = self.model.generate(
+        #     **model_inputs,
+        #     max_new_tokens=512,
+        #     do_sample=True,
+        #     temperature=self.temperature,
+        #     **kwargs
+        # )
+        content = str(self.pipeline(prompt, max_new_tokens=512)[0]["generated_text"])
+        print(content)
+        # content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
         print(content)
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -440,6 +446,7 @@ class GemmaModel:
     def _load_model(self):
         from transformers import AutoTokenizer, AutoModelForCausalLM
         import torch
+
         self.tokenizer = AutoTokenizer.from_pretrained("google/gemma-7b")
         self.model = AutoModelForCausalLM.from_pretrained("google/gemma-7b")
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
