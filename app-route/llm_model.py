@@ -29,7 +29,8 @@ class LLMModel:
             "meta-llama/Meta-Llama-3.1-70B-Instruct",
             "Qwen/Qwen2.5-72B-Instruct",
             "Microsoft/Phi4",
-            "google/gemma-7b"
+            "google/gemma-7b",
+            "Qwen/QwQ-32B-Preview"
         ]
 
     def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None):
@@ -100,6 +101,8 @@ class LLMModel:
             return self._initialize_Phi4()
         elif self.model_name == "google/gemma-7b":
             return self._initialize_gemma()
+        elif self.model_name == "Qwen/QwQ-32B-Preview":
+            return self._initialize_qwq()
         elif self.model_name == "YourModel":
             return self._initialize_YourModel()
         else:
@@ -135,6 +138,15 @@ class LLMModel:
     def _initialize_gemma(self):
         """Initialize the Gemma model."""
         return GemmaModel(
+            model_name=self.model_name,
+            max_new_tokens=self.max_new_tokens,
+            temperature=self.temperature,
+            device=self.device
+        )
+    
+    def _initialize_qwq(self):
+        """Initialize the   QwQ model."""
+        return QwQModel(
             model_name=self.model_name,
             max_new_tokens=self.max_new_tokens,
             temperature=self.temperature,
@@ -303,7 +315,7 @@ class QwenModel:
             **kwargs
         )
         content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
-
+        
         end_time = time.time()
         elapsed_time = end_time - start_time
 
@@ -476,6 +488,93 @@ class GemmaModel:
         content = self.tokenizer.decode(outputs[0])
         print(content)
 
+        elapsed_time = end_time - start_time
+
+        # Read LLM output
+        machine = LLMModel.extract_value(content, "machine")
+        commands = LLMModel.extract_value(content, "command")
+        loss_rate = LLMModel.extract_number_before_percentage(log_content)
+
+        with open(file_path, "a") as f:
+            f.write("Log Content:\n")
+            f.write(log_content + "\n\n")
+            f.write(f"Machine: {machine}\n")
+            f.write(f"Commands: {commands}\n")
+            f.write("=" * 50 + "\n")
+
+        with open(json_path, "r") as json_file:
+            data = json.load(json_file)
+
+        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
+
+        with open(json_path, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+        
+        return machine, commands
+
+class QwQModel:
+    """
+    A specialized class for handling Qwen/QwQ-32B-Preview  models.
+
+    Parameters:
+    -----------
+    model_name : str
+        The name of the model.
+    max_new_tokens : int
+        The maximum number of new tokens to be generated.
+    temperature : float
+        The temperature for text generation.
+    device : str
+        The device for inference.
+    """
+
+    def __init__(self, model_name, max_new_tokens, temperature, device):
+        self.model_name = model_name
+        self.max_new_tokens = max_new_tokens
+        self.temperature = temperature
+        self.device = device
+        self._load_model()
+
+    def _load_model(self):
+        """Load the QwQ model and tokenizer."""
+        from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+        import torch
+
+        # Create BitsAndBytesConfig for 4-bit quantization
+        quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_name,
+            trust_remote_code=True,
+            device_map=self.device
+        )
+
+        # Load the QwQ model with 4-bit quantization
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.model_name,
+            trust_remote_code=True,
+            device_map=self.device,
+            quantization_config=quantization_config  # Use the quantization config
+        )
+
+    def predict(self, log_content, file_path, json_path, **kwargs):
+        """Generate a response based on the log content and file content."""
+
+        with open(file_path, 'r') as f:
+            file_content = f.read()
+
+        # Generate prompt
+        prompt = LLMModel._generate_prompt(file_content, log_content)
+
+        start_time = time.time()
+
+        model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
+        generated_ids = self.model.generate(
+            **model_inputs,
+            max_new_tokens=512
+        )
+        content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
+        print(content)
+        end_time = time.time()
         elapsed_time = end_time - start_time
 
         # Read LLM output
