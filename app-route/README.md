@@ -36,6 +36,7 @@ In our benchmark, there are four models to test:
 - `Qwen/Qwen2.5-72B-Instruct`
 - `Microsoft/Phi4`
 - `google/gemma-7b`
+- `Qwen/QwQ-32B-Preview`
 
 To test these models in the benchmark, you need to obtain **access** to them on Hugging Face. Then, update the `llm_model.py` code with the following command to include your Hugging Face token:
 
