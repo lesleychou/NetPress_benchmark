@@ -1,9 +1,9 @@
 # README
 
-## Install env
+## Install Environment
 Initialize a new virtual env (conda or pip) by your self. I test it on Python 3.10
 
-### Install Python Env
+### Install Python Environment
 
 ```
 conda create -n mininet python=3.10
@@ -11,13 +11,24 @@ conda activate mininet
 pip install -r requirements.txt
 ```
 
-### Install Mininet Emulator Env
+### Install Mininet Emulator Environment
 To install the Mininet emulator, run the following command (we tested on Ubuntu 22.04):
 
 ```
-sudo apt-get install mininet
+git clone git://github.com/mininet/mininet
+cd mininet
+cd util
+sudo ./install.sh -a
 ```
 
+If you see `Enjoy Mininet`, you install mininet environment successfully!
+
+### Install Fast Ping
+
+To accelerate network simulation speed, we use `fping` for faster simulation.
+```
+sudo apt-get install fping
+```
 ## Instructions for Benchmark Testing
 In our benchmark, there are four models to test:
 
