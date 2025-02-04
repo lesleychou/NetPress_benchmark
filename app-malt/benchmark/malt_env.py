@@ -18,7 +18,7 @@ import re
 import time
 import sys
 import numpy as np
-from llm_model import AzureGPT4Agent, GoogleGeminiAgent
+from llm_model import AzureGPT4Agent, GoogleGeminiAgent, QwQModel, LlamaModel
 from error_check import SafetyChecker
 
 
@@ -43,6 +43,10 @@ class BenchmarkEvaluator:
             llm_agent = AzureGPT4Agent()
         elif llm_agent_type == "GoogleGeminiAgent":
             llm_agent = GoogleGeminiAgent()
+        elif llm_agent_type == "Qwen/QwQ-32B-Preview":
+            llm_agent = QwQModel()
+        elif llm_agent_type == "meta-llama/Meta-Llama-3.1-70B-Instruct":
+            llm_agent = LlamaModel()
         llm_answer = llm_agent.call_agent(current_query)
 
         try:
