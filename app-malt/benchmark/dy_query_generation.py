@@ -19,7 +19,10 @@ class QueryGenerator:
         """
         if operation_type == 'add':
             child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
-            parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            if child_node == 'EK_PORT':
+                parent_node = 'EK_PACKET_SWITCH'
+            else:
+                parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
             child_node_name = f"new_{child_node}_{random.randint(1, 100)}"
             parent_node_name = random.choice(self.node_value_ranges[parent_node])
 
@@ -121,7 +124,10 @@ class QueryGenerator:
         """
         if operation_type_1 == 'add' and operation_type_2 == 'count':
             child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
-            parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            if child_node == 'EK_PORT':
+                parent_node = 'EK_PACKET_SWITCH'
+            else:
+                parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
             child_node_name = f"new_{child_node}_{random.randint(1, 100)}"
             parent_node_name = random.choice(self.node_value_ranges[parent_node])
 

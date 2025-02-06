@@ -73,14 +73,20 @@ def solid_step_add_node_to_graph(graph_data, new_node, parent_node_name=None):
         new_port_node_id = len(graph_data.nodes) + 2  # Ensure unique ID
         new_port_node['physical_capacity_bps'] = 1000
         # Add the new node to the graph
-        graph_data.add_node(new_node_id, name=new_node['name'], type=new_node['type'])
+        node_attrs = {'name': new_node['name'], 'type': new_node['type']}
+        if 'physical_capacity_bps' in new_node:
+            node_attrs['physical_capacity_bps'] = new_node['physical_capacity_bps']
+        graph_data.add_node(new_node_id, **node_attrs)
         # Add the new port node to the graph
         graph_data.add_node(new_port_node_id, name=new_port_node['name'], type=new_port_node['type'], physical_capacity_bps=new_port_node['physical_capacity_bps'])
         # Add the edge between the new node and the new port node
         graph_data.add_edge(new_node_id, new_port_node_id, type='RK_CONTAINS')
     
     # Add the new node to the graph
-    graph_data.add_node(new_node_id, name=new_node['name'], type=new_node['type'])
+    node_attrs = {'name': new_node['name'], 'type': new_node['type']}
+    if 'physical_capacity_bps' in new_node:
+        node_attrs['physical_capacity_bps'] = new_node['physical_capacity_bps']
+    graph_data.add_node(new_node_id, **node_attrs)
 
     # If a parent node is specified, add an edge between parent and the new node
     if parent_node_name:

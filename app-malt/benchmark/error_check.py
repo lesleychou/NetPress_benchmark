@@ -31,7 +31,6 @@ class SafetyChecker():
                 try:
                     success, message = check()
                     if not success:
-                        print(f"Check failed: {message}")
                         return False, message
                 except Exception as e:
                     print("Check failed:", e)
@@ -91,20 +90,30 @@ class SafetyChecker():
             "EK_CONTROL_POINT": ["EK_PACKET_SWITCH"],
             "EK_RACK": ["EK_CHASSIS"],
             "EK_PACKET_SWITCH": ["EK_PORT"],
-            "EK_CONTROL_DOMAIN": ["EK_CONTROL_POINT"]
+            "EK_CONTROL_DOMAIN": ["EK_CONTROL_POINT", "EK_PACKET_SWITCH"]
         }
 
         for edge in self.graph.edges(data=True):
             if 'RK_CONTAINS' in edge[2]['type']:
+                source_node = self.graph.nodes[edge[0]].get('name', edge[0])
+                target_node = self.graph.nodes[edge[1]].get('name', edge[1])
                 source_node_types = self.graph.nodes[edge[0]]['type']
                 target_node_types = self.graph.nodes[edge[1]]['type']
-                valid_hierarchy = False
-                for source_type in source_node_types:
-                    if source_type in hierarchy and any(target_type in hierarchy[source_type] for target_type in target_node_types):
-                        valid_hierarchy = True
-                        break
+                # Convert to list if string
+                if isinstance(source_node_types, str):
+                    source_node_types = [source_node_types]
+                if isinstance(target_node_types, str):
+                    target_node_types = [target_node_types]
+                
+                # Check if any valid hierarchy relationship exists between any source and target types
+                valid_hierarchy = any(
+                    source_type in hierarchy and
+                    any(t_type in hierarchy[source_type] for t_type in target_node_types)
+                    for source_type in source_node_types
+                )
+                
                 if not valid_hierarchy:
-                    return False, f"Invalid hierarchy: node '{edge[0]}' of type(s) '{source_node_types}' cannot contain node '{edge[1]}' of type(s) '{target_node_types}'"
+                    return False, f"Invalid hierarchy: node '{source_node}' of type(s) '{source_node_types}' cannot contain node '{target_node}' of type(s) '{target_node_types}'"
         
         return True, ""
     

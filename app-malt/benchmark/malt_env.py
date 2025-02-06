@@ -82,7 +82,18 @@ class BenchmarkEvaluator:
         # if the type of ground_truth_ret is string, turn it into a json object
         if isinstance(ground_truth_ret, str):
             ground_truth_ret = json.loads(ground_truth_ret)
+
+        # Add the verifier error to the ground truth result
+        if ground_truth_ret['type'] == 'graph':
+            ground_truth_ret_graph_copy = ground_truth_ret['data']
+            gt_verifier = SafetyChecker(ret_graph=ground_truth_ret_graph_copy, ret_list=None)
+            gt_verifier_results, gt_verifier_error = gt_verifier.evaluate_all()
+        else:
+            gt_verifier_results = True
+            gt_verifier_error = ""
+        print("Ground truth verifier results: ", gt_verifier_results, gt_verifier_error)
         
+
         print("LLM answer: ", llm_answer)
         print("Ground truth code: ", goldenAnswerCode)
         if ret['type'] != 'graph':
