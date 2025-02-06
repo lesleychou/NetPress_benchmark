@@ -19,7 +19,10 @@ class QueryGenerator:
         """
         if operation_type == 'add':
             child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
-            parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            if child_node == 'EK_PORT':
+                parent_node = 'EK_PACKET_SWITCH'
+            else:
+                parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
             child_node_name = f"new_{child_node}_{random.randint(1, 100)}"
             parent_node_name = random.choice(self.node_value_ranges[parent_node])
 
@@ -102,8 +105,8 @@ class QueryGenerator:
 
 
     def create_level_one_dataset(self, num_each_type):
-        # operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
-        operations = [('add')]
+        operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
+        # operations = [('add')]
         for operation in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_1_query_groundtruth(operation_type=operation)
@@ -121,7 +124,10 @@ class QueryGenerator:
         """
         if operation_type_1 == 'add' and operation_type_2 == 'count':
             child_node = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
-            parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
+            if child_node == 'EK_PORT':
+                parent_node = 'EK_PACKET_SWITCH'
+            else:
+                parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
             child_node_name = f"new_{child_node}_{random.randint(1, 100)}"
             parent_node_name = random.choice(self.node_value_ranges[parent_node])
 
@@ -230,8 +236,8 @@ class QueryGenerator:
         
         
     def create_level_two_dataset(self, num_each_type):
-        # operations = [('add', 'count'), ('remove', 'count'), ('add', 'list'), ('add', 'rank'), ('remove', 'list'), ('remove', 'rank')]
-        operations = [('add', 'rank')]
+        operations = [('add', 'count'), ('remove', 'count'), ('add', 'list'), ('add', 'rank'), ('remove', 'list'), ('remove', 'rank')]
+        # operations = [('add', 'rank')]
         for operation1, operation2 in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_2_query_sequential(operation_type_1=operation1, operation_type_2=operation2)
@@ -280,6 +286,7 @@ class QueryGenerator:
         #     return template, ground_truth, None
         
     def create_level_three_dataset(self, num_each_type):
+        # TODO: level-3 query creation has bugs
         operations = [('add', 'rank')]
         for operation1, operation2 in operations:
             for _ in range(num_each_type):

@@ -75,8 +75,8 @@ def main(args):
             elif 'task_label' in item:
                 task_label = item['task_label']
             
-        ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer, llm_agent_type=benchmark_config['llm_agent_type'])
-        evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path)
+        ret, ground_truth_ret, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer, llm_agent_type=benchmark_config['llm_agent_type'])
+        evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, output_path)
 
         # have to sleep for Gemini API quota
         if benchmark_config['llm_agent_type'] == 'GoogleGeminiAgent':
@@ -109,7 +109,7 @@ def main(args):
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.savefig(os.path.join(args.output_dir, f'figs/average_latency_{args.llm_agent_type}.png'), dpi=300)
-    plt.show()
+    # plt.show()
 
     # plot the pass rate of correctness for each task label
     correctness_pass_rates = [sum(1 for result in grouped_results[task_label] if result["Result-Correctness"] == "Pass") / len(grouped_results[task_label]) * 100 for task_label in task_labels]
@@ -122,7 +122,7 @@ def main(args):
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.savefig(os.path.join(args.output_dir, f'figs/correctness_pass_rate_{args.llm_agent_type}.png'), dpi=300)
-    plt.show()
+    # plt.show()
 
     # plot the pass rate of safety for each task label
     safety_pass_rates = [sum(1 for result in grouped_results[task_label] if result["Result-Safety"] == "Pass") / len(grouped_results[task_label]) * 100 for task_label in task_labels]
@@ -135,7 +135,7 @@ def main(args):
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.savefig(os.path.join(args.output_dir, f'figs/safety_pass_rate_{args.llm_agent_type}.png'), dpi=300)
-    plt.show()
+    # plt.show()
 
 
 # run the main function

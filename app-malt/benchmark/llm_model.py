@@ -62,14 +62,14 @@ prompt_prefix = """
         Adding new nodes need to consider attributes of the new node. Also consider adding edges based on their relationship with existing nodes. 
         The name to add on each layer can be inferred from new node name string.
         When adding new nodes, you should also add edges based on their relationship with existing nodes. 
-        Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3. Packet switch nodes also have switch location attribute 'switch_loc' in node attribute 'packet_switch_attr'. 
+        Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3. 
+        When you add a new packet switch, should add a new port to it and use the default physical_capacity_bps as 1000.
         When calculating capacity of a node, you need to sum the physical_capacity_bps on the PORT of each hierarchy contains in this node.
         When creating a new graph, need to filter nodes and edges with attributes from the original graph. 
         When update a graph, always create a graph copy, do not modify the input graph. 
         To find node based on type, check the name and type list. For example, [node[0] == 'ju1.a1.m1.s2c1' and 'EK_PACKET_SWITCH' in node[1]['type']].
 
-
-        The return_object will be a JSON object with two keys, 'type' and 'data'. The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table' or 'graph'.
+        Do not use multi-layer function. The output format should only return one object. The return_object will be a JSON object with two keys, 'type' and 'data'. The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table' or 'graph'.
         The 'data' key should contain the data needed to render the output. If the output type is 'text' then the 'data' key should contain a string. If the output type is 'list' then the 'data' key should contain a list of items.
         If the output type is 'table' then the 'data' key should contain a list of lists where each list represents a row in the table.If the output type is 'graph' then the 'data' key should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
 
