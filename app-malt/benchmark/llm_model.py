@@ -22,12 +22,12 @@ from langchain.chains import LLMChain
 import warnings
 from langchain._api import LangChainDeprecationWarning
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
-# from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-# import torch
-# from huggingface_hub import login
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+import torch
+from huggingface_hub import login
 
 # Login huggingface
-# login(token="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")
+login(token="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")
 
 # For Azure GPT3.5 or GPT4
 from langchain.chat_models import AzureChatOpenAI

@@ -2,7 +2,7 @@
 ## Run the application
 Example usage.
 ```python
-python main.py --llm_agent_type AzureGPT4Agent --num_queries 10 --complexity_level level1 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
+python main.py --llm_agent_type AzureGPT4Agent --num_queries 3 --complexity_level level1 level2 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
 ```
 
 ## Code structure

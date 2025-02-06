@@ -105,8 +105,8 @@ class QueryGenerator:
 
 
     def create_level_one_dataset(self, num_each_type):
-        # operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
-        operations = [('add')]
+        operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
+        # operations = [('add')]
         for operation in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_1_query_groundtruth(operation_type=operation)
@@ -236,8 +236,8 @@ class QueryGenerator:
         
         
     def create_level_two_dataset(self, num_each_type):
-        # operations = [('add', 'count'), ('remove', 'count'), ('add', 'list'), ('add', 'rank'), ('remove', 'list'), ('remove', 'rank')]
-        operations = [('add', 'rank')]
+        operations = [('add', 'count'), ('remove', 'count'), ('add', 'list'), ('add', 'rank'), ('remove', 'list'), ('remove', 'rank')]
+        # operations = [('add', 'rank')]
         for operation1, operation2 in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_2_query_sequential(operation_type_1=operation1, operation_type_2=operation2)
@@ -286,6 +286,7 @@ class QueryGenerator:
         #     return template, ground_truth, None
         
     def create_level_three_dataset(self, num_each_type):
+        # TODO: level-3 query creation has bugs
         operations = [('add', 'rank')]
         for operation1, operation2 in operations:
             for _ in range(num_each_type):
