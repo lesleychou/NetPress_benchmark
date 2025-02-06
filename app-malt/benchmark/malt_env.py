@@ -94,9 +94,9 @@ class BenchmarkEvaluator:
 
         print("=========Current query process is done!=========")
 
-        return ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy
+        return ret, ground_truth_ret, verifier_results, verifier_error, query_run_latency, ret_graph_copy
 
-    def ground_truth_check(self, requestData, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path):
+    def ground_truth_check(self, requestData, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, query_run_latency, output_path):
 
         # Ground truth comparision between the LLM output (ret) and the golden answer (ground_truth_ret)
         # check type "text", "list", "table", "graph" separately.
@@ -108,22 +108,22 @@ class BenchmarkEvaluator:
                 ground_truth_ret['data'] = str(ground_truth_ret['data'])
 
             if ground_truth_ret['data'] == ret['data']:
-                self.result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+                self.result_log_correct(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
             else:
-                self.result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+                self.result_log_wrong(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
 
         elif ground_truth_ret['type'] == 'list':
             # Use Counter to check if two lists contain the same items, including duplicate items.
             if check_list_equal(ground_truth_ret['data'], ret['data']):
-                self.result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+                self.result_log_correct(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
             else:
-                self.result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+                self.result_log_wrong(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
 
         elif ground_truth_ret['type'] == 'table':
             if ground_truth_ret['data'] == ret['data']:
-                self.result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+                self.result_log_correct(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
             else:
-                self.result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+                self.result_log_wrong(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
 
         elif ground_truth_ret['type'] == 'graph':
             # Undirected graphs will be converted to a directed graph
@@ -134,11 +134,11 @@ class BenchmarkEvaluator:
 
             # Check if two graphs are identical, no weights considered
             if nx.is_isomorphic(ground_truth_graph, ret_graph, node_match=node_attributes_are_equal):
-                self.result_log_correct(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+                self.result_log_correct(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
             else:
-                self.result_log_wrong(requestData, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path)
+                self.result_log_wrong(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
 
-    def result_log_wrong(self, current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
+    def result_log_wrong(self, current_query, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path):
         result_object = {
             "Query": current_query,
             "Label": task_label,
@@ -158,13 +158,17 @@ class BenchmarkEvaluator:
                 "Model output": ret['data']
             }
 
+        # Add verifier error details if verification failed
+        if not verifier_results:
+            result_object["Verifier-Error"] = verifier_error
+
         # Save result_object into a JsonLine file
         with jsonlines.open(output_path, mode='a') as writer:
             writer.write(result_object)
         
         return None
 
-    def result_log_correct(self, current_query, task_label, verifier_results, query_run_latency, ground_truth_ret, ret, output_path):
+    def result_log_correct(self, current_query, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path):
         result_object = {
             "Query": current_query,
             "Label": task_label,
@@ -177,6 +181,10 @@ class BenchmarkEvaluator:
         if ground_truth_ret['type'] != 'graph':
             result_object["Ground truth exec"] = ground_truth_ret['data']
             result_object["LLM code exec"] = ret['data']
+        
+        # Add verifier error details if verification failed
+        if not verifier_results:
+            result_object["Verifier-Error"] = verifier_error
         
         # Save result_object into a JsonLine file
         with jsonlines.open(output_path, mode='a') as writer:

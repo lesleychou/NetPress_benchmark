@@ -47,13 +47,13 @@ class SafetyChecker():
 
         for node in self.graph.nodes():
             # Check if the node has a 'type' attribute
-            if self.graph.nodes[node].get('type'):
-                node_types = self.graph.nodes[node]['type']
-                for node_type in node_types:
-                    if node_type not in valid_types:
-                        return False, "verify_node_types failed"
-            else:
+            if not self.graph.nodes[node].get('type'):
                 return False, "verify_node_types failed"
+            
+            node_types = self.graph.nodes[node]['type']
+            for node_type in node_types:
+                if node_type not in valid_types:
+                    return False, "verify_node_types failed"
 
         return True, ""
 
@@ -70,13 +70,13 @@ class SafetyChecker():
             # Check if the edge's type is in the valid_edge_types list
             if not any(edge_type in edge[2]['type'] for edge_type in valid_edge_types):
                 return False, "verify_edge_format_and_type failed"
-            else:
-                return True, ""
+        
+        # Only return True if all edges have passed the checks
+        return True, ""
 
     def verify_node_hierarchy(self):
         """
         Graph check: verify_node_hierarchy
-        TODO: Add more hierarchy checks, if adding a PORT, then it has be connected to a PACKET_SWITCH
         """
         hierarchy = {
             "EK_JUPITER": ["EK_SPINEBLOCK", "EK_SUPERBLOCK"],
@@ -94,11 +94,15 @@ class SafetyChecker():
             if 'RK_CONTAINS' in edge[2]['type']:
                 source_node_types = self.graph.nodes[edge[0]]['type']
                 target_node_types = self.graph.nodes[edge[1]]['type']
+                valid_hierarchy = False
                 for source_type in source_node_types:
                     if source_type in hierarchy and any(target_type in hierarchy[source_type] for target_type in target_node_types):
-                        return True, ""
+                        valid_hierarchy = True
+                        break
+                if not valid_hierarchy:
+                    return False, "verify_node_hierarchy failed"
         
-        return False, "verify_node_hierarchy failed"
+        return True, ""
     
     def verify_no_isolated_nodes(self):
         """
@@ -115,30 +119,25 @@ class SafetyChecker():
 
     def verify_bandwidth(self):
         """
-        Verify if the "Bandwidth" column in a given table is never 0.
-
-        Args:
-            data (list): A list of lists representing a table.
+        Verify if all ports in the graph have non-zero bandwidth.
 
         Returns:
-            bool: True if the "Bandwidth" column is never 0 or doesn't exist, False otherwise.
+            tuple: (bool, str) - (True, "") if all ports have valid bandwidth, 
+                                (False, error_message) otherwise.
         """
-        # with the given graph, for all nodes with type EK_PORT, check if it has a 'physical_capacity_bps' attribute
         for node in self.graph.nodes():
             if 'EK_PORT' in self.graph.nodes[node]['type']:
                 if 'physical_capacity_bps' not in self.graph.nodes[node]:
                     return False, "verify_bandwidth failed: Port node should have a 'physical_capacity_bps' attribute."
                 if self.graph.nodes[node]['physical_capacity_bps'] == 0:
                     return False, "verify_bandwidth failed: Bandwidth should be more than 0."
-                else: 
-                    return True, ""
-    
+        
+        return True, ""
 
     def verify_port_exist(self):
         """
         Verify with the given graph, for all nodes with type EK_PACKET_SWITCH, check if it has at least one port with type EK_PORT.
         """
-        all_valid = True  # Track if all packet switches have ports
         for node in self.graph.nodes():
             node_types = self.graph.nodes[node]['type']
             if 'EK_PACKET_SWITCH' in node_types:
@@ -146,10 +145,10 @@ class SafetyChecker():
                 for neighbor in self.graph.successors(node):
                     if 'EK_PORT' in self.graph.nodes[neighbor]['type']:
                         has_port = True
+                        break  # Exit loop once we find a port
                 if not has_port:
-                    print(f"Warning: Packet switch node '{node}' has no ports")
-                    all_valid = False  # Mark as invalid but continue checking other nodes
+                    return False, f"verify_port_exist failed: Packet switch node '{node}' has no ports."
         
-        return all_valid, "verify_port_exist failed: One or more packet switches have no ports." if not all_valid else ""
+        return True, ""
 
     #TODO: add each port can only be connected with one packet switch

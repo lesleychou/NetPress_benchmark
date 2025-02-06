@@ -75,8 +75,8 @@ def main(args):
             elif 'task_label' in item:
                 task_label = item['task_label']
             
-        ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer, llm_agent_type=benchmark_config['llm_agent_type'])
-        evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, output_path)
+        ret, ground_truth_ret, verifier_results, verifier_error, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer, llm_agent_type=benchmark_config['llm_agent_type'])
+        evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error,query_run_latency, output_path)
 
         # have to sleep for Gemini API quota
         if benchmark_config['llm_agent_type'] == 'GoogleGeminiAgent':
