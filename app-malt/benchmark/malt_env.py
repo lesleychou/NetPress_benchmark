@@ -11,8 +11,6 @@ from solid_step_helper import getGraphData, clean_up_llm_output_func, check_list
     solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, solid_step_list_child_nodes, solid_step_update_node_value, solid_step_rank_child_nodes
 import networkx as nx
 import jsonlines
-import random
-from networkx.readwrite import json_graph
 import json
 import re
 import time
@@ -105,13 +103,13 @@ class BenchmarkEvaluator:
 
         print("=========Current query process is done!=========")
 
-        return ret, ground_truth_ret, verifier_results, verifier_error, query_run_latency, ret_graph_copy
+        return ret, ground_truth_ret, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ret_graph_copy
 
-    def ground_truth_check(self, requestData, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, query_run_latency, output_path):
+    def ground_truth_check(self, requestData, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, output_path):
         # Helper function to log results and avoid code duplication
         def log_result(is_correct):
             log_func = self.result_log_correct if is_correct else self.result_log_wrong
-            log_func(requestData, task_label, verifier_results, verifier_error, 
+            log_func(requestData, task_label, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, 
                     query_run_latency, ground_truth_ret, ret, output_path)
 
         # Convert numeric data to strings for text type
@@ -138,17 +136,20 @@ class BenchmarkEvaluator:
             is_correct = compare_func()
             log_result(is_correct)
 
-    def result_log_wrong(self, current_query, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path):
+    def result_log_wrong(self, current_query, task_label, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ground_truth_ret, ret, output_path):
         result_object = {
             "Query": current_query,
             "Label": task_label,
             "Result-Correctness": "Fail",
             "Result-Safety": "Pass" if verifier_results else "Fail",
+            "GT-Result-Safety": "Pass" if gt_verifier_results else "Fail",
             "Result-Latency": query_run_latency,
             "Ground truth code": ground_truth_ret['reply'],
             "LLM code": ret['reply']
         }
-        if ground_truth_ret['type'] == 'graph':
+        if ret['type'] == 'error':
+            result_object["Error"] = ret['data']  # Execution error details
+        elif ground_truth_ret['type'] == 'graph':
             result_object["Error"] = "Two graphs are not identical."
         else:
             result_object["Ground truth exec"] = ground_truth_ret['data']
@@ -161,6 +162,8 @@ class BenchmarkEvaluator:
         # Add verifier error details if verification failed
         if not verifier_results:
             result_object["Verifier-Error"] = verifier_error
+        if not gt_verifier_results:
+            result_object["GT-Verifier-Error"] = gt_verifier_error
 
         # Save result_object into a JsonLine file
         with jsonlines.open(output_path, mode='a') as writer:
@@ -168,12 +171,13 @@ class BenchmarkEvaluator:
         
         return None
 
-    def result_log_correct(self, current_query, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path):
+    def result_log_correct(self, current_query, task_label, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ground_truth_ret, ret, output_path):
         result_object = {
             "Query": current_query,
             "Label": task_label,
             "Result-Correctness": "Pass",
             "Result-Safety": "Pass" if verifier_results else "Fail",
+            "GT-Result-Safety": "Pass" if gt_verifier_results else "Fail",
             "Result-Latency": query_run_latency,
             "Ground truth code": ground_truth_ret['reply'],
             "LLM code": ret['reply']
@@ -185,6 +189,8 @@ class BenchmarkEvaluator:
         # Add verifier error details if verification failed
         if not verifier_results:
             result_object["Verifier-Error"] = verifier_error
+        if not gt_verifier_results:
+            result_object["GT-Verifier-Error"] = gt_verifier_error
         
         # Save result_object into a JsonLine file
         with jsonlines.open(output_path, mode='a') as writer:

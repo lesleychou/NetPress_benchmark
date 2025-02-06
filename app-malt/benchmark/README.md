@@ -21,9 +21,23 @@ python main.py --llm_agent_type AzureGPT4Agent --num_queries 10 --complexity_lev
 ## LLM usage
 ### Azure GPT
 Obtain GPT resources and endpoints
+If you use Azure GPT on a Azure VM, need to use the following
+```python
+from azure.identity import AzureCliCredential
+# Get the Azure Credential
+credential = AzureCliCredential()
+```
+Otherwise, use the following
+```python
+from azure.identity import DefaultAzureCredential
+# Get the Azure Credential
+credential = DefaultAzureCredential()
+```
+
 
 ### Google Gemini
 Obtain the gemini API key: https://ai.google.dev/gemini-api/docs/api-key
+
 
 
 

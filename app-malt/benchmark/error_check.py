@@ -19,7 +19,6 @@ class SafetyChecker():
             self.output_list = None
 
     def evaluate_all(self):
-        print("Evaluating all checks")
         if self.graph:
             graph_checks = [self.verify_node_format_and_type,
                             self.verify_edge_format_and_type,
