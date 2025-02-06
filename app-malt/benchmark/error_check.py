@@ -20,22 +20,23 @@ class SafetyChecker():
 
     def evaluate_all(self):
         print("Evaluating all checks")
-        # TODO: need to check if it atually runs all the checks; verify_port_exist is not returning correct results
         if self.graph:
             graph_checks = [self.verify_node_format_and_type,
                             self.verify_edge_format_and_type,
                             self.verify_node_hierarchy,
-                            self.verify_port_exist,
                             self.verify_no_isolated_nodes,
                             self.verify_bandwidth, 
                             self.verify_port_exist]
             for check in graph_checks:
                 try:
-                    check()
+                    success, message = check()
+                    if not success:
+                        print(f"Check failed: {message}")
+                        return False, message
                 except Exception as e:
                     print("Check failed:", e)
                     print(traceback.format_exc())
-                    return False, e
+                    return False, str(e)
             return True, ""
 
     def verify_node_format_and_type(self):
@@ -99,20 +100,6 @@ class SafetyChecker():
         
         return False, "verify_node_hierarchy failed"
     
-    def verify_port_exist(self):
-        import pdb; pdb.set_trace()
-        # if there is a packet switch, there should be at least one EK_PORT connected to it
-        for node in self.graph.nodes():
-            if 'EK_PACKET_SWITCH' in self.graph.nodes[node]['type']:
-                has_port = False
-            for neighbor in self.graph.neighbors(node):
-                if 'EK_PORT' in self.graph.nodes[neighbor]['type']:
-                    has_port = True
-                break
-            if not has_port:
-                return False, "verify_port_exist failed: Packet switch should have at least one port."
-        return True, ""
-    
     def verify_no_isolated_nodes(self):
         """
         Graph check: verify_no_isolated_nodes
@@ -148,11 +135,10 @@ class SafetyChecker():
     
 
     def verify_port_exist(self):
-        # TODO: find a case that this would fail
         """
         Verify with the given graph, for all nodes with type EK_PACKET_SWITCH, check if it has at least one port with type EK_PORT.
         """
-        # with the given graph, for all nodes with type EK_PACKET_SWITCH, check if it has at least one port with type EK_PORT
+        all_valid = True  # Track if all packet switches have ports
         for node in self.graph.nodes():
             node_types = self.graph.nodes[node]['type']
             if 'EK_PACKET_SWITCH' in node_types:
@@ -161,8 +147,9 @@ class SafetyChecker():
                     if 'EK_PORT' in self.graph.nodes[neighbor]['type']:
                         has_port = True
                 if not has_port:
-                    return False, "verify_port_exist failed: Packet switch should have at least one port."
-                # print(node, has_port)
-        return has_port, ""
+                    print(f"Warning: Packet switch node '{node}' has no ports")
+                    all_valid = False  # Mark as invalid but continue checking other nodes
+        
+        return all_valid, "verify_port_exist failed: One or more packet switches have no ports." if not all_valid else ""
 
     #TODO: add each port can only be connected with one packet switch
