@@ -97,46 +97,35 @@ class BenchmarkEvaluator:
         return ret, ground_truth_ret, verifier_results, verifier_error, query_run_latency, ret_graph_copy
 
     def ground_truth_check(self, requestData, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, query_run_latency, output_path):
+        # Helper function to log results and avoid code duplication
+        def log_result(is_correct):
+            log_func = self.result_log_correct if is_correct else self.result_log_wrong
+            log_func(requestData, task_label, verifier_results, verifier_error, 
+                    query_run_latency, ground_truth_ret, ret, output_path)
 
-        # Ground truth comparision between the LLM output (ret) and the golden answer (ground_truth_ret)
-        # check type "text", "list", "table", "graph" separately.
+        # Convert numeric data to strings for text type
         if ground_truth_ret['type'] == 'text':
-            # if ret['data'] type is int, turn it into string
-            if isinstance(ret['data'], int):
-                ret['data'] = str(ret['data'])
-            if isinstance(ground_truth_ret['data'], int):
-                ground_truth_ret['data'] = str(ground_truth_ret['data'])
+            for r in (ret, ground_truth_ret):
+                if isinstance(r['data'], int):
+                    r['data'] = str(r['data'])
+        
+        # Define comparison strategies for different types
+        comparison_strategies = {
+            'text': lambda: ground_truth_ret['data'] == ret['data'],
+            'list': lambda: check_list_equal(ground_truth_ret['data'], ret['data']),
+            'table': lambda: ground_truth_ret['data'] == ret['data'],
+            'graph': lambda: nx.is_isomorphic(
+                nx.Graph(ground_truth_ret['data']), 
+                nx.Graph(ret_graph_copy), 
+                node_match=node_attributes_are_equal
+            )
+        }
 
-            if ground_truth_ret['data'] == ret['data']:
-                self.result_log_correct(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
-            else:
-                self.result_log_wrong(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
-
-        elif ground_truth_ret['type'] == 'list':
-            # Use Counter to check if two lists contain the same items, including duplicate items.
-            if check_list_equal(ground_truth_ret['data'], ret['data']):
-                self.result_log_correct(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
-            else:
-                self.result_log_wrong(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
-
-        elif ground_truth_ret['type'] == 'table':
-            if ground_truth_ret['data'] == ret['data']:
-                self.result_log_correct(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
-            else:
-                self.result_log_wrong(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
-
-        elif ground_truth_ret['type'] == 'graph':
-            # Undirected graphs will be converted to a directed graph
-            # with two directed edges for each undirected edge.
-            ground_truth_graph = nx.Graph(ground_truth_ret['data'])
-            # TODO: fix ret_graph_copy reference possible error, when it's not created.
-            ret_graph = nx.Graph(ret_graph_copy)
-
-            # Check if two graphs are identical, no weights considered
-            if nx.is_isomorphic(ground_truth_graph, ret_graph, node_match=node_attributes_are_equal):
-                self.result_log_correct(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
-            else:
-                self.result_log_wrong(requestData, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path)
+        # Get the appropriate comparison strategy and execute it
+        compare_func = comparison_strategies.get(ground_truth_ret['type'])
+        if compare_func:
+            is_correct = compare_func()
+            log_result(is_correct)
 
     def result_log_wrong(self, current_query, task_label, verifier_results, verifier_error, query_run_latency, ground_truth_ret, ret, output_path):
         result_object = {
