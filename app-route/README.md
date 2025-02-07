@@ -64,6 +64,18 @@ sudo -E $(which python) main.py \
 - **`--root_dir`**: Indicates the path to the benchmark directory (e.g., `/your/path/to/nemo_benchmark/app-route`).
 - **`--max_iteration`**: Specifies the maximum number of iterations(e.g., `15`).
 
+# To run the benchmark with GPT-4o
+You have to run `sudo az login` to login to Azure first.
+
+```
+sudo -E $(which python) main.py   \
+--llm_agent_type "GPT-Agent"   \
+--num_queries 10   \
+--complexity_level level2   \
+--root_dir "/your/path/to/nemo_benchmark/app-route"   \
+--max_iteration 15
+```
+
 # Testing Your Own Model
 
 To test your own model, follow these steps:

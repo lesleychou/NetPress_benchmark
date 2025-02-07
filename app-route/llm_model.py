@@ -1,5 +1,24 @@
 import time
 import json
+import os
+import warnings
+from langchain._api import LangChainDeprecationWarning
+warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain 
+
+# For Azure OpenAI GPT4
+from langchain.chat_models import AzureChatOpenAI
+from azure.identity import AzureCliCredential
+
+credential = AzureCliCredential()
+#Set the API type to `azure_ad`
+os.environ["OPENAI_API_TYPE"] = "azure_ad"
+# Set the API_KEY to the token from the Azure credential
+os.environ["OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
+# Set the ENDPOINT
+os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-fc.openai.azure.com/"
+
 from huggingface_hub import login
 
 # Login huggingface
@@ -30,7 +49,8 @@ class LLMModel:
             "Qwen/Qwen2.5-72B-Instruct",
             "Microsoft/Phi4",
             "google/gemma-7b",
-            "Qwen/QwQ-32B-Preview"
+            "Qwen/QwQ-32B-Preview",
+            "GPT-Agent"
         ]
 
     def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None):
@@ -103,6 +123,8 @@ class LLMModel:
             return self._initialize_gemma()
         elif self.model_name == "Qwen/QwQ-32B-Preview":
             return self._initialize_qwq()
+        elif self.model_name == "GPT-Agent":
+            return self._initialize_gpt_agent()
         elif self.model_name == "YourModel":
             return self._initialize_YourModel()
         else:
@@ -153,6 +175,10 @@ class LLMModel:
             device=self.device
         )
     
+    def _initialize_gpt_agent(self):
+        """Initialize the GPT Agent model."""
+        return GPTAgentModel()
+
     def _initialize_YourModel(self):
         """Initialize the your model."""
         return YourModel
@@ -574,6 +600,80 @@ class QwQModel:
         )
         content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
         print(content)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        # Read LLM output
+        machine = LLMModel.extract_value(content, "machine")
+        commands = LLMModel.extract_value(content, "command")
+        loss_rate = LLMModel.extract_number_before_percentage(log_content)
+
+        with open(file_path, "a") as f:
+            f.write("Log Content:\n")
+            f.write(log_content + "\n\n")
+            f.write(f"Machine: {machine}\n")
+            f.write(f"Commands: {commands}\n")
+            f.write("=" * 50 + "\n")
+
+        with open(json_path, "r") as json_file:
+            data = json.load(json_file)
+
+        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
+
+        with open(json_path, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+        
+        return machine, commands
+
+
+class GPTAgentModel:
+    """
+    A specialized class for handling GPT Agent models.
+
+    Parameters:
+    -----------
+    model_name : str
+        The name of the model.
+    max_new_tokens : int
+        The maximum number of new tokens to be generated.
+    temperature : float
+        The temperature for text generation.
+    device : str
+        The device for inference.
+    api_key : str
+        The API key for GPT Agent.
+    """
+
+    def __init__(self):
+        self._load_model()
+
+    def _load_model(self):
+        """Initialize the GPT Agent client."""
+
+        self.client = AzureChatOpenAI(
+            openai_api_type="azure_ad",
+            openai_api_version="2024-08-01-preview",
+            deployment_name='gpt-4o',
+            model_name='gpt-4o',
+            temperature=0.0,
+            max_tokens=4000,
+            )
+        print("======GPT-4o successfully loaded=======")
+
+    def predict(self, log_content, file_path, json_path, **kwargs):
+        """Generate a response based on the log content and file content."""
+        with open(file_path, 'r') as f:
+            file_content = f.read()
+
+        prompt = LLMModel._generate_prompt(file_content, log_content)
+
+        start_time = time.time()
+
+        content = self.client.invoke(prompt).content
+        print("LLM output:", content)
+
+        # content = response.choices[0].message.content
+
         end_time = time.time()
         elapsed_time = end_time - start_time
 

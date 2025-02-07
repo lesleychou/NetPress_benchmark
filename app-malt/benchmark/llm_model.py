@@ -14,7 +14,6 @@ import re
 import time
 import sys
 import numpy as np
-from azure.identity import AzureCliCredential
 from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
 import warnings
@@ -38,6 +37,7 @@ if "GOOGLE_API_KEY" not in os.environ:
     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
 
 # For Azure OpenAI GPT4
+from azure.identity import AzureCliCredential
 from langchain.chat_models import AzureChatOpenAI
 credential = AzureCliCredential()
 #Set the API type to `azure_ad`
