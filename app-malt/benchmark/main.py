@@ -100,7 +100,12 @@ def main(args):
     task_labels = list(grouped_results.keys())
     avg_latencies = [sum(result["Result-Latency"] for result in grouped_results[task_label]) / len(grouped_results[task_label]) for task_label in task_labels]
 
-     # plot the average query run latency for each task label
+    # create figs directory if it doesn't exist
+    figs_dir = os.path.join(args.output_dir, 'figs')
+    if not os.path.exists(figs_dir):
+        os.makedirs(figs_dir)
+
+    # plot the average query run latency for each task label
     plt.figure(figsize=(10, 6))
     plt.bar(task_labels, avg_latencies, color='skyblue')
     plt.xlabel('Task Label')
@@ -108,7 +113,7 @@ def main(args):
     plt.title('Average Query Run Latency by Task Label')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
-    plt.savefig(os.path.join(args.output_dir, f'figs/average_latency_{args.llm_agent_type}.png'), dpi=300)
+    plt.savefig(os.path.join(figs_dir, f'average_latency_{args.llm_agent_type}.png'), dpi=300)
     # plt.show()
 
     # plot the pass rate of correctness for each task label
@@ -121,7 +126,7 @@ def main(args):
     plt.title('Correctness Pass Rate by Task Label')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
-    plt.savefig(os.path.join(args.output_dir, f'figs/correctness_pass_rate_{args.llm_agent_type}.png'), dpi=300)
+    plt.savefig(os.path.join(figs_dir, f'correctness_pass_rate_{args.llm_agent_type}.png'), dpi=300)
     # plt.show()
 
     # plot the pass rate of safety for each task label
@@ -134,7 +139,7 @@ def main(args):
     plt.title('Safety Pass Rate by Task Label')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
-    plt.savefig(os.path.join(args.output_dir, f'figs/safety_pass_rate_{args.llm_agent_type}.png'), dpi=300)
+    plt.savefig(os.path.join(figs_dir, f'safety_pass_rate_{args.llm_agent_type}.png'), dpi=300)
     # plt.show()
 
 

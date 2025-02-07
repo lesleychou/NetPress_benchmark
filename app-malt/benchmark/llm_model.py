@@ -14,9 +14,7 @@ import re
 import time
 import sys
 import numpy as np
-from azure.core.credentials import AzureKeyCredential
-from azure.identity import DefaultAzureCredential
-from azure.core.credentials import AzureKeyCredential
+from azure.identity import AzureCliCredential
 from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
 import warnings
@@ -28,20 +26,8 @@ from huggingface_hub import login
 
 # Login huggingface
 login(token="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")
-
-# For Azure GPT3.5 or GPT4
-from langchain.chat_models import AzureChatOpenAI
-credential = DefaultAzureCredential()
-#Set the API type to `azure_ad`
-os.environ["OPENAI_API_TYPE"] = "azure_ad"
-# Set the API_KEY to the token from the Azure credential
-os.environ["OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
-# Set the ENDPOINT
-os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-fc.openai.azure.com/"
-
 # Load environ variables from .env, will not override existing environ variables
 load_dotenv()
-OPENAI_API_TYPE = os.getenv('OPENAI_API_TYPE')
 
 # For Google Gemini
 import getpass
@@ -50,6 +36,17 @@ os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_API_KEY")
 
 if "GOOGLE_API_KEY" not in os.environ:
     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
+
+# For Azure OpenAI GPT4
+from langchain.chat_models import AzureChatOpenAI
+credential = AzureCliCredential()
+#Set the API type to `azure_ad`
+os.environ["OPENAI_API_TYPE"] = "azure_ad"
+# Set the API_KEY to the token from the Azure credential
+os.environ["OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
+# Set the ENDPOINT
+os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-fc.openai.azure.com/"
+
 
 prompt_prefix = """
         Generate the Python code needed to process the network graph to answer the user question or request. The network graph data is stored as a networkx graph object, the Python code you generate should be in the form of a function named process_graph that takes a single input argument graph_data and returns a single object return_object. The input argument graph_data will be a networkx graph object with nodes and edges.
@@ -123,7 +120,7 @@ class AzureGPT4Agent:
         # gpt-4o
         # 2024-08-01-preview
         self.llm = AzureChatOpenAI(
-            openai_api_type=OPENAI_API_TYPE,
+            openai_api_type="azure_ad",
             openai_api_version="2024-08-01-preview",
             deployment_name='gpt-4o',
             model_name='gpt-4o',
