@@ -18,3 +18,4 @@ app-route/result/*
 app-route/*.txt
 */result/
 *.json
+.gitconfig
