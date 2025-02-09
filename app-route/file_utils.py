@@ -153,10 +153,6 @@ def summarize_results(json_folder, output_file):
         json.dump(summary, out_file, indent=4)
 
 
-    # Write the summary to the output file
-    with open(output_file, "w") as out_file:
-        json.dump(summary, out_file, indent=4)
-
 
 
 def error_classification(errors, json_path):
@@ -239,7 +235,51 @@ def plot_metrics_from_json(json_path, output_image_path):
     plt.savefig(output_image_path)
     plt.close()
 
+def plot_metrics(result_dir, error_types):
+    success_rates = []
+    safety_rates = []
+    average_iterations = []
 
+    for error_type in error_types:
+        json_path = os.path.join(result_dir, error_type, f'{error_type}_result.json')
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            success_rates.append(data.get('success_rate', 0))
+            safety_rates.append(data.get('safety_rate', 0))
+            average_iterations.append(data.get('average_iterations', 0))
+
+    # Plot success rates
+    plt.figure(figsize=(12, 6))
+    plt.bar(error_types, success_rates, color='blue')
+    plt.xlabel('Error Type')
+    plt.ylabel('Success Rate')
+    plt.title('Success Rate by Error Type')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'success_rate.png'))
+    plt.close()
+
+    # Plot safety rates
+    plt.figure(figsize=(12, 6))
+    plt.bar(error_types, safety_rates, color='green')
+    plt.xlabel('Error Type')
+    plt.ylabel('Safety Rate')
+    plt.title('Safety Rate by Error Type')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'safety_rate.png'))
+    plt.close()
+
+    # Plot average iterations
+    plt.figure(figsize=(12, 6))
+    plt.bar(error_types, average_iterations, color='red')
+    plt.xlabel('Error Type')
+    plt.ylabel('Average Iterations')
+    plt.title('Average Iterations by Error Type')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'average_iterations.png'))
+    plt.close()
 
 
 
