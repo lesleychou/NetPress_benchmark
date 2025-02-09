@@ -56,6 +56,7 @@ sudo -E $(which python) main.py \
   --complexity_level level2 \
   --root_dir "/your/path/to/nemo_benchmark/app-route" \
   --max_iteration 15
+  --full_test 1
 ```
 ### Explanation of Parameters:
 - **`--llm_agent_type`**: Specifies the model to test (e.g., `Qwen/Qwen2.5-72B-Instruct`).
@@ -63,6 +64,7 @@ sudo -E $(which python) main.py \
 - **`--complexity_level`**: Sets the complexity level of the benchmark (e.g., `level2`).
 - **`--root_dir`**: Indicates the path to the benchmark directory (e.g., `/your/path/to/nemo_benchmark/app-route`).
 - **`--max_iteration`**: Specifies the maximum number of iterations(e.g., `15`).
+- **`--full_test`**: Defines whether to run the test by error_type to test LLM's capability on specific error type (e.g., '1' represents testing on every error type).
 
 # To run the benchmark with GPT-4o
 You have to run `sudo az login` to login to Azure first.

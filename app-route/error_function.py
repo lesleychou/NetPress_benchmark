@@ -41,16 +41,22 @@ def error_wrong_routing_table(router, subnets):
     
 
 # Complexty control: randomly pick given number error type to inject
-def inject_errors(router, subnets, error_number=1):
-    error_functions = [
-        error_disable_routing,
-        error_disable_interface,
-        error_remove_ip,
-        error_drop_traffic_to_from_subnet,
-        error_wrong_routing_table
-    ]
-    num_errors = min(error_number, len(error_functions))
-    errors_to_inject = random.sample(error_functions, num_errors)
+def inject_errors(router, subnets, error_number=1, errortype=None):
+    error_functions = {
+        'disable_routing': error_disable_routing,
+        'disable_interface': error_disable_interface,
+        'remove_ip': error_remove_ip,
+        'drop_traffic_to_from_subnet': error_drop_traffic_to_from_subnet,
+        'wrong_routing_table': error_wrong_routing_table
+    }
+    
+    if errortype:
+        errors_to_inject = [error_functions[errortype]]
+    else:
+        num_errors = min(error_number, len(error_functions))
+        errors_to_inject = random.sample(list(error_functions.values()), num_errors)
+    
     for error in errors_to_inject:
         error(router, subnets)
+    
     return errors_to_inject
