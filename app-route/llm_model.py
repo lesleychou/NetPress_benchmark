@@ -6,7 +6,17 @@ from langchain._api import LangChainDeprecationWarning
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain 
+from dotenv import load_dotenv
+# Load environ variables from .env, will not override existing environ variables
+load_dotenv()
+# For Google Gemini
+import getpass
+from langchain_google_genai import ChatGoogleGenerativeAI
+os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_API_KEY")
 
+if "GOOGLE_API_KEY" not in os.environ:
+    os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
+        
 # For Azure OpenAI GPT4
 from langchain.chat_models import AzureChatOpenAI
 from azure.identity import AzureCliCredential
@@ -125,6 +135,8 @@ class LLMModel:
             return self._initialize_qwq()
         elif self.model_name == "GPT-Agent":
             return self._initialize_gpt_agent()
+        elif self.model_name == "Google/Gemini":
+            return self._initialize_gemini()
         elif self.model_name == "YourModel":
             return self._initialize_YourModel()
         else:
@@ -178,6 +190,10 @@ class LLMModel:
     def _initialize_gpt_agent(self):
         """Initialize the GPT Agent model."""
         return GPTAgentModel()
+
+    def _initialize_gemini(self):
+        """Initialize the Google Gemini model."""
+        return GeminiAgentModel()
 
     def _initialize_YourModel(self):
         """Initialize the your model."""
@@ -698,6 +714,81 @@ class GPTAgentModel:
             json.dump(data, json_file, indent=4)
         
         return machine, commands
+
+class GeminiAgentModel:
+    """
+    A specialized class for handling GPT Agent models.
+
+    Parameters:
+    -----------
+    model_name : str
+        The name of the model.
+    max_new_tokens : int
+        The maximum number of new tokens to be generated.
+    temperature : float
+        The temperature for text generation.
+    device : str
+        The device for inference.
+    api_key : str
+        The API key for GPT Agent.
+    """
+
+    def __init__(self):
+        
+        self._load_model()
+
+    def _load_model(self):
+        """Initialize the GPT Agent client."""
+
+        self.client = ChatGoogleGenerativeAI(
+            model="gemini-1.5-pro",
+            temperature=0,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2,
+        )
+
+        print("======Google Gemini 1.5-pro successfully loaded=======")
+
+    def predict(self, log_content, file_path, json_path, **kwargs):
+        """Generate a response based on the log content and file content."""
+        with open(file_path, 'r') as f:
+            file_content = f.read()
+
+        prompt = LLMModel._generate_prompt(file_content, log_content)
+
+        start_time = time.time()
+
+        content = self.client.invoke(prompt).content
+        print("LLM output:", content)
+
+        # content = response.choices[0].message.content
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        # Read LLM output
+        machine = LLMModel.extract_value(content, "machine")
+        commands = LLMModel.extract_value(content, "command")
+        loss_rate = LLMModel.extract_number_before_percentage(log_content)
+
+        with open(file_path, "a") as f:
+            f.write("Log Content:\n")
+            f.write(log_content + "\n\n")
+            f.write(f"Machine: {machine}\n")
+            f.write(f"Commands: {commands}\n")
+            f.write("=" * 50 + "\n")
+
+        with open(json_path, "r") as json_file:
+            data = json.load(json_file)
+
+        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
+
+        with open(json_path, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+        
+        return machine, commands
+
     
 class YourModel:
     """

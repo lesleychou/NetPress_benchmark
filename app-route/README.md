@@ -78,6 +78,16 @@ sudo -E $(which python) main.py   \
 --max_iteration 15
 ```
 
+# To run the benchmark with Google Gemini
+```
+sudo -E $(which python) main.py   \
+--llm_agent_type "Google/Gemini"   \
+--num_queries 10   \
+--complexity_level level2   \
+--root_dir "/your/path/to/nemo_benchmark/app-route"   \
+--max_iteration 15
+```
+
 # Testing Your Own Model
 
 To test your own model, follow these steps:
