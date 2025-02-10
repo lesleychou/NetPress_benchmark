@@ -258,6 +258,8 @@ class LlamaModel:
         start_time = time.time()
 
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
+        prompt_input_ids = model_inputs["input_ids"]
+        start_index = prompt_input_ids.shape[-1]
         generated_ids = self.model.generate(
             **model_inputs,
             max_new_tokens=512,
@@ -265,8 +267,9 @@ class LlamaModel:
             temperature=self.temperature,
             **kwargs
         )
-        content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
-
+        generation_output = generated_ids[0][start_index:]
+        content = self.tokenizer.decode(generation_output, skip_special_tokens=True)
+        print("LLM output:", content)
         end_time = time.time()
         elapsed_time = end_time - start_time
 
@@ -610,11 +613,17 @@ class QwQModel:
         start_time = time.time()
 
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
+        prompt_input_ids = model_inputs["input_ids"]
+        start_index = prompt_input_ids.shape[-1]
         generated_ids = self.model.generate(
             **model_inputs,
-            max_new_tokens=512
+            max_new_tokens=512,
+            do_sample=True,
+            temperature=self.temperature,
+            **kwargs
         )
-        content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
+        generation_output = generated_ids[0][start_index:]
+        content = self.tokenizer.decode(generation_output, skip_special_tokens=True)
         print(content)
         end_time = time.time()
         elapsed_time = end_time - start_time

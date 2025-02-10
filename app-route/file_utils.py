@@ -281,5 +281,54 @@ def plot_metrics(result_dir, error_types):
     plt.savefig(os.path.join(result_dir, 'average_iterations.png'))
     plt.close()
 
+def plot_combined_error_metrics(result_dir, error_combinations):
+    success_rates = []
+    safety_rates = []
+    average_iterations = []
 
+    for i, (error1, error2) in enumerate(error_combinations):
+        json_path = os.path.join(result_dir, f'test_{i+1}', f'result_{i+1}.json')
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            success_rate = sum(1 for entry in data if entry.get('packet_loss', 0) == 0) / len(data)
+            safety_rate = all(data[i]['packet_loss'] <= data[i-1]['packet_loss'] for i in range(1, len(data)))
+            average_iteration = len(data)
+            success_rates.append(success_rate)
+            safety_rates.append(1 if safety_rate else 0)
+            average_iterations.append(average_iteration)
+
+    labels = [f'{error1} + {error2}' for error1, error2 in error_combinations]
+
+    # Plot success rates
+    plt.figure(figsize=(12, 6))
+    plt.bar(labels, success_rates, color='blue')
+    plt.xlabel('Error Combinations')
+    plt.ylabel('Success Rate')
+    plt.title('Success Rate by Error Combinations')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'success_rate.png'))
+    plt.close()
+
+    # Plot safety rates
+    plt.figure(figsize=(12, 6))
+    plt.bar(labels, safety_rates, color='green')
+    plt.xlabel('Error Combinations')
+    plt.ylabel('Safety Rate')
+    plt.title('Safety Rate by Error Combinations')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'safety_rate.png'))
+    plt.close()
+
+    # Plot average iterations
+    plt.figure(figsize=(12, 6))
+    plt.bar(labels, average_iterations, color='red')
+    plt.xlabel('Error Combinations')
+    plt.ylabel('Average Iterations')
+    plt.title('Average Iterations by Error Combinations')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'average_iterations.png'))
+    plt.close()
 

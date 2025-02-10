@@ -3,10 +3,10 @@ cd ..
 cd app-route
 
 # Define common parameters
-NUM_QUERIES=10
-COMPLEXITY_LEVEL="level2"
-ROOT_DIR="/your/path/to/nemo_benchmark/app-route"
-MAX_ITERATION=15
+NUM_QUERIES=2
+COMPLEXITY_LEVEL="level1"
+ROOT_DIR="/home/ubuntu/jiajun_benchmark/app-route"
+MAX_ITERATION=5
 FULL_TEST=1
 
 # Function to clean up existing controller processes
@@ -35,20 +35,20 @@ run_experiment() {
 }
 
 # Run experiments for each model
+models=(
+    "meta-llama/Meta-Llama-3.1-70B-Instruct"
+    "Qwen/Qwen2.5-72B-Instruct"
+    # "Microsoft/Phi4"
+    # "google/gemma-7b"
+    "Qwen/QwQ-32B-Preview"
+    # "GPT-Agent"
+    # "Google/Gemini"
+)
+
 # models=(
-#     "meta-llama/Meta-Llama-3.1-70B-Instruct"
-#     "Qwen/Qwen2.5-72B-Instruct"
-#     "Microsoft/Phi4"
-#     "google/gemma-7b"
-#     "Qwen/QwQ-32B-Preview"
 #     "GPT-Agent"
 #     "Google/Gemini"
 # )
-
-models=(
-    "GPT-Agent"
-    "Google/Gemini"
-)
 
 # Run experiments for each model
 for model in "${models[@]}"; do
