@@ -3,10 +3,10 @@ cd ..
 cd app-route
 
 # Define common parameters
-NUM_QUERIES=2
+NUM_QUERIES=5
 COMPLEXITY_LEVEL="level1"
 ROOT_DIR="/home/ubuntu/jiajun_benchmark/app-route"
-MAX_ITERATION=5
+MAX_ITERATION=10
 FULL_TEST=1
 
 # Function to clean up existing controller processes
@@ -36,19 +36,20 @@ run_experiment() {
 
 # Run experiments for each model
 models=(
-    "meta-llama/Meta-Llama-3.1-70B-Instruct"
-    "Qwen/Qwen2.5-72B-Instruct"
+    # "meta-llama/Meta-Llama-3.1-70B-Instruct"
+    # "Qwen/Qwen2.5-72B-Instruct"
     # "Microsoft/Phi4"
     # "google/gemma-7b"
-    "Qwen/QwQ-32B-Preview"
+    # "Qwen/QwQ-32B-Preview"
     # "GPT-Agent"
     # "Google/Gemini"
 )
 
-# models=(
+models=(
 #     "GPT-Agent"
-#     "Google/Gemini"
-# )
+    "Google/Gemini"
+    "Qwen/Qwen2.5-72B-Instruct"
+)
 
 # Run experiments for each model
 for model in "${models[@]}"; do

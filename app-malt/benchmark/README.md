@@ -5,6 +5,10 @@ Example usage.
 python main.py --llm_agent_type AzureGPT4Agent --num_queries 3 --complexity_level level1 level2 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
 ```
 
+```python
+python main.py --llm_agent_type Qwen/Qwen2.5-72B-Instruct --num_queries 3 --complexity_level level1 --output_dir logs/llm_agents --output_file qwen.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
+```
+
 ## Code structure
 `dy_query_generation.py` generate the dynamic benchmark datset. Input: number of queries per cataorgory, complexity level; Output: benchmark_data.jsonl
 

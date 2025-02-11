@@ -796,6 +796,8 @@ class GeminiAgentModel:
         with open(json_path, "w") as json_file:
             json.dump(data, json_file, indent=4)
         
+        time.sleep(60)
+        
         return machine, commands
 
     
