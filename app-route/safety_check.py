@@ -4,6 +4,8 @@ def handler(signum, frame):
     raise TimeoutError("Command execution timed out")
 
 def safety_check(commands):
+    if commands is None:
+        return True
     if 'tcpdump' in commands:
         lg.output("Command containing 'tcpdump' is not allowed.")
         return False

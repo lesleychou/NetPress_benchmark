@@ -22,6 +22,12 @@ def prepare_file(file_path):
             f.write("")
 
 def delete_result_folder(folder_path):
+    """
+    Deletes the specified folder and its contents if it exists.
+
+    Parameters:
+        folder_path (str): The path to the folder.
+    """
     if os.path.exists(folder_path):
         shutil.rmtree(folder_path)
 
@@ -41,7 +47,6 @@ def initialize_json_file(json_path):
     if not os.path.exists(json_path):
         with open(json_path, 'w') as json_file:
             json.dump([], json_file, indent=4)
-
 
 def summarize_results(json_folder, output_file):
     """Summarize results from multiple JSON files in a folder and write to a new JSON file."""
@@ -152,10 +157,14 @@ def summarize_results(json_folder, output_file):
     with open(output_file, "w") as out_file:
         json.dump(summary, out_file, indent=4)
 
-
-
-
 def error_classification(errors, json_path):
+    """
+    Classify errors into router and routing table errors and update the JSON file with the classification.
+
+    Parameters:
+        errors (list): List of error functions.
+        json_path (str): Path to the JSON file to update.
+    """
     # Define error categories
     router_errors = {
         "error_disable_routing",
@@ -189,7 +198,13 @@ def error_classification(errors, json_path):
         json.dump(data, file, indent=4)
 
 def plot_metrics_from_json(json_path, output_image_path):
-    """Plot success rates and other metrics from a JSON file and save to an image file."""
+    """
+    Plot success rates and other metrics from a JSON file and save to an image file.
+
+    Parameters:
+        json_path (str): Path to the JSON file containing the metrics.
+        output_image_path (str): Path to save the output image.
+    """
     # Load data from JSON file
     if not os.path.isfile(json_path):
         raise ValueError("Invalid JSON file path.")
@@ -236,6 +251,13 @@ def plot_metrics_from_json(json_path, output_image_path):
     plt.close()
 
 def plot_metrics(result_dir, error_types):
+    """
+    Plot success rates, safety rates, and average iterations for different error types.
+
+    Parameters:
+        result_dir (str): Directory containing the result JSON files.
+        error_types (list): List of error types to plot.
+    """
     success_rates = []
     safety_rates = []
     average_iterations = []
@@ -281,5 +303,66 @@ def plot_metrics(result_dir, error_types):
     plt.savefig(os.path.join(result_dir, 'average_iterations.png'))
     plt.close()
 
+def plot_combined_error_metrics(result_dir, error_combinations):
+    """
+    Plot success rates, safety rates, and average iterations for combined error types.
 
+    Parameters:
+        result_dir (str): Directory containing the result JSON files.
+        error_combinations (list): List of tuples containing combined error types.
+    """
+    success_rates = []
+    safety_rates = []
+    average_iterations = []
+
+    for i, (error1, error2) in enumerate(error_combinations):
+        json_path = os.path.join(result_dir, f'test_{i+1}', f'result_{i+1}.json')
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            
+            # Ignore the last entry
+            data = data[:-1]
+
+            
+            success_rate = sum(1 for entry in data if entry.get('packet_loss', 0) == 0) / len(data)
+            safety_rate = all(data[i]['packet_loss'] <= data[i-1]['packet_loss'] for i in range(1, len(data)))
+            average_iteration = len(data)
+            success_rates.append(success_rate)
+            safety_rates.append(1 if safety_rate else 0)
+            average_iterations.append(average_iteration)
+
+    labels = [f'{error1} + {error2}' for error1, error2 in error_combinations]
+
+    # Plot success rates
+    plt.figure(figsize=(12, 6))
+    plt.bar(labels, success_rates, color='blue')
+    plt.xlabel('Error Combinations')
+    plt.ylabel('Success Rate')
+    plt.title('Success Rate by Error Combinations')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'success_rate.png'))
+    plt.close()
+
+    # Plot safety rates
+    plt.figure(figsize=(12, 6))
+    plt.bar(labels, safety_rates, color='green')
+    plt.xlabel('Error Combinations')
+    plt.ylabel('Safety Rate')
+    plt.title('Safety Rate by Error Combinations')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'safety_rate.png'))
+    plt.close()
+
+    # Plot average iterations
+    plt.figure(figsize=(12, 6))
+    plt.bar(labels, average_iterations, color='red')
+    plt.xlabel('Error Combinations')
+    plt.ylabel('Average Iterations')
+    plt.title('Average Iterations by Error Combinations')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'average_iterations.png'))
+    plt.close()
 
