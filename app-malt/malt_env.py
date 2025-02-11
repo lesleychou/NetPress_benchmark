@@ -26,28 +26,29 @@ OUTPUT_JSONL_FILE = 'gpt4.jsonl'
 
 
 class BenchmarkEvaluator:
-    def __init__(self, graph_data):
+    def __init__(self, graph_data, llm_agent_type):
         self.graph_data = graph_data
+        # Call the output code from LLM agents file
+        if llm_agent_type == "AzureGPT4Agent":
+            self.llm_agent = AzureGPT4Agent()
+        elif llm_agent_type == "GoogleGeminiAgent":
+            self.llm_agent = GoogleGeminiAgent()
+        elif llm_agent_type == "Qwen/QwQ-32B-Preview":
+            self.llm_agent = QwQModel()
+        elif llm_agent_type == "meta-llama/Meta-Llama-3.1-70B-Instruct":
+            self.llm_agent = LlamaModel()
+        elif llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
+            self.llm_agent = QwenModel()
 
-    def userQuery(self, current_query, golden_answer, llm_agent_type="AzureGPT4Agent"):
+    def userQuery(self, current_query, golden_answer):
         # for each prompt in the prompt_list, append it as the value of {'query': prompt}
         print("Query: ", current_query)
 
         G = self.graph_data
         
-        # Call the output code from LLM agents file
         start_time = time.time()
-        if llm_agent_type == "AzureGPT4Agent":
-            llm_agent = AzureGPT4Agent()
-        elif llm_agent_type == "GoogleGeminiAgent":
-            llm_agent = GoogleGeminiAgent()
-        elif llm_agent_type == "Qwen/QwQ-32B-Preview":
-            llm_agent = QwQModel()
-        elif llm_agent_type == "meta-llama/Meta-Llama-3.1-70B-Instruct":
-            llm_agent = LlamaModel()
-        elif llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
-            llm_agent = QwenModel()
-        llm_answer = llm_agent.call_agent(current_query)
+
+        llm_answer = self.llm_agent.call_agent(current_query)
 
         try:
             exec(llm_answer)
