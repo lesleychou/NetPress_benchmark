@@ -80,7 +80,7 @@ def main(args):
 
         # have to sleep for Gemini API quota
         if benchmark_config['llm_agent_type'] == 'GoogleGeminiAgent':
-            time.sleep(5)
+            time.sleep(10)
 
     # Analyze the results
     # load the data from output_path

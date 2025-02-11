@@ -3,8 +3,7 @@ cd ..
 cd app-malt
 
 # Define common parameters
-NUM_QUERIES=1
-OUTPUT_DIR="logs/llm_agents"
+NUM_QUERIES=5
 BENCHMARK_PATH="data/benchmark_malt.jsonl"
 
 # Function to run experiment for a model
@@ -29,13 +28,11 @@ run_experiment() {
 
 # Define models and their configurations
 declare -A model_configs=(
-    ["AzureGPT4Agent"]="level1 level2:gpt4o.jsonl"
-    ["GoogleGeminiAgent"]="level1 level2:gemini.jsonl"
     ["Qwen/Qwen2.5-72B-Instruct"]="level1 level2:qwen.jsonl"
 )
 
 # Define the desired order of execution
-model_order=("AzureGPT4Agent" "GoogleGeminiAgent")
+model_order=("Qwen/Qwen2.5-72B-Instruct")
 
 # Run experiments in specified order
 for model in "${model_order[@]}"; do
