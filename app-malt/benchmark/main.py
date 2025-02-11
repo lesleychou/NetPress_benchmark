@@ -16,7 +16,7 @@ import argparse
 # define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default='AzureGPT4Agent', help='Choose the LLM agent', choices=['AzureGPT4Agent', 'GoogleGeminiAgent', 'Qwen/QwQ-32B-Preview', 'meta-llama/Meta-Llama-3.1-70B-Instruct'])
+    parser.add_argument('--llm_agent_type', type=str, default='AzureGPT4Agent', help='Choose the LLM agent', choices=['AzureGPT4Agent', 'GoogleGeminiAgent', 'Qwen/QwQ-32B-Preview', 'meta-llama/Meta-Llama-3.1-70B-Instruct', 'Qwen/Qwen2.5-72B-Instruct'])
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', nargs='+', default=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--output_dir', type=str, default='logs/llm_agents', help='Directory to save output JSONL file')
