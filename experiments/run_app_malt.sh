@@ -28,11 +28,11 @@ run_experiment() {
 
 # Define models and their configurations
 declare -A model_configs=(
-    ["Qwen/Qwen2.5-72B-Instruct"]="level1 level2:qwen.jsonl"
+    ["Qwen2.5-72B-Instruct"]="level1 level2:qwen.jsonl"
 )
 
 # Define the desired order of execution
-model_order=("Qwen/Qwen2.5-72B-Instruct")
+model_order=("Qwen2.5-72B-Instruct")
 
 # Run experiments in specified order
 for model in "${model_order[@]}"; do

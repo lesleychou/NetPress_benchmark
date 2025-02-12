@@ -69,6 +69,7 @@ prompt_prefix = """
         Do not use multi-layer function. The output format should only return one object. The return_object will be a JSON object with two keys, 'type' and 'data'. The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table' or 'graph'.
         The 'data' key should contain the data needed to render the output. If the output type is 'text' then the 'data' key should contain a string. If the output type is 'list' then the 'data' key should contain a list of items.
         If the output type is 'table' then the 'data' key should contain a list of lists where each list represents a row in the table.If the output type is 'graph' then the 'data' key should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
+        node.startswith will not work for the node name. you have to check the node name with the node['name'].
 
         Context: When the user requests to make changes to the graph, it is generally appropriate to return the graph. 
         In the Python code you generate, you should process the networkx graph object to produce the needed output.
@@ -236,7 +237,7 @@ class QwQModel:
 
 class QwenModel:
     def __init__(self):
-        self.model_name = "Qwen/Qwen2.5-72B-Instruct"
+        self.model_name = "Qwen2.5-72B-Instruct"
         self.quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(
