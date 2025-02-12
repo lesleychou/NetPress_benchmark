@@ -253,7 +253,7 @@ class QwenModel:
         self.prompt = prompt_prefix + prompt_suffix
 
     def call_agent(self, query):
-        print("Calling QwQ")
+        print("Calling Qwen")
         prompt_text = self.prompt + query + " Please do not repeat the prompt text in your response, only give the format output."
         prompt_text = prompt_text.strip()
         print("prompt_text:", prompt_text)
