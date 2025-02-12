@@ -1,0 +1,28 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+    labels:
+      env: prod
+      app: payment
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 8080
+  - role: worker
+    labels:
+      env: prod
+      app: database
+    extraPortMappings:
+      - containerPort: 5432
+        hostPort: 5432
+  - role: worker
+    labels:
+      env: shared
+      app: gateway
+  - role: worker
+    labels:
+      env: dev
+      app: analytics
+networking:
+  disableDefaultCNI: true
