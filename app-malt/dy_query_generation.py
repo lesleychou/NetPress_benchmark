@@ -68,7 +68,7 @@ class QueryGenerator:
             parent_node = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN', 'EK_RACK', 'EK_PACKET_SWITCH'])
             parent_node_name = random.choice(self.node_value_ranges[parent_node])
 
-            template = f"List all the child nodes of {parent_node_name}. Return a list of child nodes."
+            template = f"List all the child nodes of {parent_node_name}. Return a list of child node names."
             node = {'type': parent_node, 'name': parent_node_name}
             ground_truth = f"""def ground_truth_process_graph(graph_data):
                         node = {node}
