@@ -17,9 +17,9 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     if args.full_test == 1:
-        run_full_test(args)
+        run_full_test(args)    
+        combined_error_test(args)
     else:
         run(args)
-    
-    # Run the combined error test function
-    combined_error_test(args)
+
+
