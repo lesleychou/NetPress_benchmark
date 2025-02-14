@@ -194,22 +194,18 @@ def run_full_test(args):
     
         summarize_results(os.path.join(args.root_dir, 'result', error_type), os.path.join(args.root_dir, 'result', error_type, f'{error_type}_result.json'))
 
-    result_dir = os.path.join(args.root_dir, 'result')
-    plot_metrics(result_dir, error_types)
 
 def combined_error_test(args):
     # Instantiate LLM test taker
     llm_model = LLMModel(model=args.llm_agent_type)
-    args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type)
+    print(args.root_dir)    
+    # args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type)
+    print(args.root_dir)
     # Define error types
     error_types = ['disable_routing', 'disable_interface', 'remove_ip', 'drop_traffic_to_from_subnet', 'wrong_routing_table']
     
     # Generate all combinations of two errors from error_types
     error_combinations = [(error_types[i], error_types[j]) for i in range(len(error_types)) for j in range(i+1, len(error_types))]
-    
-    # Create a directory to store test results
-    test_result_dir = os.path.join(args.root_dir, 'result', 'combined_test_results')
-    os.makedirs(test_result_dir, exist_ok=True)
     
     for i, (error1, error2) in enumerate(error_combinations):
         # Dynamically generate subnets and errors
@@ -239,7 +235,7 @@ def combined_error_test(args):
         Mininet_log = MininetLogger()
         
         # Create directory and file to store result
-        result_dir = os.path.join(test_result_dir, f'test_{i+1}')
+        result_dir = os.path.join(os.path.join(args.root_dir, 'result', 'combined_test_results'), f'test_{i+1}')
         os.makedirs(result_dir, exist_ok=True)
         result_file_path = os.path.join(result_dir, f'result_{i+1}.txt')
         json_path = os.path.join(result_dir, f'result_{i+1}.json')
@@ -292,4 +288,4 @@ def combined_error_test(args):
         net.stop()
         error_classification(errors, json_path)
     
-    plot_combined_error_metrics(test_result_dir, error_combinations)
+    plot_combined_error_metrics(args.root_dir, error_combinations)

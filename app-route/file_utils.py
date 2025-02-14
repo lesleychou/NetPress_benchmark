@@ -314,7 +314,17 @@ def plot_combined_error_metrics(result_dir, error_combinations):
     success_rates = []
     safety_rates = []
     average_iterations = []
+    error_types = ['disable_routing', 'disable_interface', 'remove_ip', 'drop_traffic_to_from_subnet', 'wrong_routing_table']
 
+    for error_type in error_types:
+        json_path = os.path.join(result_dir, 'result', error_type, f'{error_type}_result.json')
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+            success_rates.append(data.get('success_rate', 0))
+            safety_rates.append(data.get('safety_rate', 0))
+            average_iterations.append(data.get('average_iterations', 0))
+
+    result_dir = os.path.join(result_dir, 'result', 'combined_test_results')
     for i, (error1, error2) in enumerate(error_combinations):
         json_path = os.path.join(result_dir, f'test_{i+1}', f'result_{i+1}.json')
         with open(json_path, 'r') as f:
@@ -323,7 +333,6 @@ def plot_combined_error_metrics(result_dir, error_combinations):
             # Ignore the last entry
             data = data[:-1]
 
-            
             success_rate = sum(1 for entry in data if entry.get('packet_loss', 0) == 0) / len(data)
             safety_rate = all(data[i]['packet_loss'] <= data[i-1]['packet_loss'] for i in range(1, len(data)))
             average_iteration = len(data)
@@ -331,38 +340,70 @@ def plot_combined_error_metrics(result_dir, error_combinations):
             safety_rates.append(1 if safety_rate else 0)
             average_iterations.append(average_iteration)
 
-    labels = [f'{error1} + {error2}' for error1, error2 in error_combinations]
+    # Combine error types and error combinations for labels
+    labels = error_types + [f'{error1} + {error2}' for error1, error2 in error_combinations]
 
     # Plot success rates
-    plt.figure(figsize=(12, 6))
-    plt.bar(labels, success_rates, color='blue')
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, success_rates, color='skyblue')
     plt.xlabel('Error Combinations')
     plt.ylabel('Success Rate')
     plt.title('Success Rate by Error Combinations')
     plt.xticks(rotation=45, ha='right')
+    plt.ylim(0, max(success_rates) * 1.1)  # Adjust y-axis limit
     plt.tight_layout()
-    plt.savefig(os.path.join(result_dir, 'success_rate.png'))
+    plt.savefig(os.path.join(result_dir, 'success_rate.png'), dpi=300)
     plt.close()
 
     # Plot safety rates
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(10, 6))
     plt.bar(labels, safety_rates, color='green')
     plt.xlabel('Error Combinations')
     plt.ylabel('Safety Rate')
     plt.title('Safety Rate by Error Combinations')
     plt.xticks(rotation=45, ha='right')
+    plt.ylim(0, max(safety_rates) * 1.1)  # Adjust y-axis limit
     plt.tight_layout()
-    plt.savefig(os.path.join(result_dir, 'safety_rate.png'))
+    plt.savefig(os.path.join(result_dir, 'safety_rate.png'), dpi=300)
     plt.close()
 
     # Plot average iterations
-    plt.figure(figsize=(12, 6))
-    plt.bar(labels, average_iterations, color='red')
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, average_iterations, color='orange')
     plt.xlabel('Error Combinations')
     plt.ylabel('Average Iterations')
     plt.title('Average Iterations by Error Combinations')
     plt.xticks(rotation=45, ha='right')
+    plt.ylim(0, max(average_iterations) * 1.1)  # Adjust y-axis limit
     plt.tight_layout()
-    plt.savefig(os.path.join(result_dir, 'average_iterations.png'))
+    plt.savefig(os.path.join(result_dir, 'average_iterations.png'), dpi=300)
+    plt.close()
+
+    # Combine all three plots into one figure
+    fig, axs = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
+
+    # Success rates
+    axs[0].bar(labels, success_rates, color='skyblue')
+    axs[0].set_ylabel('Success Rate')
+    axs[0].set_title('Success Rate by Error Combinations')
+    axs[0].set_ylim(0, min(max(success_rates) * 1.5, 1))  # Adjust y-axis limit
+
+    # Safety rates
+    axs[1].bar(labels, safety_rates, color='green')
+    axs[1].set_ylabel('Safety Rate')
+    axs[1].set_title('Safety Rate by Error Combinations')
+    axs[1].set_ylim(0, min(max(safety_rates) * 1.5, 1))  # Adjust y-axis limit
+
+    # Average iterations
+    axs[2].bar(labels, average_iterations, color='orange')
+    axs[2].set_xlabel('Error Combinations')
+    axs[2].set_ylabel('Average Iterations')
+    axs[2].set_title('Average Iterations by Error Combinations')
+    axs[2].set_ylim(0, min(max(average_iterations) * 1.5, 15))  # Adjust y-axis limit
+
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    # fig.suptitle('Reuslts for Qwen Model', fontsize=16)
+    plt.savefig(os.path.join(result_dir, 'combined_metrics.png'), dpi=300)
     plt.close()
 

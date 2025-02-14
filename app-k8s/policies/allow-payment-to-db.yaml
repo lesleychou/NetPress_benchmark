@@ -1,0 +1,17 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-payment-to-db
+spec:
+  endpointSelector:
+    matchLabels:
+      app: database
+      env: prod
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        app: payment
+    toPorts:
+    - ports:
+      - port: '5432'
+        protocol: TCP

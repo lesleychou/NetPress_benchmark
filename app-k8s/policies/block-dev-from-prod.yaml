@@ -1,0 +1,16 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: block-dev-from-prod
+spec:
+  endpointSelector:
+    matchLabels:
+      env: prod
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        env: shared
+    toPorts:
+    - ports:
+      - port: any
+        protocol: ANY
