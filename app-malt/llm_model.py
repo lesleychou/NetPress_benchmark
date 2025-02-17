@@ -22,6 +22,7 @@ warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from huggingface_hub import login
+from vllm import LLM, SamplingParams
 
 # Login huggingface
 login(token="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")
@@ -234,52 +235,34 @@ class QwQModel:
         print("model returned")
         code = clean_up_llm_output_func(answer)
         return code
-
 class QwenModel:
     def __init__(self):
-        self.model_name = "Qwen2.5-72B-Instruct"
-        self.quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
+        self.model_name = "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name,
-            device_map=self.device,
-            cache_dir="/home/ubuntu"
-        )
-        self.llm = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            device_map=self.device,
-            quantization_config=self.quantization_config,
-            cache_dir="/home/ubuntu"
+        self.llm = LLM(
+	        model=self.model_name,
+            device=self.device,
+	        quantization="gptq"  # Enable GPTQ 4-bit loading
+	    )
+        self.sampling_params = SamplingParams(
+            temperature=0.0,
+            max_tokens=512
         )
         self.prompt = prompt_prefix + prompt_suffix
 
     def call_agent(self, query):
         print("Calling Qwen")
-        prompt_text = self.prompt + query + " Please do not repeat the prompt text in your response, only give the format output."
-        prompt_text = prompt_text.strip()
+        prompt_text = self.prompt + query 
         print("prompt_text:", prompt_text)
         
-        # Tokenize the prompt and get the input IDs
-        prompt_tokens = self.tokenizer(prompt_text, return_tensors="pt").to(self.device)
-        prompt_input_ids = prompt_tokens["input_ids"]
-        start_index = prompt_input_ids.shape[-1]
-        
-        # Generate the output
-        generated_ids = self.llm.generate(
-            **prompt_tokens,
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=0.1
-        )
-        
-        # Remove the prompt part from the generated output
-        generation_output = generated_ids[0][start_index:]
-        answer = self.tokenizer.decode(generation_output, skip_special_tokens=True)
-        
+        result = self.llm.generate([prompt_text], sampling_params=self.sampling_params)
+        answer = result[0].outputs[0].text
+  
         print("llm answer:", answer)
         print("model returned")
         code = clean_up_llm_output_func(answer)
         return code
+
     
 class Phi4Model:
     def __init__(self):

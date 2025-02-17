@@ -34,6 +34,8 @@ from huggingface_hub import login
 # Login huggingface
 login(token="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")
 
+from vllm import LLM, SamplingParams
+
 class LLMModel:
     """
     A simplified class for handling language models.
@@ -154,7 +156,7 @@ class LLMModel:
     def _initialize_qwen(self):
         """Initialize the Qwen model."""
         return QwenModel(
-            model_name=self.model_name,
+            model_name="Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4",
             max_new_tokens=self.max_new_tokens,
             temperature=self.temperature,
             device=self.device
@@ -163,7 +165,7 @@ class LLMModel:
     def _initialize_Phi4(self):
         """Initialize the Phi-4 model."""
         return Phi4Model(
-            model_name=self.model_name,
+            model_name="Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4",
             max_new_tokens=self.max_new_tokens,
             temperature=self.temperature,
             device=self.device
@@ -298,7 +300,7 @@ class LlamaModel:
 
 class QwenModel:
     """
-    A specialized class for handling Qwen/Qwen2.5-72B-Instruct models.
+    A specialized class for handling Qwen/Qwen2.5-72B-Instruct models with GPTQ 4-bit quantization.
 
     Parameters:
     -----------
@@ -312,7 +314,7 @@ class QwenModel:
         The device for inference.
     """
 
-    def __init__(self, model_name, max_new_tokens, temperature, device):
+    def __init__(self, model_name, max_new_tokens, temperature, device="cuda"):
         self.model_name = model_name
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
@@ -320,29 +322,21 @@ class QwenModel:
         self._load_model()
 
     def _load_model(self):
-        """Load the Qwen model and tokenizer."""
-        from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-        import torch
+        """Load the Qwen model using vllm with GPTQ 4-bit quantization."""
 
-        # Create BitsAndBytesConfig for 4-bit quantization
-        quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name,
-            trust_remote_code=True,
-            device_map=self.device
+        self.llm = LLM(
+            model=self.model_name,
+            device=self.device,
+            quantization="gptq"  # Enable GPTQ 4-bit loading
         )
 
-        # Load the Qwen model with 4-bit quantization
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            trust_remote_code=True,
-            device_map=self.device,
-            quantization_config=quantization_config  # Use the quantization config
+        self.sampling_params = SamplingParams(
+            temperature=0.0,
+            max_tokens=512
         )
 
     def predict(self, log_content, file_path, json_path, **kwargs):
         """Generate a response based on the log content and file content."""
-
         with open(file_path, 'r') as f:
             file_content = f.read()
 
@@ -351,16 +345,11 @@ class QwenModel:
 
         start_time = time.time()
 
-        model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
-        generated_ids = self.model.generate(
-            **model_inputs,
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=self.temperature,
-            **kwargs
-        )
-        content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
-        
+        # Generate response using vllm
+        result = self.llm.generate([prompt], sampling_params=self.sampling_params)
+        content = result[0].outputs[0].text
+        print('LLM output:', content)
+
         end_time = time.time()
         elapsed_time = end_time - start_time
 
