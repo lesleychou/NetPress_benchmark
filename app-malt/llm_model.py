@@ -235,6 +235,7 @@ class QwQModel:
         print("model returned")
         code = clean_up_llm_output_func(answer)
         return code
+    
 class QwenModel:
     def __init__(self):
         self.model_name = "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"

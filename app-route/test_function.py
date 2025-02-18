@@ -15,6 +15,7 @@ import signal
 import os
 import matplotlib.pyplot as plt
 import json
+from datetime import datetime
 
 def run(args):
     # Instantiate LLM test taker
@@ -105,7 +106,7 @@ def run(args):
 def run_full_test(args):
     # Instantiate LLM test taker
     llm_model = LLMModel(model=args.llm_agent_type)
-    args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type)
+    args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type, datetime.now().strftime("%Y%m%d-%H%M%S"))
     # Define error types
     error_types = ['disable_routing', 'disable_interface', 'remove_ip', 'drop_traffic_to_from_subnet', 'wrong_routing_table']
 
