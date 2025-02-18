@@ -8,6 +8,7 @@ COMPLEXITY_LEVEL="level1"
 ROOT_DIR="/home/ubuntu/jiajun_benchmark/app-route"
 MAX_ITERATION=10
 FULL_TEST=1
+VLLM=1
 
 # Function to clean up existing controller processes
 cleanup_controllers() {
@@ -31,7 +32,8 @@ run_experiment() {
         --complexity_level $COMPLEXITY_LEVEL \
         --root_dir "$ROOT_DIR" \
         --max_iteration $MAX_ITERATION \
-        --full_test $FULL_TEST
+        --full_test $FULL_TEST \
+        --vllm $VLLM 
 }
 
 # Run experiments for each model

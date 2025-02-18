@@ -11,6 +11,7 @@ def parse_args():
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/nemo_benchmark/app-route", help='Directory to save output JSONL file')
     parser.add_argument('--max_iteration', type=int, default=20, help='Choose maximum trials for a query')
     parser.add_argument('--full_test', type=int, default=0, choices=[0, 1], help='Enable full test if set to 1')
+    parser.add_argument('--vllm', type=int, default=1, choices=[0, 1], help='Enable vllm if set to 1')
     return parser.parse_args()
 
 # Call the appropriate function based on the full_test argument

@@ -37,7 +37,7 @@ class BenchmarkEvaluator:
             self.llm_agent = QwQModel()
         elif llm_agent_type == "meta-llama/Meta-Llama-3.1-70B-Instruct":
             self.llm_agent = LlamaModel()
-        elif llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
+        elif llm_agent_type == "Qwen2.5-72B-Instruct":
             self.llm_agent = QwenModel()
 
     def userQuery(self, current_query, golden_answer):
