@@ -38,15 +38,18 @@ if "GOOGLE_API_KEY" not in os.environ:
     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
 
 # For Azure OpenAI GPT4
-from azure.identity import AzureCliCredential
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain.chat_models import AzureChatOpenAI
-credential = AzureCliCredential()
+credential = DefaultAzureCredential()
+token_provider = get_bearer_token_provider(
+        DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
+    )
 #Set the API type to `azure_ad`
 os.environ["OPENAI_API_TYPE"] = "azure_ad"
 # Set the API_KEY to the token from the Azure credential
 os.environ["OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
 # Set the ENDPOINT
-os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-fc.openai.azure.com/"
+os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-sweden.openai.azure.com/"
 
 
 prompt_prefix = """
@@ -124,8 +127,8 @@ class AzureGPT4Agent:
         self.llm = AzureChatOpenAI(
             openai_api_type="azure_ad",
             openai_api_version="2024-08-01-preview",
-            deployment_name='gpt-4o',
-            model_name='gpt-4o',
+            deployment_name='ztn-sweden-gpt-4o',
+            model_name='ztn-sweden-gpt-4o',
             temperature=0.0,
             max_tokens=4000,
             )
