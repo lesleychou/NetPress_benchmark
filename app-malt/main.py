@@ -16,7 +16,8 @@ import argparse
 # define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default='AzureGPT4Agent', help='Choose the LLM agent', choices=['AzureGPT4Agent', 'GoogleGeminiAgent', 'Qwen/QwQ-32B-Preview', 'meta-llama/Meta-Llama-3.1-70B-Instruct', 'Qwen2.5-72B-Instruct'])
+    parser.add_argument('--llm_model_type', type=str, default='AzureGPT4Agent', help='Choose the LLM agent', choices=['AzureGPT4Agent', 'GoogleGeminiAgent', 'Qwen2.5-72B-Instruct'])
+    parser.add_argument('--prompt_type', type=str, default='base', help='Choose the prompt type', choices=['base', 'cot', 'few_shot'])
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', nargs='+', default=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--output_dir', type=str, default='logs/llm_agents', help='Directory to save output JSONL file')
@@ -31,7 +32,8 @@ def parse_args():
 def main(args):
 
     benchmark_config = {
-        'llm_agent_type': args.llm_agent_type,
+        'llm_model_type': args.llm_model_type,
+        'prompt_type': args.prompt_type,
         'num_queries': args.num_queries,
         'complexity_level': args.complexity_level,
         'output_dir': args.output_dir,
@@ -56,7 +58,7 @@ def main(args):
     query_generator.save_queries_to_file(benchmark_path)
 
     # Load the evaluator
-    evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_agent_type=benchmark_config['llm_agent_type'])
+    evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
 
     # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
     benchmark_data = []
@@ -79,7 +81,7 @@ def main(args):
         evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, output_path)
 
         # have to sleep for Gemini API quota
-        if benchmark_config['llm_agent_type'] == 'GoogleGeminiAgent':
+        if benchmark_config['llm_model_type'] == 'GoogleGeminiAgent':
             time.sleep(10)
 
     # Analyze the results
@@ -113,7 +115,7 @@ def main(args):
     plt.title('Average Query Run Latency by Task Label')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
-    plt.savefig(os.path.join(figs_dir, f'average_latency_{args.llm_agent_type}.png'), dpi=300)
+    plt.savefig(os.path.join(figs_dir, f'average_latency_{args.llm_model_type}.png'), dpi=300)
     # plt.show()
 
     # plot the pass rate of correctness for each task label
@@ -126,7 +128,7 @@ def main(args):
     plt.title('Correctness Pass Rate by Task Label')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
-    plt.savefig(os.path.join(figs_dir, f'correctness_pass_rate_{args.llm_agent_type}.png'), dpi=300)
+    plt.savefig(os.path.join(figs_dir, f'correctness_pass_rate_{args.llm_model_type}.png'), dpi=300)
     # plt.show()
 
     # plot the pass rate of safety for each task label
@@ -139,7 +141,7 @@ def main(args):
     plt.title('Safety Pass Rate by Task Label')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
-    plt.savefig(os.path.join(figs_dir, f'safety_pass_rate_{args.llm_agent_type}.png'), dpi=300)
+    plt.savefig(os.path.join(figs_dir, f'safety_pass_rate_{args.llm_model_type}.png'), dpi=300)
     # plt.show()
 
 
