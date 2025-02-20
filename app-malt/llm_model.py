@@ -23,7 +23,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from huggingface_hub import login
 from vllm import LLM, SamplingParams
-from prompt_agent import BasePromptAgent, CoTPromptAgent, FewShotPromptAgent
+from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent
 
 # Login huggingface
 login(token="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")
@@ -74,9 +74,9 @@ class GoogleGeminiAgent:
         self.prompt_type = prompt_type
         # Select prompt agent based on type
         if self.prompt_type == "cot":
-            prompt_agent = CoTPromptAgent()
-        elif self.prompt_type == "few_shot":
-            prompt_agent = FewShotPromptAgent()
+            prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif self.prompt_type == "few_shot_basic":
+            prompt_agent = FewShot_Basic_PromptAgent()
         else:
             prompt_agent = BasePromptAgent()
 
@@ -84,7 +84,12 @@ class GoogleGeminiAgent:
             input_variables=["input"],
             template=prompt_agent.prompt_prefix + prompt_suffix
         )
-        print("prompt:", prompt)
+        # Print prompt template in a clean format
+        print("\nPrompt Template:")
+        print("-" * 80)
+        print(prompt.template.strip())
+        print("-" * 80 + "\n")
+        
         self.pyGraphNetExplorer = LLMChain(llm=self.llm, prompt=prompt)
 
     def call_agent(self, query):
@@ -110,9 +115,9 @@ class AzureGPT4Agent:
         self.prompt_type = prompt_type
         # Select prompt agent based on type
         if self.prompt_type == "cot":
-            prompt_agent = CoTPromptAgent()
-        elif self.prompt_type == "few_shot":
-            prompt_agent = FewShotPromptAgent()
+            prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif self.prompt_type == "few_shot_basic":
+            prompt_agent = FewShot_Basic_PromptAgent()
         else:
             prompt_agent = BasePromptAgent()
 
@@ -120,8 +125,12 @@ class AzureGPT4Agent:
             input_variables=["input"],
             template=prompt_agent.prompt_prefix + prompt_suffix
         )
-        print("prompt:", prompt)
-
+        # Print prompt template in a clean format
+        print("\nPrompt Template:")
+        print("-" * 80)
+        print(prompt.template.strip())
+        print("-" * 80 + "\n")
+        
         self.pyGraphNetExplorer = LLMChain(llm=self.llm, prompt=prompt)
 
     def call_agent(self, query):
@@ -148,9 +157,9 @@ class QwenModel:
         self.prompt_type = prompt_type
         # Select prompt agent based on type
         if self.prompt_type == "cot":
-            prompt_agent = CoTPromptAgent()
-        elif self.prompt_type == "few_shot":
-            prompt_agent = FewShotPromptAgent()
+            prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif self.prompt_type == "few_shot_basic":
+            prompt_agent = FewShot_Basic_PromptAgent()
         else:
             prompt_agent = BasePromptAgent()
 
@@ -188,12 +197,12 @@ class LlamaModel:
             quantization_config=self.quantization_config,
             cache_dir="/home/ubuntu"
         )
-
+        self.prompt_type = prompt_type
         # Select prompt agent based on type
-        if prompt_type == "cot":
-            prompt_agent = CoTPromptAgent()
-        elif prompt_type == "few_shot":
-            prompt_agent = FewShotPromptAgent()
+        if self.prompt_type == "cot":
+            prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif self.prompt_type == "few_shot_basic":
+            prompt_agent = FewShot_Basic_PromptAgent()
         else:
             prompt_agent = BasePromptAgent()
 

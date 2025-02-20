@@ -59,7 +59,7 @@ class BasePromptAgent:
         return prompt_prefix    
 
 
-class CoTPromptAgent:
+class ZeroShot_CoT_PromptAgent:
     def __init__(self):
         self.prompt_prefix = self.generate_prompt()
 
@@ -101,28 +101,51 @@ class CoTPromptAgent:
         return cot_prompt_prefix
 
 
-class FewShotPromptAgent:
+class FewShot_Basic_PromptAgent(ZeroShot_CoT_PromptAgent):
     def __init__(self):
+        super().__init__()  # Initialize the parent class
         self.prompt_prefix = self.generate_prompt()
 
     def generate_prompt(self):
         examples = [
-                    {
-                        "question": "Update the physical capacity value of ju1.s3.s2c2.p8 to 60. Return a graph.",
-                        "answer": """def process_graph(graph_data):\n                                    child_node_name = 'ju1.s3.s2c2.p8'\n                                    new_value = 60\n                                    graph_data = solid_step_update_node_value(graph_data, child_node_name, new_value)\n                                    return_object = {'type': 'graph', 'data': graph_data}\n                                    return return_object""",
-                    },
-                    {
-                        "question": "Add new node with name new_EK_PACKET_SWITCH_32 type EK_PACKET_SWITCH, to ju1.a4.m4. Return a graph.",
-                        "answer": """def process_graph(graph_data):\n                        new_node = {'name': 'new_EK_PACKET_SWITCH_32', 'type': 'EK_PACKET_SWITCH'}\n                        parent_node_name = 'ju1.a4.m4'\n                        graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)\n                        return_object = {'type': 'graph', 'data': graph_data}\n                        return return_object""",
-                    },
-                    {
-                        "question": "Count the EK_PACKET_SWITCH in the ju1.s3.dom. Return only the count number.",
-                        "answer": """def process_graph(graph_data):\n                                    node1 = {'type': 'EK_CONTROL_DOMAIN', 'name': 'ju1.s3.dom'}\n                                    node2 = {'type': 'EK_PACKET_SWITCH', 'name': None}\n                                    count = solid_step_counting_query(graph_data, node1, node2)\n                                    return_object = {'type': 'text', 'data': count}\n                                    return return_object""",
-                    },
-                    {
-                        "question": "Remove ju1.a1.m4.s3c6.p1 from the graph. Return a graph.",
-                        "answer": """def process_graph(graph_data):\n                                    child_node_name = 'ju1.a1.m4.s3c6.p1'\n                                    graph_data = solid_step_remove_node_from_graph(graph_data, child_node_name)\n                                    return_object = {'type': 'graph', 'data': graph_data}\n                                    return return_object""",
-                    },
-                ]
-        few_shot_prompt_prefix = """
-        """
+            {
+                "question": "Update the physical capacity value of ju1.s3.s2c2.p8 to 60. Return a graph.",
+                "answer": """def process_graph(graph_data):\n                                    child_node_name = 'ju1.s3.s2c2.p8'\n                                    new_value = 60\n                                    graph_data = solid_step_update_node_value(graph_data, child_node_name, new_value)\n                                    return_object = {'type': 'graph', 'data': graph_data}\n                                    return return_object""",
+            },
+            {
+                "question": "Add new node with name new_EK_PACKET_SWITCH_32 type EK_PACKET_SWITCH, to ju1.a4.m4. Return a graph.",
+                "answer": """def process_graph(graph_data):\n                        new_node = {'name': 'new_EK_PACKET_SWITCH_32', 'type': 'EK_PACKET_SWITCH'}\n                        parent_node_name = 'ju1.a4.m4'\n                        graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)\n                        return_object = {'type': 'graph', 'data': graph_data}\n                        return return_object""",
+            },
+            {
+                "question": "Count the EK_PACKET_SWITCH in the ju1.s3.dom. Return only the count number.",
+                "answer": """def process_graph(graph_data):\n                                    node1 = {'type': 'EK_CONTROL_DOMAIN', 'name': 'ju1.s3.dom'}\n                                    node2 = {'type': 'EK_PACKET_SWITCH', 'name': None}\n                                    count = solid_step_counting_query(graph_data, node1, node2)\n                                    return_object = {'type': 'text', 'data': count}\n                                    return return_object""",
+            },
+            {
+                "question": "Remove ju1.a1.m4.s3c6.p1 from the graph. Return a graph.",
+                "answer": """def process_graph(graph_data):\n                                    child_node_name = 'ju1.a1.m4.s3c6.p1'\n                                    graph_data = solid_step_remove_node_from_graph(graph_data, child_node_name)\n                                    return_object = {'type': 'graph', 'data': graph_data}\n                                    return return_object""",
+            },
+        ]
+        few_shot_prompt_prefix = super().generate_prompt() + str(examples)
+        return few_shot_prompt_prefix
+
+
+
+# TODO: add few shot examples for semantic and knn
+class FewShot_Semantic_PromptAgent(ZeroShot_CoT_PromptAgent):
+    def __init__(self):
+        super().__init__()  # Initialize the parent class
+        self.prompt_prefix = self.generate_prompt()
+
+    def generate_prompt(self):
+        few_shot_prompt_prefix = super().generate_prompt() + str(examples)
+        return few_shot_prompt_prefix
+
+
+class FewShot_KNN_PromptAgent(ZeroShot_CoT_PromptAgent):
+    def __init__(self):
+        super().__init__()  # Initialize the parent class
+        self.prompt_prefix = self.generate_prompt()
+
+    def generate_prompt(self):
+        few_shot_prompt_prefix = super().generate_prompt() + str(examples)
+        return few_shot_prompt_prefix
