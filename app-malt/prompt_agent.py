@@ -1,0 +1,226 @@
+import json
+import traceback
+from dotenv import load_dotenv
+import openai
+import pandas as pd
+from collections import Counter
+from prototxt_parser.prototxt import parse
+import os
+from solid_step_helper import clean_up_llm_output_func
+import networkx as nx
+import jsonlines
+import json
+import re
+import time
+import sys
+import numpy as np
+from langchain.prompts import PromptTemplate, FewShotPromptTemplate
+from langchain.chains import LLMChain 
+import warnings
+from langchain._api import LangChainDeprecationWarning
+from langchain_chroma import Chroma
+from langchain_core.example_selectors import SemanticSimilarityExampleSelector
+from langchain_openai import AzureOpenAIEmbeddings
+warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
+
+prompt_suffix = """Begin! Remember to ensure that you generate valid Python code in the following format:
+
+        Answer:
+        ```python
+        ${{Code that will answer the user question or request}}
+        ```
+        Question: {input}
+        """
+
+EXAMPLE_LIST = [
+            {
+                "question": "Update the physical capacity value of ju1.a3.m2.s2c4.p10 to 72. Return a graph.",
+                "answer": r'''def process_graph(graph_data):    
+                                graph_copy = copy.deepcopy(graph_data)    
+                                for node in graph_copy.nodes(data=True):        
+                                    if node[1]['name'] == 'ju1.a3.m2.s2c4.p10' and 'EK_PORT' in node[1]['type']:            
+                                        node[1]['physical_capacity_bps'] = 72           
+                                    break    
+                                graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)    
+                                return return_object''',
+            },
+            {
+                "question": "Add new node with name new_EK_PORT_82 type EK_PORT, to ju1.a2.m4.s3c6. Return a graph.",
+                "answer": r'''def process_graph(graph_data):
+                                graph_copy = copy.deepcopy(graph_data)
+                                graph_copy.add_node('new_EK_PORT_82', type=['EK_PORT'], physical_capacity_bps=1000)
+                                graph_copy.add_edge('ju1.a2.m4.s3c6', 'new_EK_PORT_82', type=['RK_CONTAINS'])
+                                graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)    
+                                return return_object''',
+            },
+            {
+                "question": "Count the EK_PACKET_SWITCH in the ju1.a2.dom. Return only the count number.",
+                "answer": r'''def process_graph(graph_data):
+                                graph_copy = graph_data.copy()
+                                count = 0
+                                for node in graph_copy.nodes(data=True):
+                                    if 'EK_PACKET_SWITCH' in node[1]['type'] and node[0].startswith('ju1.a2.'):
+                                        count += 1
+                                return return_object''',
+            },
+            {
+                "question": "Remove ju1.a1.m4.s3c6.p1 from the graph. Return a graph.",
+                "answer": r'''def process_graph(graph_data):
+                                graph_copy = graph_data.copy()
+                                node_to_remove = None
+                                for node in graph_copy.nodes(data=True):
+                                    if node[0] == 'ju1.a1.m4.s3c6.p1':
+                                        node_to_remove = node[0]
+                                        break
+                                if node_to_remove:
+                                    graph_copy.remove_node(node_to_remove)
+                                graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)
+                                return return_object''',
+            },
+        ]
+
+class BasePromptAgent:
+    def __init__(self):
+        self.prompt_prefix = self.generate_prompt()
+
+    def generate_prompt(self):
+        prompt_prefix = """
+        Generate the Python code needed to process the network graph to answer the user question or request. The network graph data is stored as a networkx graph object, the Python code you generate should be in the form of a function named process_graph that takes a single input argument graph_data and returns a single object return_object. The input argument graph_data will be a networkx graph object with nodes and edges.
+        The graph is directed and each node has a 'name' attribute to represent itself.
+        Each node has a 'type' attribute, in the format of EK_TYPE. 'type' must be a list, can include ['EK_SUPERBLOCK', 'EK_CHASSIS', 'EK_RACK', 'EK_AGG_BLOCK', 'EK_JUPITER', 'EK_PORT', 'EK_SPINEBLOCK', 'EK_PACKET_SWITCH', 'EK_CONTROL_POINT', 'EK_CONTROL_DOMAIN'].
+        Each node can have other attributes depending on its type.
+        Each directed edge also has a 'type' attribute, include RK_CONTAINS, RK_CONTROL.
+        You should check relationship based on edge, check name based on node attribute. 
+        Nodes has hierarchy: CHASSIS contains PACKET_SWITCH, JUPITER contains SUPERBLOCK, SUPERBLOCK contains AGG_BLOCK, AGG_BLOCK contains PACKET_SWITCH, PACKET_SWITCH contains PORT
+        Adding new nodes need to consider attributes of the new node. Also consider adding edges based on their relationship with existing nodes. 
+        The name to add on each layer can be inferred from new node name string.
+        When adding new nodes, you should also add edges based on their relationship with existing nodes. 
+        Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3. 
+        When you add a new packet switch, should add a new port to it and use the default physical_capacity_bps as 1000.
+        When calculating capacity of a node, you need to sum the physical_capacity_bps on the PORT of each hierarchy contains in this node.
+        When creating a new graph, need to filter nodes and edges with attributes from the original graph. 
+        When update a graph, always create a graph copy, do not modify the input graph. 
+        To find node based on type, check the name and type list. For example, [node[0] == 'ju1.a1.m1.s2c1' and 'EK_PACKET_SWITCH' in node[1]['type']].
+
+        Do not use multi-layer function. The output format should only return one object. The return_object will be a JSON object with two keys, 'type' and 'data'. The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table' or 'graph'.
+        The 'data' key should contain the data needed to render the output. If the output type is 'text' then the 'data' key should contain a string. If the output type is 'list' then the 'data' key should contain a list of items.
+        If the output type is 'table' then the 'data' key should contain a list of lists where each list represents a row in the table.If the output type is 'graph' then the 'data' key should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
+        node.startswith will not work for the node name. you have to check the node name with the node['name'].
+
+        Context: When the user requests to make changes to the graph, it is generally appropriate to return the graph. 
+        In the Python code you generate, you should process the networkx graph object to produce the needed output.
+
+        Remember, your reply should always start with string "\nAnswer:\n", and you should generate a function called "def process_graph".
+        All of your output should only contain the defined function without example usages, no additional text, and display in a Python code block.
+        Do not include any package import in your answer.
+        """
+        return prompt_prefix    
+
+
+class ZeroShot_CoT_PromptAgent:
+    def __init__(self):
+        self.prompt_prefix = self.generate_prompt()
+
+    def generate_prompt(self):
+        cot_prompt_prefix = """
+        Please think of the problem step by step based on the following instructions:
+
+        Generate the Python code needed to process the network graph to answer the user question or request. The network graph data is stored as a networkx graph object, the Python code you generate should be in the form of a function named process_graph that takes a single input argument graph_data and returns a single object return_object. The input argument graph_data will be a networkx graph object with nodes and edges.
+        
+        Steps to consider:
+        1. First, understand what the input graph structure looks like:
+           - The graph is directed with nodes having 'name' and 'type' attributes
+           - Node types include EK_SUPERBLOCK, EK_CHASSIS, EK_RACK, etc.
+           - Edges have types like RK_CONTAINS, RK_CONTROL
+        
+        2. Consider the hierarchy relationships:
+           - CHASSIS contains PACKET_SWITCH
+           - JUPITER contains SUPERBLOCK
+           - SUPERBLOCK contains AGG_BLOCK
+           - AGG_BLOCK contains PACKET_SWITCH
+           - PACKET_SWITCH contains PORT
+
+        3. When modifying the graph:
+           - Create a copy of the graph before modifications
+           - Consider all required attributes for new nodes
+           - Add appropriate edges based on relationships
+           - For new packet switches, add ports with default capacity 1000
+        
+        4. For capacity calculations:
+           - Sum the physical_capacity_bps of PORTs in the hierarchy
+           - Consider all contained nodes at each level
+
+        5. Format the output appropriately:
+           - Return a JSON object with 'type' and 'data' keys
+           - Types can be: 'text', 'list', 'table', or 'graph'
+           - Format data according to the specified type
+
+        """
+        return cot_prompt_prefix
+
+
+class FewShot_Basic_PromptAgent(ZeroShot_CoT_PromptAgent):
+    def __init__(self):
+        super().__init__()
+        self.examples = EXAMPLE_LIST
+        self.cot_prompt_prefix = super().generate_prompt()
+    
+    def get_few_shot_prompt(self):
+        example_prompt = PromptTemplate(
+            input_variables=["question", "answer"],
+            template="Question: {question}\nAnswer: {answer}"
+        )
+        
+        few_shot_prompt = FewShotPromptTemplate(
+            examples=self.examples,
+            example_prompt=example_prompt,
+            prefix=self.cot_prompt_prefix + "Here are some example question-answer pairs:\n",
+            suffix=prompt_suffix,
+            input_variables=["input"]
+        )
+        return few_shot_prompt
+
+
+# TODO: add few shot examples for knn
+class FewShot_Semantic_PromptAgent(ZeroShot_CoT_PromptAgent):
+    def __init__(self):
+        self.examples = EXAMPLE_LIST
+        self.cot_prompt_prefix = super().generate_prompt()
+
+    def get_few_shot_prompt(self, query):
+        embeddings = AzureOpenAIEmbeddings(
+            model="text-embedding-3-large"
+        )
+        example_selector = SemanticSimilarityExampleSelector.from_examples(
+            # This is the list of examples available to select from.
+            self.examples,
+            # This is the embedding class used to produce embeddings which are used to measure semantic similarity.
+            embeddings,
+            # This is the VectorStore class that is used to store the embeddings and do a similarity search over.
+            Chroma,
+            # This is the number of examples to produce.
+            k=1)
+
+        example_prompt = PromptTemplate(
+            input_variables=["question", "answer"],
+            template="Question: {question}\nAnswer: {answer}"
+        )
+        
+        few_shot_prompt = FewShotPromptTemplate(
+            examples=example_selector.select_examples({"question": query}),
+            example_prompt=example_prompt,
+            prefix=self.cot_prompt_prefix + "Here are some example question-answer pairs:\n",
+            suffix=prompt_suffix,
+            input_variables=["input"]
+        )
+        return few_shot_prompt
+
+
+# class FewShot_KNN_PromptAgent(ZeroShot_CoT_PromptAgent):
+#     def __init__(self):
+#         super().__init__()  # Initialize the parent class
+#         self.prompt_prefix = self.generate_prompt()
+
+#     def generate_prompt(self):
+#         few_shot_prompt_prefix = super().generate_prompt() + str(examples)
+#         return few_shot_prompt_prefix
