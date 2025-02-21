@@ -115,30 +115,46 @@ class FewShot_Basic_PromptAgent(ZeroShot_CoT_PromptAgent):
         self.examples = [
             {
                 "question": "Update the physical capacity value of ju1.a3.m2.s2c4.p10 to 72. Return a graph.",
-                "answer": r'''def process_graph(graph_data):
-                                child_node_name = 'ju1.a3.m2.s2c4.p10'
-                                new_value = 72
-                                graph_data = solid_step_update_node_value(graph_data, child_node_name, new_value)
+                "answer": r'''def process_graph(graph_data):    
+                                graph_copy = copy.deepcopy(graph_data)    
+                                for node in graph_copy.nodes(data=True):        
+                                    if node[1]['name'] == 'ju1.a3.m2.s2c4.p10' and 'EK_PORT' in node[1]['type']:            
+                                        node[1]['physical_capacity_bps'] = 72           
+                                    break    
+                                graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)    
                                 return return_object''',
             },
             {
-                "question": "Add new node with name new_EK_PACKET_SWITCH_32 type EK_PACKET_SWITCH, to ju1.a4.m4. Return a graph.",
+                "question": "Add new node with name new_EK_PORT_82 type EK_PORT, to ju1.a2.m4.s3c6. Return a graph.",
                 "answer": r'''def process_graph(graph_data):
-                                parent_node_name = 'ju1.a4.m4'
-                                graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)
+                                graph_copy = copy.deepcopy(graph_data)
+                                graph_copy.add_node('new_EK_PORT_82', type=['EK_PORT'], physical_capacity_bps=1000)
+                                graph_copy.add_edge('ju1.a2.m4.s3c6', 'new_EK_PORT_82', type=['RK_CONTAINS'])
+                                graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)    
                                 return return_object''',
             },
             {
-                "question": "Count the EK_PACKET_SWITCH in the ju1.s3.dom. Return only the count number.",
+                "question": "Count the EK_PACKET_SWITCH in the ju1.a2.dom. Return only the count number.",
                 "answer": r'''def process_graph(graph_data):
-                                count = solid_step_counting_query(graph_data, node1, node2)
+                                graph_copy = graph_data.copy()
+                                count = 0
+                                for node in graph_copy.nodes(data=True):
+                                    if 'EK_PACKET_SWITCH' in node[1]['type'] and node[0].startswith('ju1.a2.'):
+                                        count += 1
                                 return return_object''',
             },
             {
                 "question": "Remove ju1.a1.m4.s3c6.p1 from the graph. Return a graph.",
                 "answer": r'''def process_graph(graph_data):
-                                child_node_name = 'ju1.a1.m4.s3c6.p1'
-                                graph_data = solid_step_remove_node_from_graph(graph_data, child_node_name)
+                                graph_copy = graph_data.copy()
+                                node_to_remove = None
+                                for node in graph_copy.nodes(data=True):
+                                    if node[0] == 'ju1.a1.m4.s3c6.p1':
+                                        node_to_remove = node[0]
+                                        break
+                                if node_to_remove:
+                                    graph_copy.remove_node(node_to_remove)
+                                graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)
                                 return return_object''',
             },
         ]
