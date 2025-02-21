@@ -72,22 +72,41 @@ class GoogleGeminiAgent:
             max_retries=2,
         )
         self.prompt_type = prompt_type
+        
         # Select prompt agent based on type
         if self.prompt_type == "cot":
             prompt_agent = ZeroShot_CoT_PromptAgent()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt_agent.prompt_prefix + prompt_suffix
+            )
         elif self.prompt_type == "few_shot_basic":
             prompt_agent = FewShot_Basic_PromptAgent()
+            prompt = prompt_agent.get_few_shot_prompt(prompt_suffix)
         else:
             prompt_agent = BasePromptAgent()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt_agent.prompt_prefix + prompt_suffix
+            )
 
-        prompt = PromptTemplate(
-            input_variables=["input"],
-            template=prompt_agent.prompt_prefix + prompt_suffix
-        )
         # Print prompt template in a clean format
         print("\nPrompt Template:")
         print("-" * 80)
-        print(prompt.template.strip())
+        if isinstance(prompt, FewShotPromptTemplate):
+            # Print in a more readable format
+            print("Few Shot Prompt Template Configuration:")
+            print("\nInput Variables:", prompt.input_variables)
+            print("\nExamples:")
+            for i, example in enumerate(prompt.examples, 1):
+                print(f"\nExample {i}:")
+                print(f"Question: {example['question']}")
+                print(f"Answer: {example['answer']}")
+            print("\nExample Prompt Template:", prompt.example_prompt)
+            print("\nPrefix:", prompt.prefix)
+            print("\nSuffix:", prompt.suffix)
+        else:
+            print(prompt.template.strip())
         print("-" * 80 + "\n")
         
         self.pyGraphNetExplorer = LLMChain(llm=self.llm, prompt=prompt)
@@ -111,24 +130,40 @@ class AzureGPT4Agent:
             temperature=0.0,
             max_tokens=4000,
         )
-
         self.prompt_type = prompt_type
         # Select prompt agent based on type
         if self.prompt_type == "cot":
             prompt_agent = ZeroShot_CoT_PromptAgent()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt_agent.prompt_prefix + prompt_suffix
+            )
         elif self.prompt_type == "few_shot_basic":
             prompt_agent = FewShot_Basic_PromptAgent()
+            prompt = prompt_agent.get_few_shot_prompt(prompt_suffix)
         else:
             prompt_agent = BasePromptAgent()
-
-        prompt = PromptTemplate(
-            input_variables=["input"],
-            template=prompt_agent.prompt_prefix + prompt_suffix
-        )
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt_agent.prompt_prefix + prompt_suffix
+            )
         # Print prompt template in a clean format
         print("\nPrompt Template:")
         print("-" * 80)
-        print(prompt.template.strip())
+        if isinstance(prompt, FewShotPromptTemplate):
+            # Print in a more readable format
+            print("Few Shot Prompt Template Configuration:")
+            print("\nInput Variables:", prompt.input_variables)
+            print("\nExamples:")
+            for i, example in enumerate(prompt.examples, 1):
+                print(f"\nExample {i}:")
+                print(f"Question: {example['question']}")
+                print(f"Answer: {example['answer']}")
+            print("\nExample Prompt Template:", prompt.example_prompt)
+            print("\nPrefix:", prompt.prefix)
+            print("\nSuffix:", prompt.suffix)            
+        else:
+            print(prompt.template.strip())
         print("-" * 80 + "\n")
         
         self.pyGraphNetExplorer = LLMChain(llm=self.llm, prompt=prompt)

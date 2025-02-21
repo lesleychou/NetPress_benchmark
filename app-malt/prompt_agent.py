@@ -20,6 +20,14 @@ import warnings
 from langchain._api import LangChainDeprecationWarning
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
+prompt_suffix = """Begin! Remember to ensure that you generate valid Python code in the following format:
+
+        Answer:
+        ```python
+        ${{Code that will answer the user question or request}}
+        ```
+        Question: {input}
+        """
 
 class BasePromptAgent:
     def __init__(self):
@@ -103,30 +111,54 @@ class ZeroShot_CoT_PromptAgent:
 
 class FewShot_Basic_PromptAgent(ZeroShot_CoT_PromptAgent):
     def __init__(self):
-        super().__init__()  # Initialize the parent class
-        self.prompt_prefix = self.generate_prompt()
-
-    def generate_prompt(self):
-        examples = [
+        super().__init__()
+        self.examples = [
             {
-                "question": "Update the physical capacity value of ju1.s3.s2c2.p8 to 60. Return a graph.",
-                "answer": """def process_graph(graph_data):\n                                    child_node_name = 'ju1.s3.s2c2.p8'\n                                    new_value = 60\n                                    graph_data = solid_step_update_node_value(graph_data, child_node_name, new_value)\n                                    return_object = {'type': 'graph', 'data': graph_data}\n                                    return return_object""",
+                "question": "Update the physical capacity value of ju1.a3.m2.s2c4.p10 to 72. Return a graph.",
+                "answer": r'''def process_graph(graph_data):
+                                child_node_name = 'ju1.a3.m2.s2c4.p10'
+                                new_value = 72
+                                graph_data = solid_step_update_node_value(graph_data, child_node_name, new_value)
+                                return return_object''',
             },
             {
                 "question": "Add new node with name new_EK_PACKET_SWITCH_32 type EK_PACKET_SWITCH, to ju1.a4.m4. Return a graph.",
-                "answer": """def process_graph(graph_data):\n                        new_node = {'name': 'new_EK_PACKET_SWITCH_32', 'type': 'EK_PACKET_SWITCH'}\n                        parent_node_name = 'ju1.a4.m4'\n                        graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)\n                        return_object = {'type': 'graph', 'data': graph_data}\n                        return return_object""",
+                "answer": r'''def process_graph(graph_data):
+                                parent_node_name = 'ju1.a4.m4'
+                                graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)
+                                return return_object''',
             },
             {
                 "question": "Count the EK_PACKET_SWITCH in the ju1.s3.dom. Return only the count number.",
-                "answer": """def process_graph(graph_data):\n                                    node1 = {'type': 'EK_CONTROL_DOMAIN', 'name': 'ju1.s3.dom'}\n                                    node2 = {'type': 'EK_PACKET_SWITCH', 'name': None}\n                                    count = solid_step_counting_query(graph_data, node1, node2)\n                                    return_object = {'type': 'text', 'data': count}\n                                    return return_object""",
+                "answer": r'''def process_graph(graph_data):
+                                count = solid_step_counting_query(graph_data, node1, node2)
+                                return return_object''',
             },
             {
                 "question": "Remove ju1.a1.m4.s3c6.p1 from the graph. Return a graph.",
-                "answer": """def process_graph(graph_data):\n                                    child_node_name = 'ju1.a1.m4.s3c6.p1'\n                                    graph_data = solid_step_remove_node_from_graph(graph_data, child_node_name)\n                                    return_object = {'type': 'graph', 'data': graph_data}\n                                    return return_object""",
+                "answer": r'''def process_graph(graph_data):
+                                child_node_name = 'ju1.a1.m4.s3c6.p1'
+                                graph_data = solid_step_remove_node_from_graph(graph_data, child_node_name)
+                                return return_object''',
             },
         ]
-        few_shot_prompt_prefix = super().generate_prompt() + str(examples)
-        return few_shot_prompt_prefix
+        self.cot_prompt_prefix = super().generate_prompt()
+    
+
+    def get_few_shot_prompt(self, suffix):
+        example_prompt = PromptTemplate(
+            input_variables=["question", "answer"],
+            template="Question: {question}\nAnswer: {answer}"
+        )
+        
+        few_shot_prompt = FewShotPromptTemplate(
+            examples=self.examples,
+            example_prompt=example_prompt,
+            prefix=self.cot_prompt_prefix + "Here are some example question-answer pairs:\n",
+            suffix=prompt_suffix,
+            input_variables=["input"]
+        )
+        return few_shot_prompt
 
 
 
