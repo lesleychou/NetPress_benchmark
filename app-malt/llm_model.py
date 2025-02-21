@@ -183,7 +183,7 @@ class AzureGPT4Agent:
    
 class QwenModel:
     def __init__(self, prompt_type="base"):
-        self.model_name = "Qwen2.5-72B-Instruct"
+        self.model_name = "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.llm = LLM(
             model=self.model_name,
@@ -196,31 +196,57 @@ class QwenModel:
         )
 
         self.prompt_type = prompt_type
-        # Select prompt agent based on type
+        # Store prompt agent for later use
         if self.prompt_type == "cot":
-            prompt_agent = ZeroShot_CoT_PromptAgent()
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
         elif self.prompt_type == "few_shot_basic":
-            prompt_agent = FewShot_Basic_PromptAgent()
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif self.prompt_type == "few_shot_semantic":
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
         else:
-            prompt_agent = BasePromptAgent()
-
-        self.prompt = prompt_agent.prompt_prefix + prompt_suffix
-        print("prompt:", self.prompt)
-
+            self.prompt_agent = BasePromptAgent()
 
     def call_agent(self, query):
         print("Calling Qwen with prompt type:", self.prompt_type)
-        prompt_text = self.prompt + query 
-        print("prompt_text:", prompt_text)
         
-        result = self.llm.generate([prompt_text], sampling_params=self.sampling_params)
-        answer = result[0].outputs[0].text
-  
-        print("llm answer:", answer)
+        # Create prompt based on type
+        if self.prompt_type == "few_shot_semantic":
+            prompt_template = self.prompt_agent.get_few_shot_prompt(query)
+            # For few-shot semantic, we need to format with the specific query
+            prompt_text = prompt_template.format(input=query)
+        elif self.prompt_type == "few_shot_basic":
+            prompt_template = self.prompt_agent.get_few_shot_prompt()
+            # For few-shot basic, format with the query
+            prompt_text = prompt_template.format(input=query)
+        else:
+            # For base/cot prompts
+            prompt_text = self.prompt_agent.prompt_prefix + prompt_suffix
+            prompt_text = prompt_text.format(input=query)
+
+        # Print prompt template (keeping the same debugging output)
+        print("\nPrompt Template:")
+        print("-" * 80)
+        if isinstance(prompt_template, FewShotPromptTemplate):
+            print("Few Shot Prompt Template Configuration:")
+            print("\nInput Variables:", prompt_template.input_variables)
+            print("\nExamples:")
+            for i, example in enumerate(prompt_template.examples, 1):
+                print(f"\nExample {i}:")
+                print(f"Question: {example['question']}")
+                print(f"Answer: {example['answer']}")
+            print("\nExample Prompt Template:", prompt_template.example_prompt)
+            print("\nPrefix:", prompt_template.prefix)
+            print("\nSuffix:", prompt_template.suffix)
+        else:
+            print(prompt_text.strip())
+        print("-" * 80 + "\n")
+
+        # Use vLLM's native interface for generation
+        outputs = self.llm.generate(prompt_text, self.sampling_params)
+        answer = outputs[0].outputs[0].text
         print("model returned")
         code = clean_up_llm_output_func(answer)
         return code
-
  
 class LlamaModel:
     def __init__(self, prompt_type="base"):
