@@ -4,7 +4,7 @@ from llm_model import LLMModel
 from mininet.log import setLogLevel, info, lg
 from llm_model import LLMModel
 from mininet_logger import MininetLogger
-from file_utils import prepare_file, initialize_json_file, summarize_results, error_classification, plot_metrics_from_json, delete_result_folder, plot_combined_error_metrics, plot_metrics
+from file_utils import prepare_file, initialize_json_file, static_summarize_results, summarize_results, error_classification, plot_metrics_from_json, delete_result_folder, plot_combined_error_metrics, plot_metrics, static_plot_metrics
 from error_function import inject_errors
 from topology import generate_subnets, NetworkTopo
 from fast_ping import fastpingall
@@ -16,10 +16,12 @@ import os
 import matplotlib.pyplot as plt
 import json
 from datetime import datetime
+from error_function import process_single_error, generate_config
+
 
 def run(args):
     # Instantiate LLM test taker
-    llm_model = LLMModel(model=args.llm_agent_type)
+    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm)
 
     for i in range(args.num_queries):
         # Dynamically generate subnets and errors
@@ -105,7 +107,7 @@ def run(args):
 
 def run_full_test(args):
     # Instantiate LLM test taker
-    llm_model = LLMModel(model=args.llm_agent_type)
+    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm)
     args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type, datetime.now().strftime("%Y%m%d-%H%M%S"))
     # Define error types
     error_types = ['disable_routing', 'disable_interface', 'remove_ip', 'drop_traffic_to_from_subnet', 'wrong_routing_table']
@@ -290,3 +292,114 @@ def combined_error_test(args):
         error_classification(errors, json_path)
     
     plot_combined_error_metrics(args.root_dir, error_combinations)
+
+def static_benchmark_run(args):
+    file_path = args.root_dir + '/config.json'
+    if args.static_benchmark_generation == 1:
+        generate_config(file_path, args.num_queries)  
+
+    # Instantiate LLM test taker
+    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm)
+    args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type, datetime.now().strftime("%Y%m%d-%H%M%S"))
+
+    # Define error types
+    with open(file_path, 'r') as f:
+        config = json.load(f)
+    queries = config.get("queries", [])
+    for i, query in enumerate(queries):
+        info(f'*** Injecting errors for query {i}\n')
+        errornumber = query.get("errornumber", 1)
+        errortype = query.get("errortype")
+        hostnumber = query.get("hostnumber")
+        errordetail = query.get("errordetail")
+        subnets = generate_subnets(hostnumber, hostnumber)
+        print(errortype)
+        
+        # Instantiate Mininet topo
+        topo = NetworkTopo(num_hosts=hostnumber, num_switches=hostnumber, subnets=subnets)
+        net = Mininet(topo=topo, waitConnected=True)
+        
+        # Start Mininet
+        net.start()
+        
+        # Enable IP forwarding on the router
+        router = net.get('r0')
+        info(router.cmd('sysctl -w net.ipv4.ip_forward=1'))
+        
+        # Inject errors
+        if errornumber == 1:
+            process_single_error(router, subnets, errortype, errordetail)
+        else:
+            if isinstance(errortype, list) and isinstance(errordetail, list) and len(errortype) == errornumber and len(errordetail) == errornumber:
+                for et, ed in zip(errortype, errordetail):
+                    process_single_error(router, subnets, et, ed)
+            else:
+                info('*** For multiple error injection, errortype and errordetail must be lists of length equal to errornumber\n')
+
+        # Start logging
+        Mininet_log = MininetLogger()
+        
+        # Create directory and file to store result
+        if isinstance(errortype, list):
+            errortype = '+'.join(errortype)  
+
+        result_dir = os.path.join(args.root_dir, errortype)
+
+        os.makedirs(result_dir, exist_ok=True)
+        result_file_path = os.path.join(result_dir, f'result_{i+1}.txt')
+        json_path = os.path.join(result_dir, f'result_{i+1}.json')
+        prepare_file(result_file_path)
+        initialize_json_file(json_path)
+        
+        # Let LLM interact with Mininet
+        iter = 0
+        while iter < args.max_iteration:
+            # Set up logging
+            Mininet_log.setup_logger()
+            
+            # Execute LLM command
+            if iter != 0:
+                lg.output(f"Machine: {machine}")
+                lg.output(f"Command: {commands}")
+                
+                if safety_check(commands):
+                    try:
+                        # Set the signal handler and a 100-second alarm
+                        signal.signal(signal.SIGALRM, handler)
+                        signal.alarm(100)
+                        
+                        # Try executing the command
+                        lg.output(net[machine].cmd(commands))
+                        
+                        # Disable the alarm after successful execution
+                        signal.alarm(0)
+                    except TimeoutError as te:
+                        lg.output(f"Timeout occurred while executing command on {machine}: {te}")
+                    except Exception as e:
+                        # Handle the exception, log the error, and continue
+                        lg.output(f"Error occurred while executing command on {machine}: {e}") 
+                        
+            # Pinging all hosts in the network
+            fastpingall(net)
+            
+            # Read log file content
+            log_content = Mininet_log.get_log_content()
+            
+            # Get LLM response
+            machine, commands = llm_model.model.predict(log_content, result_file_path, json_path)
+            
+            # # Read log content, if successful then breaks
+            if Mininet_log.read_log_content(log_content, iter):
+                break
+            
+            iter += 1
+            
+        net.stop()
+
+    for subdir in os.listdir(args.root_dir):
+        subdir_path = os.path.join(args.root_dir, subdir)
+        if os.path.isdir(subdir_path):
+            json_result_path = os.path.join(subdir_path, f'{subdir}_result.json')
+            static_summarize_results(subdir_path, json_result_path)
+
+    static_plot_metrics(args.root_dir)

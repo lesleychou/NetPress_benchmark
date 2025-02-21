@@ -13,22 +13,23 @@ def parse_args():
     parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", help='Choose the LLM agent')
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
-    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/app-k8s", help='Directory to save output JSONL file')
+    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/microservices-demo", help='Directory to save output JSONL file')
     parser.add_argument('--max_iteration', type=int, default=20, help='Choose maximum trials for a query')
     parser.add_argument('--full_test', type=int, default=0, choices=[0, 1], help='Enable full test if set to 1')
     return parser.parse_args()
 
 def run_workflow(args):
     # llm = LLMAgent(llm_agent_type=args.llm_agent_type)
+    pod_names = ["adservice", "cartservice", "checkoutservice", "currencyservice", "emailservice", "frontend", "loadgenerator", "paymentservice", "productcatalogservice", "recommendationservice", "redis-cart", "shippingservice"]
+    expected_results = {
+        "payment": {"http://database-service:5432": True},  
+        "analytics": {
+            "http://database-service:80": False, 
+            "http://payment-service:80": False
+        },
+        "gateway": {"http://payment-service:80": True}
+    } 
     for i in range(1): 
-        expected_results = {
-            "payment": {"http://database-service:5432": True},  
-            "analytics": {
-                "http://database-service:80": False, 
-                "http://payment-service:80": False
-            },
-            "gateway": {"http://payment-service:80": True}
-        } 
 
         # Step 1: Deploy pods to Kubernetes
         print("Deploying pods...")
@@ -41,17 +42,13 @@ def run_workflow(args):
                 except subprocess.CalledProcessError as e:
                     print(f"Failed to deploy {pod_yaml}:\n{e.stderr}")
 
-        # Step 2: Generate initial policies
-        print("Generating initial policies...")
-        generate_yaml_files()
-
-        # # Step 3: Inject errors into policies
-        # print("Injecting errors into policies...")
-        # inject_errors_into_policies()
+        # Step 3: Inject errors into policies
+        print("Injecting errors into policies...")
+        inject_errors_into_policies(args.root_dir, args.complexity_level)
         
         # Step 4: Deploy policies
         print("Deploying policies...")
-        deploy_policies()
+        deploy_policies(pod_names,args.root_dir)
 
         # Interaction with LLM
         result = "None"

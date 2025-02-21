@@ -18,7 +18,6 @@ def error_disable_interface(router, subnets):
 def error_remove_ip(router, subnets):
     interfaces = [f'r0-eth{i+1}' for i in range(len(subnets))]
     interface_to_modify = random.choice(interfaces)
-
     # Remove the IP address assigned to the selected interface
     info(f'*** Injecting error: Removing IP address from interface: {interface_to_modify}\n')
     router.cmd(f'ip addr flush dev {interface_to_modify}')
@@ -27,10 +26,10 @@ def error_remove_ip(router, subnets):
 def error_drop_traffic_to_from_subnet(router, subnets):
     # Drop all traffic to/from one random subnet
     subnet_to_drop = random.choice(subnets)
-    subnet_ip = subnet_to_drop[0].split('/')[0]
-    info(f'*** Injecting error: Dropping traffic to/from subnet: {subnet_ip}\n')
-    router.cmd('iptables -A INPUT -s 192.168.3.0/24 -j DROP')
-    router.cmd('iptables -A OUTPUT -d 192.168.3.0/24 -j DROP')
+    subnet_address = subnet_to_drop[2]
+    info(f'*** Injecting error: Dropping traffic to/from subnet: {subnet_address}\n')
+    router.cmd(f'iptables -A INPUT -s {subnet_address} -j DROP')
+    router.cmd(f'iptables -A OUTPUT -d {subnet_address} -j DROP')
 
 def error_wrong_routing_table(router, subnets):
     # Delete original routing, add wrong routing
@@ -60,3 +59,135 @@ def inject_errors(router, subnets, error_number=1, errortype=None):
         error(router, subnets)
     
     return errors_to_inject
+
+import json
+import random
+from itertools import combinations
+def get_detail(error_type, hostnumber):
+    """
+    根据错误类型和 hostnumber 生成错误详情，
+    其中随机数字均在 [1, hostnumber-1] 范围内。
+    对于 wrong_routing_table，要求 hostnumber 至少为 3，否则返回空字典。
+    """
+    if error_type == 'disable_routing':
+        return {"action": "Disable IP forwarding"}
+    elif error_type == 'disable_interface':
+        rand_index = random.randint(1, hostnumber - 1)
+        return {"interface": f"r0-eth{rand_index}"}
+    elif error_type == 'remove_ip':
+        rand_index = random.randint(1, hostnumber - 1)
+        return {"interface": f"r0-eth{rand_index}"}
+    elif error_type == 'drop_traffic_to_from_subnet':
+        rand_index = random.randint(1, hostnumber - 1)
+        return {"subnet": f"192.168.{rand_index}.0/24"}
+    elif error_type == 'wrong_routing_table':
+        # 必须至少有两个可用的接口（hostnumber >= 3）
+        if hostnumber < 3:
+            return {}  # 详细信息不足
+        # 随机选择两个不同的接口索引
+        indexes = random.sample(range(1, hostnumber), 2)
+        from_subnet = f"192.168.{indexes[0]}.0/24"
+        to_subnet = f"192.168.{indexes[1]}.0/24"
+        del_interface = f"r0-eth{indexes[0]}"
+        add_interface = f"r0-eth{indexes[1]}"
+        return {"from": from_subnet, "to": to_subnet, "del_interface": del_interface, "add_interface": add_interface}
+    else:
+        return {}
+
+def generate_config(filename='config.json', num_errors_per_type=5):
+    """
+    生成 config.json 配置文件，其中包含多组查询，每组查询包含：
+      - hostnumber: 随机生成在 5 到 10 之间
+      - errornumber: 单错误为 1，组合错误为 2
+      - errortype 与 errordetail: 单错误时为字符串和字典，组合错误时为列表
+    """
+    queries = []
+    error_types = [
+        # 'disable_routing',
+        'disable_interface',
+        'remove_ip',
+        # 'drop_traffic_to_from_subnet',
+        'wrong_routing_table'
+    ]
+    
+    # # 单错误查询，每个错误类型生成 num_errors_per_type 个
+    # for et in error_types:
+    #     for _ in range(num_errors_per_type):
+    #         hostnumber = random.randint(5, 10)
+    #         detail = get_detail(et, hostnumber)
+    #         query = {
+    #             "hostnumber": hostnumber,
+    #             "errornumber": 1,
+    #             "errortype": et,
+    #             "errordetail": detail
+    #         }
+    #         queries.append(query)
+    
+    # 组合查询：对任意两种不同的错误类型组合生成一条查询（组合注入两个错误）
+    for et1, et2 in combinations(error_types, 2):
+        hostnumber = random.randint(5, 10)
+        detail1 = get_detail(et1, hostnumber)
+        detail2 = get_detail(et2, hostnumber)
+        query = {
+            "hostnumber": hostnumber,
+            "errornumber": 2,
+            "errortype": [et1, et2],
+            "errordetail": [detail1, detail2]
+        }
+        queries.append(query)
+    
+    config = {"queries": queries}
+    
+    with open(filename, 'w') as f:
+        json.dump(config, f, indent=4)
+    
+    print(f"Config file {filename} generated with {len(queries)} queries.")
+
+def process_single_error(router, subnets, errortype, errordetail):
+    """
+    根据 errortype 与 errordetail 注入单个错误。
+    如果详细信息不足，则直接打印 'not enough detailed information'
+    """
+    if errortype == "disable_routing":
+        info('*** Injecting error: Disabling IP forwarding\n')
+        router.cmd('sysctl -w net.ipv4.ip_forward=0')
+        return
+    if errortype == "disable_interface":
+        if "interface" not in errordetail:
+            print("not enough detailed information")
+            return
+        interface = errordetail["interface"]
+        info(f'*** Injecting error: Disabling interface {interface}\n')
+        router.cmd(f'ifconfig {interface} down')
+        return
+    if errortype == "remove_ip":
+        if "interface" not in errordetail:
+            print("not enough detailed information")
+            return
+        interface = errordetail["interface"]
+        info(f'*** Injecting error: Removing IP address from interface {interface}\n')
+        router.cmd(f'ip addr flush dev {interface}')
+        return
+    if errortype == "drop_traffic_to_from_subnet":
+        if "subnet" not in errordetail:
+            print("not enough detailed information")
+            return
+        subnet = errordetail["subnet"]
+        info(f'*** Injecting error: Dropping traffic to/from subnet: {subnet}\n')
+        router.cmd(f'iptables -A INPUT -s {subnet} -j DROP')
+        router.cmd(f'iptables -A OUTPUT -d {subnet} -j DROP')
+        return
+    if errortype == "wrong_routing_table":
+        required_keys = ["from", "to", "del_interface", "add_interface"]
+        if not all(key in errordetail for key in required_keys):
+            print("not enough detailed information")
+            return
+        from_subnet = errordetail["from"]
+        to_subnet = errordetail["to"]
+        del_interface = errordetail["del_interface"]
+        add_interface = errordetail["add_interface"]
+        info(f'*** Injecting error: Wrong routing table from {from_subnet} (delete via {del_interface}) and add via {add_interface}\n')
+        router.cmd(f'ip route del {from_subnet} dev {del_interface}')
+        router.cmd(f'ip route add {from_subnet} dev {add_interface}')
+        return
+    print("not enough detailed information")
