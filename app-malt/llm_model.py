@@ -23,7 +23,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from huggingface_hub import login
 from vllm import LLM, SamplingParams
-from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent
+from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent
 
 # Login huggingface
 login(token="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")
@@ -82,7 +82,10 @@ class GoogleGeminiAgent:
             )
         elif self.prompt_type == "few_shot_basic":
             prompt_agent = FewShot_Basic_PromptAgent()
-            prompt = prompt_agent.get_few_shot_prompt(prompt_suffix)
+            prompt = prompt_agent.get_few_shot_prompt()
+        elif self.prompt_type == "few_shot_semantic":
+            prompt_agent = FewShot_Semantic_PromptAgent()
+            prompt = prompt_agent.get_few_shot_prompt()
         else:
             prompt_agent = BasePromptAgent()
             prompt = PromptTemplate(
@@ -123,7 +126,6 @@ class GoogleGeminiAgent:
 class AzureGPT4Agent:
     def __init__(self, prompt_type="base"):
         self.llm = AzureChatOpenAI(
-            openai_api_type="azure_ad",
             openai_api_version="2024-08-01-preview",
             deployment_name='ztn-sweden-gpt-4o',
             model_name='ztn-sweden-gpt-4o',
@@ -131,27 +133,34 @@ class AzureGPT4Agent:
             max_tokens=4000,
         )
         self.prompt_type = prompt_type
-        # Select prompt agent based on type
+        # Store prompt agent for later use
         if self.prompt_type == "cot":
-            prompt_agent = ZeroShot_CoT_PromptAgent()
-            prompt = PromptTemplate(
-                input_variables=["input"],
-                template=prompt_agent.prompt_prefix + prompt_suffix
-            )
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
         elif self.prompt_type == "few_shot_basic":
-            prompt_agent = FewShot_Basic_PromptAgent()
-            prompt = prompt_agent.get_few_shot_prompt(prompt_suffix)
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif self.prompt_type == "few_shot_semantic":
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
         else:
-            prompt_agent = BasePromptAgent()
+            self.prompt_agent = BasePromptAgent()
+
+    def call_agent(self, query):
+        print("Calling GPT-4o with prompt type:", self.prompt_type)
+        
+        # Create prompt based on type
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(query)
+        elif self.prompt_type in ["few_shot_basic"]:
+            prompt = self.prompt_agent.get_few_shot_prompt()
+        else:
             prompt = PromptTemplate(
                 input_variables=["input"],
-                template=prompt_agent.prompt_prefix + prompt_suffix
+                template=self.prompt_agent.prompt_prefix + prompt_suffix
             )
-        # Print prompt template in a clean format
+
+        # Print prompt template
         print("\nPrompt Template:")
         print("-" * 80)
         if isinstance(prompt, FewShotPromptTemplate):
-            # Print in a more readable format
             print("Few Shot Prompt Template Configuration:")
             print("\nInput Variables:", prompt.input_variables)
             print("\nExamples:")
@@ -161,16 +170,13 @@ class AzureGPT4Agent:
                 print(f"Answer: {example['answer']}")
             print("\nExample Prompt Template:", prompt.example_prompt)
             print("\nPrefix:", prompt.prefix)
-            print("\nSuffix:", prompt.suffix)            
+            print("\nSuffix:", prompt.suffix)
         else:
             print(prompt.template.strip())
         print("-" * 80 + "\n")
-        
-        self.pyGraphNetExplorer = LLMChain(llm=self.llm, prompt=prompt)
 
-    def call_agent(self, query):
-        print("Calling GPT-4o with prompt type:", self.prompt_type)
-        answer = self.pyGraphNetExplorer.run(query)
+        chain = LLMChain(llm=self.llm, prompt=prompt)
+        answer = chain.run(query)
         print("model returned")
         code = clean_up_llm_output_func(answer)
         return code
