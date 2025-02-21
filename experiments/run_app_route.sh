@@ -3,12 +3,15 @@ cd ..
 cd app-route
 
 # Define common parameters
-NUM_QUERIES=5
+NUM_QUERIES=1
 COMPLEXITY_LEVEL="level1"
 ROOT_DIR="/home/ubuntu/jiajun_benchmark/app-route"
-MAX_ITERATION=10
+MAX_ITERATION=5
 FULL_TEST=1
 VLLM=1
+STATIC=1
+STATICGEN=1
+
 
 # Function to clean up existing controller processes
 cleanup_controllers() {
@@ -33,7 +36,9 @@ run_experiment() {
         --root_dir "$ROOT_DIR" \
         --max_iteration $MAX_ITERATION \
         --full_test $FULL_TEST \
-        --vllm $VLLM 
+        --vllm $VLLM \
+        --static $STATIC \
+        --static_benchmark_generation $STATICGEN
 }
 
 # Run experiments for each model
@@ -49,7 +54,7 @@ models=(
 
 models=(
 #     "GPT-Agent"
-    "Google/Gemini"
+    # "Google/Gemini"
     "Qwen/Qwen2.5-72B-Instruct"
 )
 

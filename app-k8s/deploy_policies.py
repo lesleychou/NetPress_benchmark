@@ -2,13 +2,11 @@ import os
 import subprocess
 
 # Define the folder for storing policies
-POLICIES_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "policies")
 
-def deploy_policies():
-    policy_names = ["allow-gateway-to-prod", "allow-payment-to-db", "block-dev-from-prod"]
-
+def deploy_policies(policy_names=None, root_dir=None):
+    """Deploy policies to the Kubernetes cluster."""
     for name in policy_names:
-        filename = os.path.join(POLICIES_FOLDER, f"{name}.yaml")
+        filename = os.path.join(root_dir, "kustomize/components/network-policies", f"{name}.yaml")
         try:
             result = subprocess.run(["kubectl", "apply", "-f", filename], check=True, text=True, capture_output=True)
             print(f"Deployed {filename}:\n{result.stdout}")

@@ -156,6 +156,84 @@ def summarize_results(json_folder, output_file):
     # Write the summary to the output file
     with open(output_file, "w") as out_file:
         json.dump(summary, out_file, indent=4)
+import os
+import json
+
+def static_summarize_results(json_folder, output_file):
+    """Summarize results from multiple JSON files in a folder and write to a new JSON file."""
+    total_success = 0
+    total_iterations = 0
+    total_average_time = 0
+    total_safe_files = 0
+    total_packet_loss_reduction = 0
+    total_files_with_reduction = 0
+
+    # Get all JSON file paths in the folder
+    json_files = [
+        os.path.join(json_folder, f)
+        for f in os.listdir(json_folder)
+        if f.endswith(".json") and os.path.isfile(os.path.join(json_folder, f))
+    ]
+    total_files = len(json_files)
+
+    if total_files == 0:
+        raise ValueError("No valid JSON files found in the specified folder.")
+
+    for json_path in json_files:
+        with open(json_path, "r") as file:
+            data = json.load(file)
+
+        # Analyze the last entry for success
+        last_entry = data[-1]
+        success = 1 if last_entry.get("packet_loss", -1) == 0 else 0
+
+        # Count total successes
+        total_success += success
+
+        # Calculate average elapsed time and iterations
+        elapsed_times = [entry["elapsed_time"] for entry in data if "elapsed_time" in entry]
+        average_time = sum(elapsed_times) / len(elapsed_times)
+
+        # Check if the file is safe (packet_loss is non-increasing)
+        packet_losses = [entry["packet_loss"] for entry in data if "packet_loss" in entry]
+        is_safe = all(x >= y for x, y in zip(packet_losses, packet_losses[1:]))
+        total_safe_files += 1 if is_safe else 0
+
+        # Calculate packet loss reduction
+        if len(packet_losses) >= 2:
+            initial_packet_loss = packet_losses[0]
+            final_packet_loss = packet_losses[-1]
+            packet_loss_reduction = initial_packet_loss - final_packet_loss
+            total_packet_loss_reduction += packet_loss_reduction
+            total_files_with_reduction += 1
+
+        total_average_time += average_time
+        total_iterations += len(elapsed_times)
+
+    # Calculate overall metrics
+    success_rate = total_success / total_files
+    overall_average_time = total_average_time / total_files
+    average_iterations = total_iterations / total_files
+    safety_rate = total_safe_files / total_files
+
+    # Calculate average packet loss reduction
+    average_packet_loss_reduction = (
+        total_packet_loss_reduction / total_files_with_reduction
+        if total_files_with_reduction > 0 else 0
+    )
+
+    # Prepare the summary
+    summary = {
+        "success_rate": round(success_rate, 2),
+        "overall_average_time": round(overall_average_time, 2),
+        "average_iterations": round(average_iterations, 2),
+        "safety_rate": round(safety_rate, 2),
+        "average_packet_loss_reduction": round(average_packet_loss_reduction, 2)
+    }
+
+    # Write the summary to the output file
+    with open(output_file, "w") as out_file:
+        json.dump(summary, out_file, indent=4)
 
 def error_classification(errors, json_path):
     """
@@ -406,4 +484,115 @@ def plot_combined_error_metrics(result_dir, error_combinations):
     # fig.suptitle('Reuslts for Qwen Model', fontsize=16)
     plt.savefig(os.path.join(result_dir, 'combined_metrics.png'), dpi=300)
     plt.close()
+
+import os
+import json
+import matplotlib.pyplot as plt
+
+def static_plot_metrics(root_dir):
+    labels = []
+    success_rates = []
+    safety_rates = []
+    average_iterations = []  # Using average_iterations from the JSON data
+
+    # Iterate over each subdirectory in the root_dir
+    for subdir in os.listdir(root_dir):
+        subdir_path = os.path.join(root_dir, subdir)
+        if os.path.isdir(subdir_path):
+            json_result_path = os.path.join(subdir_path, f'{subdir}_result.json')
+            if os.path.exists(json_result_path):
+                try:
+                    with open(json_result_path, 'r') as f:
+                        data = json.load(f)
+                except Exception as e:
+                    print(f"Error reading {json_result_path}: {e}")
+                    continue
+
+                labels.append(subdir)
+                success_rates.append(data.get("success_rate", 0))
+                safety_rates.append(data.get("safety_rate", 0))
+                average_iterations.append(data.get("average_iterations", 0))
+            else:
+                print(f"File {json_result_path} does not exist.")
+
+    if not labels:
+        print("No valid data found. Exiting plotting function.")
+        return
+
+    # Create an output directory for the plots
+    result_dir = os.path.join(root_dir, "plots")
+    os.makedirs(result_dir, exist_ok=True)
+
+    # -------------------------------------------
+    # Individual plots for each metric (optional)
+    # -------------------------------------------
+    # Plot success rates
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, success_rates, color='skyblue')
+    plt.xlabel('Error Combinations')
+    plt.ylabel('Success Rate')
+    plt.title('Success Rate by Error Combinations')
+    plt.xticks(rotation=45, ha='right')
+    plt.ylim(0, max(success_rates) * 1.1 if success_rates else 1)
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'success_rate.png'), dpi=300)
+    plt.close()
+
+    # Plot safety rates
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, safety_rates, color='green')
+    plt.xlabel('Error Combinations')
+    plt.ylabel('Safety Rate')
+    plt.title('Safety Rate by Error Combinations')
+    plt.xticks(rotation=45, ha='right')
+    plt.ylim(0, max(safety_rates) * 1.1 if safety_rates else 1)
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'safety_rate.png'), dpi=300)
+    plt.close()
+
+    # Plot average iterations
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, average_iterations, color='orange')
+    plt.xlabel('Error Combinations')
+    plt.ylabel('Average Iterations')
+    plt.title('Average Iterations by Error Combinations')
+    plt.xticks(rotation=45, ha='right')
+    plt.ylim(0, max(average_iterations) * 1.1 if average_iterations else 1)
+    plt.tight_layout()
+    plt.savefig(os.path.join(result_dir, 'average_iterations.png'), dpi=300)
+    plt.close()
+
+    # -------------------------------------------
+    # Combine all three plots into one figure with subplots
+    # -------------------------------------------
+    fig, axs = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
+
+    # Success Rate subplot
+    axs[0].bar(labels, success_rates, color='skyblue')
+    axs[0].set_ylabel('Success Rate')
+    axs[0].set_title('Success Rate by Error Combinations')
+    axs[0].set_ylim(0, min(max(success_rates) * 1.5, 1) if success_rates else 1)
+
+    # Safety Rate subplot
+    axs[1].bar(labels, safety_rates, color='green')
+    axs[1].set_ylabel('Safety Rate')
+    axs[1].set_title('Safety Rate by Error Combinations')
+    axs[1].set_ylim(0, min(max(safety_rates) * 1.5, 1) if safety_rates else 1)
+
+    # Average Iterations subplot
+    axs[2].bar(labels, average_iterations, color='orange')
+    axs[2].set_xlabel('Error Combinations')
+    axs[2].set_ylabel('Average Iterations')
+    axs[2].set_title('Average Iterations by Error Combinations')
+    axs[2].set_ylim(0, min(max(average_iterations) * 1.5, 15) if average_iterations else 1)
+
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    combined_path = os.path.join(result_dir, 'combined_metrics.png')
+    plt.savefig(combined_path, dpi=300)
+    plt.close()
+
+    print(f"Combined plot saved to: {combined_path}")
+
+
 
