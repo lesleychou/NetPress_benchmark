@@ -115,16 +115,12 @@ def run_full_test(args):
     for error_type in error_types:
         for i in range(args.num_queries):
             # Dynamically generate subnets and errors
-            if 'level1' in args.complexity_level:
-                error_number = 2
-                num_hosts = num_switches = random.randint(5, 10)
-            elif 'level2' in args.complexity_level:
-                error_number = 3
-                num_hosts = num_switches = random.randint(10, 20)
-            subnets = generate_subnets(num_hosts, num_switches)
-            
+            num_hosts_per_subnet = random.randint(2, 4)
+            num_switches = random.randint(2, 4)
+            subnets = generate_subnets(num_switches)
+        
             # Instantiate Mininet topo
-            topo = NetworkTopo(num_hosts=num_hosts, num_switches=num_switches, subnets=subnets)
+            topo = NetworkTopo(num_hosts_per_subnet, num_switches, subnets=subnets)
             net = Mininet(topo=topo, waitConnected=True)
             
             # Start Mininet
@@ -135,7 +131,7 @@ def run_full_test(args):
             info(router.cmd('sysctl -w net.ipv4.ip_forward=1'))
             
             # Inject errors
-            errors = inject_errors(router, subnets, error_number, errortype=error_type)
+            errors = inject_errors(router, subnets, 1, errortype=error_type)
             print(errors)
             
             # Start logging
@@ -212,14 +208,12 @@ def combined_error_test(args):
     
     for i, (error1, error2) in enumerate(error_combinations):
         # Dynamically generate subnets and errors
-        if 'level1' in args.complexity_level:
-            num_hosts = num_switches = random.randint(5, 10)
-        elif 'level2' in args.complexity_level:
-            num_hosts = num_switches = random.randint(10, 20)
-        subnets = generate_subnets(num_hosts, num_switches)
+        num_hosts_per_subnet = random.randint(2, 4)
+        num_switches = random.randint(2, 4)
+        subnets = generate_subnets(num_switches)
         
         # Instantiate Mininet topo
-        topo = NetworkTopo(num_hosts=num_hosts, num_switches=num_switches, subnets=subnets)
+        topo = NetworkTopo(num_hosts_per_subnet, num_switches, subnets=subnets)
         net = Mininet(topo=topo, waitConnected=True)
         
         # Start Mininet
@@ -308,15 +302,16 @@ def static_benchmark_run(args):
     queries = config.get("queries", [])
     for i, query in enumerate(queries):
         info(f'*** Injecting errors for query {i}\n')
-        errornumber = query.get("errornumber", 1)
+        num_hosts_per_subnet = query.get("num_hosts_per_subnet", 1)
+        num_switches = query.get("num_switches")
         errortype = query.get("errortype")
-        hostnumber = query.get("hostnumber")
         errordetail = query.get("errordetail")
-        subnets = generate_subnets(hostnumber, hostnumber)
+        errornumber = query.get("errornumber")
+        subnets = generate_subnets(num_switches)
         print(errortype)
         
         # Instantiate Mininet topo
-        topo = NetworkTopo(num_hosts=hostnumber, num_switches=hostnumber, subnets=subnets)
+        topo = NetworkTopo(num_hosts_per_subnet=num_hosts_per_subnet, num_switches=num_switches, subnets=subnets)
         net = Mininet(topo=topo, waitConnected=True)
         
         # Start Mininet

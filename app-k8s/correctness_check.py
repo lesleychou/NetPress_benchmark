@@ -45,7 +45,7 @@ def wait_for_debug_container(pod_name, container_prefix="debugger-", timeout=5):
         time.sleep(1)
     return None
 
-def create_debug_container(pod_name, timeout=2):
+def create_debug_container(pod_name, timeout=3):
     """
     Create a debug container in the pod in detached mode.
     Here, the busybox image is used, and the container executes `sleep infinity` to keep it alive.
@@ -70,6 +70,7 @@ def create_debug_container(pod_name, timeout=2):
                 "--", "sleep", "infinity"
             ]
         subprocess.run(debug_command, capture_output=True, text=True, timeout=timeout, check=True)
+        print("debug command: ", debug_command)
     except subprocess.TimeoutExpired:
         print("Timeout while creating debug container")
         return None
@@ -83,7 +84,7 @@ def create_debug_container(pod_name, timeout=2):
         print(f"Failed to detect debug container in pod {pod_name}")
     return debug_container_name
 
-def check_connectivity_with_debug(pod_name, debug_container_name, host, port, timeout=2):
+def check_connectivity_with_debug(pod_name, debug_container_name, host, port, timeout=3):
     """
     Use the created debug container to execute the `nc` command to check connectivity.
     Command format:
@@ -156,31 +157,179 @@ def correctness_check(expected_results):
 
 if __name__ == "__main__":
     expected_results = {
-        "frontend": {
-            "adservice:9555": True,
-            "cartservice:7070": True,
-            "checkoutservice:5050": True,
-            "currencyservice:7000": True,
-            "productcatalogservice:3550": True,
-            "recommendationservice:8080": True,
-            "shippingservice:50051": True
-        },
-        "checkoutservice": {
-            "cartservice:7070": True,
-            "currencyservice:7000": True,
-            "emailservice:5000": True,
-            "paymentservice:50051": True,
-            "productcatalogservice:3550": True,
-            "shippingservice:50051": True
-        },
-        "cartservice": {
-            "redis-cart:6379": True
-        },
-        "loadgenerator": {
-            "frontend:80": True  # HTTP service requires additional checks
-        }
+    "frontend": {
+        "frontend:80": False,
+        "adservice:9555": True,
+        "cartservice:7070": True,
+        "checkoutservice:5050": True,
+        "currencyservice:7000": True,
+        "productcatalogservice:3550": True,
+        "recommendationservice:8080": True,
+        "shippingservice:50051": True,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "adservice": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": False,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "cartservice": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": False,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": True,
+        "loadgenerator": False
+    },
+    "checkoutservice": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": True,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": True,
+        "productcatalogservice:3550": True,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": True,
+        "emailservice:5000": True,
+        "paymentservice:50051": True,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "currencyservice": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": False,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "productcatalogservice": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": False,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "recommendationservice": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": True,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "shippingservice": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": False,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "emailservice": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": False,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "paymentservice": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": False,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "redis-cart": {
+        "frontend:80": False,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": False,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
+    },
+    "loadgenerator": {
+        "frontend:80": True,
+        "adservice:9555": False,
+        "cartservice:7070": False,
+        "checkoutservice:5050": False,
+        "currencyservice:7000": False,
+        "productcatalogservice:3550": False,
+        "recommendationservice:8080": False,
+        "shippingservice:50051": False,
+        "emailservice:5000": False,
+        "paymentservice:50051": False,
+        "redis-cart:6379": False,
+        "loadgenerator": False
     }
+}
 
+    starttime=time.time()
     result = correctness_check(expected_results)
     print(f"\nFinal result: {result}")
-    exit(0 if result else 1)
+    endtime=time.time()
+    print(f"Time taken: {endtime-starttime}")
+    exit(0 if result else 1)    

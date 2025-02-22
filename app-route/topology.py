@@ -23,16 +23,7 @@ class LinuxRouter( Node ):
 class NetworkTopo(Topo):
     "A LinuxRouter connecting multiple IP subnets"
 
-    def build(self, num_hosts=5, num_switches=5, subnets=None, **_opts):
-        if subnets is None:
-            # Ensure unique, non-overlapping subnets
-            subnets = [
-                ('192.168.1.1/24', '192.168.1.100/24'),
-                ('172.16.1.1/24', '172.16.1.100/24'),
-                ('10.0.1.1/24', '10.0.1.100/24'),
-                ('192.168.2.1/24', '192.168.2.100/24'),
-                ('172.17.1.1/24', '172.17.1.100/24')
-            ]
+    def build(self, num_hosts_per_subnet=5, num_switches=5, subnets=None, **_opts):
 
         # Create the router
         router = self.addNode('r0', cls=LinuxRouter, ip=subnets[0][0])
@@ -40,23 +31,21 @@ class NetworkTopo(Topo):
         # Create switches
         switches = [self.addSwitch(f's{i+1}') for i in range(num_switches)]
 
-        # Create hosts and assign them to unique subnets
-        hosts = [self.addHost(f'h{i+1}', 
-                              ip=subnets[i % len(subnets)][1], 
-                              defaultRoute=f'via {subnets[i % len(subnets)][0].split("/")[0]}') 
-                 for i in range(num_hosts)]
-
         # Link each switch to the router with a unique interface
         for i, switch in enumerate(switches):
             self.addLink(switch, router, intfName2=f'r0-eth{i+1}', 
                          params2={'ip': subnets[i % len(subnets)][0]})
 
-        # Link each host to its corresponding switch
-        for i, host in enumerate(hosts):
-            self.addLink(host, switches[i % num_switches])
+            # Create multiple hosts for each switch, hence each subnet
+            for j in range(num_hosts_per_subnet):
+                host_ip = f'{subnets[i][0].split(".")[0]}.{subnets[i][0].split(".")[1]}.{subnets[i][0].split(".")[2]}.{100+j}/24'
+                host = self.addHost(f'h{i*num_hosts_per_subnet + j + 1}', 
+                                    ip=host_ip, 
+                                    defaultRoute=f'via {subnets[i][0].split("/")[0]}')
+                self.addLink(host, switch)
 
 
-def generate_subnets(num_hosts, num_switches):
+def generate_subnets(num_switches):
     # Base IP address to start subnet generation
     base_ip = [192, 168, 1, 1]
     subnets = []
@@ -80,3 +69,18 @@ def generate_subnets(num_hosts, num_switches):
 
 
 
+if __name__ == '__main__':
+    num_hosts_per_subnet = 5
+    num_switches = 5
+    subnets = generate_subnets(num_hosts_per_subnet, num_switches)
+
+    topo = NetworkTopo(num_hosts_per_subnet=num_hosts_per_subnet,
+                        num_switches=num_switches,
+                        subnets=subnets)
+
+    net = Mininet(topo=topo)
+    net.start()
+
+    CLI(net)
+
+    net.stop()
