@@ -1,5 +1,8 @@
 from mininet.log import setLogLevel, info, lg
 import random
+import json
+import random
+from itertools import combinations
 
 def error_disable_routing(router, subnets):
     # Inject error: Disable IP forwarding (routing) on the router
@@ -60,32 +63,22 @@ def inject_errors(router, subnets, error_number=1, errortype=None):
     
     return errors_to_inject
 
-import json
-import random
-from itertools import combinations
+# Generate detailed error information for each error type
 def get_detail(error_type, hostnumber):
-    """
-    根据错误类型和 hostnumber 生成错误详情，
-    其中随机数字均在 [1, hostnumber-1] 范围内。
-    对于 wrong_routing_table，要求 hostnumber 至少为 3，否则返回空字典。
-    """
     if error_type == 'disable_routing':
         return {"action": "Disable IP forwarding"}
     elif error_type == 'disable_interface':
-        rand_index = random.randint(1, hostnumber - 1)
+        rand_index = random.randint(1, hostnumber + 1)
         return {"interface": f"r0-eth{rand_index}"}
     elif error_type == 'remove_ip':
-        rand_index = random.randint(1, hostnumber - 1)
+        rand_index = random.randint(1, hostnumber + 1)
         return {"interface": f"r0-eth{rand_index}"}
     elif error_type == 'drop_traffic_to_from_subnet':
-        rand_index = random.randint(1, hostnumber - 1)
+        rand_index = random.randint(1, hostnumber + 1)
         return {"subnet": f"192.168.{rand_index}.0/24"}
     elif error_type == 'wrong_routing_table':
-        # 必须至少有两个可用的接口（hostnumber >= 3）
-        if hostnumber < 3:
-            return {}  # 详细信息不足
-        # 随机选择两个不同的接口索引
-        indexes = random.sample(range(1, hostnumber), 2)
+        # Randomly select two different interface indexes
+        indexes = random.sample(range(1, hostnumber + 1), 2)
         from_subnet = f"192.168.{indexes[0]}.0/24"
         to_subnet = f"192.168.{indexes[1]}.0/24"
         del_interface = f"r0-eth{indexes[0]}"
@@ -94,42 +87,41 @@ def get_detail(error_type, hostnumber):
     else:
         return {}
 
+# Generate a configuration file with a specified number of queries for each error type
 def generate_config(filename='config.json', num_errors_per_type=5):
-    """
-    生成 config.json 配置文件，其中包含多组查询，每组查询包含：
-      - hostnumber: 随机生成在 5 到 10 之间
-      - errornumber: 单错误为 1，组合错误为 2
-      - errortype 与 errordetail: 单错误时为字符串和字典，组合错误时为列表
-    """
     queries = []
     error_types = [
-        # 'disable_routing',
+        'disable_routing',
         'disable_interface',
         'remove_ip',
-        # 'drop_traffic_to_from_subnet',
+        'drop_traffic_to_from_subnet',
         'wrong_routing_table'
     ]
     
-    # # 单错误查询，每个错误类型生成 num_errors_per_type 个
-    # for et in error_types:
-    #     for _ in range(num_errors_per_type):
-    #         hostnumber = random.randint(5, 10)
-    #         detail = get_detail(et, hostnumber)
-    #         query = {
-    #             "hostnumber": hostnumber,
-    #             "errornumber": 1,
-    #             "errortype": et,
-    #             "errordetail": detail
-    #         }
-    #         queries.append(query)
+    # Single error queries: Generate num_errors_per_type for each error type
+    for et in error_types:
+        for _ in range(num_errors_per_type):
+            num_hosts_per_subnet = random.randint(2, 4)
+            num_switches = random.randint(2, 4)
+            detail = get_detail(et, num_switches)
+            query = {
+                "num_switches": num_switches,
+                "num_hosts_per_subnet": num_hosts_per_subnet,
+                "errornumber": 1,
+                "errortype": et,
+                "errordetail": detail
+            }
+            queries.append(query)
     
-    # 组合查询：对任意两种不同的错误类型组合生成一条查询（组合注入两个错误）
+    # Combined queries: Generate one query for each combination of two different error types
     for et1, et2 in combinations(error_types, 2):
-        hostnumber = random.randint(5, 10)
-        detail1 = get_detail(et1, hostnumber)
-        detail2 = get_detail(et2, hostnumber)
+        num_hosts_per_subnet = random.randint(2, 4)
+        num_switches = random.randint(2, 4)
+        detail1 = get_detail(et1, num_switches)
+        detail2 = get_detail(et2, num_switches)
         query = {
-            "hostnumber": hostnumber,
+            "num_switches": num_switches,
+            "num_hosts_per_subnet": num_hosts_per_subnet,
             "errornumber": 2,
             "errortype": [et1, et2],
             "errordetail": [detail1, detail2]
@@ -143,11 +135,8 @@ def generate_config(filename='config.json', num_errors_per_type=5):
     
     print(f"Config file {filename} generated with {len(queries)} queries.")
 
+# Process single error
 def process_single_error(router, subnets, errortype, errordetail):
-    """
-    根据 errortype 与 errordetail 注入单个错误。
-    如果详细信息不足，则直接打印 'not enough detailed information'
-    """
     if errortype == "disable_routing":
         info('*** Injecting error: Disabling IP forwarding\n')
         router.cmd('sysctl -w net.ipv4.ip_forward=0')
