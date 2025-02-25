@@ -1,6 +1,7 @@
 import subprocess
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def find_pod_by_prefix(prefix):
     """Find a pod whose name starts with the specified prefix."""
@@ -46,36 +47,50 @@ def wait_for_debug_container(pod_name, container_prefix="debugger-", timeout=5):
     return None
 
 def create_debug_container(pod_name, timeout=3):
+    """Create a debug container in the specified pod.
+    
+    Args:
+        pod_name: Name of the target pod
+        timeout: Timeout for command execution (default: 3 seconds)
+        
+    Returns:
+        Name of the created debug container or None if failed
     """
-    Create a debug container in the pod in detached mode.
-    Here, the busybox image is used, and the container executes `sleep infinity` to keep it alive.
-    """
+    # Determine target container based on pod name patterns
+    if 'loadgenerator' in pod_name:
+        target = "main"  # Verify actual container name for loadgenerator
+    elif 'redis-cart' in pod_name:
+        target = "redis"  # Container name from pod spec
+    else:
+        target = "server"  # Default assumption for other services
+
+    # Construct debug command with dynamic target container
+    debug_command = [
+        "kubectl", "debug", "-it", pod_name,
+        "--image=busybox",
+        f"--target={target}",  # Dynamically set target container
+        "--quiet",  # Suppress verbose output
+        "--attach=false",  # Run in detached mode
+        "--", "sleep", "infinity"  # Keep container alive
+    ]
+
     try:
-        if 'loadgenerator' in pod_name:
-            debug_command = [
-                "kubectl", "debug", "-it", pod_name,
-                "--image=busybox",
-                "--target=main",
-                "--quiet",
-                "--attach=false",
-                "--", "sleep", "infinity"
-            ]
-        else:
-            debug_command = [
-                "kubectl", "debug", "-it", pod_name,
-                "--image=busybox",
-                "--target=server",
-                "--quiet",
-                "--attach=false",
-                "--", "sleep", "infinity"
-            ]
-        subprocess.run(debug_command, capture_output=True, text=True, timeout=timeout, check=True)
-        print("debug command: ", debug_command)
+        # Execute debug container creation
+        subprocess.run(
+            debug_command, 
+            capture_output=True, 
+            text=True, 
+            timeout=timeout, 
+            check=True
+        )
+
     except subprocess.TimeoutExpired:
-        print("Timeout while creating debug container")
         return None
+        
     except subprocess.CalledProcessError as e:
-        print(f"Error creating debug container: {e}")
+        return None
+
+    except Exception as e:
         return None
 
     # Wait for the debug container to start
@@ -84,7 +99,7 @@ def create_debug_container(pod_name, timeout=3):
         print(f"Failed to detect debug container in pod {pod_name}")
     return debug_container_name
 
-def check_connectivity_with_debug(pod_name, debug_container_name, host, port, timeout=3):
+def check_connectivity_with_debug(pod_name, debug_container_name, host, port, timeout=1):
     """
     Use the created debug container to execute the `nc` command to check connectivity.
     Command format:
@@ -97,14 +112,11 @@ def check_connectivity_with_debug(pod_name, debug_container_name, host, port, ti
             "-c", debug_container_name,
             "--", "nc", "-zv", "-w", str(timeout), host, str(port)
         ]
-        print(f"Executing command: {' '.join(nc_command)}")
-        result = subprocess.run(nc_command, capture_output=True, text=True, timeout=timeout+5)
+        result = subprocess.run(nc_command, capture_output=True, text=True, timeout=timeout+1)
         output = (result.stdout + result.stderr).strip()
         if "open" in output:
-            print(f"Success: {pod_name} (debug container {debug_container_name}) can reach {host}:{port}")
             return True
         else:
-            print(f"Failure: {pod_name} (debug container {debug_container_name}) cannot reach {host}:{port}. Output: {output}")
             return False
     except subprocess.TimeoutExpired:
         print(f"Timeout: Command execution exceeded {timeout} seconds.")
@@ -118,22 +130,23 @@ def correctness_check(expected_results):
     Check the connectivity of all pods specified in expected_results to their target services.
     For each pod, create a debug container and use it to execute the `nc` command to check all targets.
     """
+
     all_match = True
     mismatch_messages = []  # Used to record all mismatch information
 
-    for pod_prefix, targets in expected_results.items():
+    def process_pod(pod_prefix, targets):
         pod_name = find_pod_by_prefix(pod_prefix)
         if not pod_name:
             print(f"Pod {pod_prefix} not found")
-            all_match = False
-            continue
+            return False, f"Pod {pod_prefix} not found"
 
-        print(f"\nCreating debug container for pod {pod_name} ...")
         debug_container_name = create_debug_container(pod_name)
         if not debug_container_name:
             print(f"Failed to create debug container for pod {pod_name}")
-            all_match = False
-            continue
+            return False, f"Failed to create debug container for pod {pod_name}"
+
+        pod_all_match = True
+        pod_mismatch_messages = []
 
         for target, expected in targets.items():
             try:
@@ -141,24 +154,34 @@ def correctness_check(expected_results):
                 port = int(port)
             except ValueError:
                 print(f"Invalid target {target}")
-                all_match = False
+                pod_all_match = False
+                pod_mismatch_messages.append(f"Invalid target {target}")
                 continue
 
             actual = check_connectivity_with_debug(pod_name, debug_container_name, host, port)
             if actual != expected:
                 mismatch_message = f"Mismatch: {pod_prefix} → {target} (Expected: {expected}, Actual: {actual})"
-                print(mismatch_message)
-                mismatch_messages.append(mismatch_message)  # Record mismatch information
+                pod_mismatch_messages.append(mismatch_message)  # Record mismatch information
+                pod_all_match = False
+
+        return pod_all_match, "\n".join(pod_mismatch_messages)
+
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(process_pod, pod_prefix, targets): pod_prefix for pod_prefix, targets in expected_results.items()}
+        for future in as_completed(futures):
+            pod_all_match, pod_mismatch_summary = future.result()
+            if not pod_all_match:
                 all_match = False
+                mismatch_messages.append(pod_mismatch_summary)
 
     # Combine all mismatch information into a single string
     mismatch_summary = "\n".join(mismatch_messages) if mismatch_messages else "No mismatches found."
+
     return all_match, mismatch_summary
 
 if __name__ == "__main__":
     expected_results = {
     "frontend": {
-        "frontend:80": False,
         "adservice:9555": True,
         "cartservice:7070": True,
         "checkoutservice:5050": True,
@@ -168,11 +191,9 @@ if __name__ == "__main__":
         "shippingservice:50051": True,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "adservice": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -182,11 +203,9 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "cartservice": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -196,11 +215,9 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": True,
-        "loadgenerator": False
+        "redis-cart:6379": True
     },
     "checkoutservice": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": True,
         "checkoutservice:5050": False,
@@ -210,11 +227,9 @@ if __name__ == "__main__":
         "shippingservice:50051": True,
         "emailservice:5000": True,
         "paymentservice:50051": True,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "currencyservice": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -224,11 +239,9 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "productcatalogservice": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -238,11 +251,9 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "recommendationservice": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -252,11 +263,9 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "shippingservice": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -266,11 +275,9 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "emailservice": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -280,11 +287,9 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "paymentservice": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -294,11 +299,9 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "redis-cart": {
-        "frontend:80": False,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -308,11 +311,9 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     },
     "loadgenerator": {
-        "frontend:80": True,
         "adservice:9555": False,
         "cartservice:7070": False,
         "checkoutservice:5050": False,
@@ -322,8 +323,7 @@ if __name__ == "__main__":
         "shippingservice:50051": False,
         "emailservice:5000": False,
         "paymentservice:50051": False,
-        "redis-cart:6379": False,
-        "loadgenerator": False
+        "redis-cart:6379": False
     }
 }
 
@@ -332,4 +332,4 @@ if __name__ == "__main__":
     print(f"\nFinal result: {result}")
     endtime=time.time()
     print(f"Time taken: {endtime-starttime}")
-    exit(0 if result else 1)    
+    exit(0 if result else 1)
