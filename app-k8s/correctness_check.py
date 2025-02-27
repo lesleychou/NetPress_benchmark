@@ -119,7 +119,6 @@ def check_connectivity_with_debug(pod_name, debug_container_name, host, port, ti
         else:
             return False
     except subprocess.TimeoutExpired:
-        print(f"Timeout: Command execution exceeded {timeout} seconds.")
         return False
     except subprocess.CalledProcessError as e:
         print(f"Error executing nc command: {e}")

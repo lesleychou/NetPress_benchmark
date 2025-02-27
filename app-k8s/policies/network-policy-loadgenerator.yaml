@@ -5,6 +5,7 @@ metadata:
 spec:
   egress:
   - {}
+  - {}
   podSelector:
     matchLabels:
       app: loadgenerator

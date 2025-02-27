@@ -13,7 +13,7 @@ from file_util import file_write
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", help='Choose the LLM agent')
+    parser.add_argument('--llm_agent_type', type=str, default="GPT-4o", help='Choose the LLM agent')#"Qwen/Qwen2.5-72B-Instruct"
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/jiajun_benchmark/app-k8s", help='Directory to save output JSONL file')
@@ -168,8 +168,9 @@ def run_workflow(args):
     result_dir = os.path.join(args.root_dir, "result", datetime.now().strftime("%Y%m%d_%H%M%S"))
     os.makedirs(result_dir, exist_ok=True)
     error_types = ["remove_ingress", "add_ingress", "change_port", "change_protocol", "add_egress"]
+
     for error_type in error_types:
-        for i in range(4): 
+        for i in range(3): 
             copy_yaml_to_new_folder(args.microservice_dir, args.root_dir)
 
             # Create a JSON file
@@ -183,7 +184,7 @@ def run_workflow(args):
                 pass  
 
             # Step 3: Inject errors into policies
-            inject_errors_into_policies(policy_names, args.root_dir, args.complexity_level)
+            inject_errors_into_policies(policy_names, args.root_dir, args.complexity_level, error_type)
             
             # Step 4: Deploy policies
             deploy_policies(policy_names,args.root_dir)
@@ -221,6 +222,7 @@ def run_workflow(args):
                 all_match, mismatch_summary = correctness_check(expected_results)
                 if all_match:
                     print(f"Success in iteration {j+1}")
+                    file_write(llm_command, output, mismatch_summary, json_file_path, txt_file_path)
                     break
 
 if __name__ == "__main__":

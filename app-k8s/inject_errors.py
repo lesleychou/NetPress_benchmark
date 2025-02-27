@@ -20,42 +20,55 @@ def inject_errors(policy, error_count=2, complexity_level=1,error_types=None):
     if "spec" not in policy:
         return policy  # 没有 spec 字段时直接返回
 
-    POSSIBLE_APPS = ["frontend", "backend", "redis", "paymentservice", "shippingservice", "randomapp"]
+    POSSIBLE_APPS = ["adservice", "cartservice", "checkoutservice", "currencyservice", "emailservice", "frontend",  "paymentservice", "productcatalogservice", "recommendationservice", "redis-cart", "shippingservice"]
     if error_types is None:
         error_types = ["remove_ingress", "add_ingress", "change_port", "change_protocol", "add_egress"]
         selected_error_types = random.sample(error_types, min(error_count, len(error_types)))
     else:
-        selected_error_types = error_types
+        # Ensure error_types is a list
+        selected_error_types = error_types if isinstance(error_types, list) else [error_types]
     print(f"Selected error types: {selected_error_types}")
     for error_type in selected_error_types:
+        print(f"Injecting error: {error_type}")
         if error_type == "remove_ingress" and "ingress" in policy["spec"]:
-            for rule in policy["spec"]["ingress"]:
-                if "from" in rule:
-                    rule["from"] = [f for f in rule["from"] if f.get("podSelector", {}).get("matchLabels", {}).get("app") != "frontend"]
-
-        elif error_type == "add_ingress":
-            existing_apps = {f.get("podSelector", {}).get("matchLabels", {}).get("app") for rule in policy["spec"].get("ingress", []) for f in rule.get("from", [])}
+            if policy["spec"]["ingress"]:
+                # 直接删除 ingress 规则中的第一条
+                policy["spec"]["ingress"].pop(0)
+        if error_type == "add_ingress":
+            # 获取现有 ingress 规则中所有 podSelector 的 app 值
+            existing_apps = {
+                f.get("podSelector", {}).get("matchLabels", {}).get("app")
+                for rule in policy["spec"].get("ingress", [])
+                for f in rule.get("from", [])
+            }
+            # 从 POSSIBLE_APPS 中选出一个不在现有规则中的 app，若没有则使用 "newapp"
             new_app = random.choice([app for app in POSSIBLE_APPS if app not in existing_apps] or ["newapp"])
+            # 确保 ingress 字段存在
             if "ingress" not in policy["spec"]:
                 policy["spec"]["ingress"] = []
-            if not policy["spec"]["ingress"]:
-                policy["spec"]["ingress"].append({"from": [{"podSelector": {"matchLabels": {"app": new_app}}} ]})
-            else:
-                policy["spec"]["ingress"][0].setdefault("from", []).append({"podSelector": {"matchLabels": {"app": new_app}}})
+            
+            # 直接追加一条新的 ingress 规则
+            new_rule = {
+                "from": [
+                    {"podSelector": {"matchLabels": {"app": new_app}}}
+                ]
+            }
+            policy["spec"]["ingress"].append(new_rule)
+            print("111")
 
-        elif error_type == "change_port" and "ingress" in policy["spec"]:
+        if error_type == "change_port" and "ingress" in policy["spec"]:
             for rule in policy["spec"]["ingress"]:
                 for port_block in rule.get("ports", []):
                     if "port" in port_block:
-                        port_block["port"] = random.choice(["5432", "1"])
+                        port_block["port"] = random.choice([5432, 1])
 
-        elif error_type == "change_protocol" and "ingress" in policy["spec"]:
+        if error_type == "change_protocol" and "ingress" in policy["spec"]:
             for rule in policy["spec"]["ingress"]:
                 for port_block in rule.get("ports", []):
                     if "protocol" in port_block:
                         port_block["protocol"] = "UDP"
 
-        elif error_type == "add_egress":
+        if error_type == "add_egress":
             policy["spec"].setdefault("egress", []).append({})
 
     # **严格调整 spec 内部顺序**
