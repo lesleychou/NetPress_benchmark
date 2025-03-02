@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument('--output_dir', type=str, default='logs/llm_agents', help='Directory to save output JSONL file')
     parser.add_argument('--output_file', type=str, default='gpt4o.jsonl', help='Name of the output JSONL file')
     parser.add_argument('--dynamic_benchmark_path', type=str, default='data/benchmark_malt.jsonl', help='Path to save dynamic dataset')
+    parser.add_argument('--regenerate_query', action='store_true', help='Whether to regenerate benchmark queries or load existing ones')
     return parser.parse_args()
 
 # anexample of how to use main.py with input args
@@ -38,7 +39,8 @@ def main(args):
         'complexity_level': args.complexity_level,
         'output_dir': args.output_dir,
         'output_file': args.output_file,
-        'dynamic_benchmark_path': args.dynamic_benchmark_path
+        'dynamic_benchmark_path': args.dynamic_benchmark_path,
+        'regenerate_query': args.regenerate_query
     }
 
     # create the output directory if it does not exist
@@ -51,11 +53,22 @@ def main(args):
         with open(output_path, 'w') as f:
             pass
 
-    # dynamically generate a set of new queries
+    # dynamically generate or load existing queries
     query_generator = QueryGenerator()
-    query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
     benchmark_path = benchmark_config['dynamic_benchmark_path']
-    query_generator.save_queries_to_file(benchmark_path)
+    
+    if benchmark_config['regenerate_query']:
+        print("Generating new queries due to regenerate_query=True")
+        query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
+        query_generator.save_queries_to_file(benchmark_path)
+    else:
+        if not os.path.exists(benchmark_path):
+            print(f"Benchmark file {benchmark_path} does not exist. Generating new queries...")
+            query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
+            query_generator.save_queries_to_file(benchmark_path)
+        else:
+            print(f"Loading existing benchmark from {benchmark_path}")
+            query_generator.load_queries_from_file(benchmark_path)
 
     # Load the evaluator
     evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
