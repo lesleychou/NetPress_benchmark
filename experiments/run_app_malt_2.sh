@@ -3,7 +3,7 @@ cd ..
 cd app-malt
 
 # Define common parameters
-NUM_QUERIES=10
+NUM_QUERIES=30
 BENCHMARK_PATH="data/tmp_benchmark_malt.jsonl"
 PROMPT_TYPE="few_shot_semantic"  # Define prompt_type
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
@@ -35,11 +35,11 @@ run_experiment() {
 
 # Define models and their configurations
 declare -A model_configs=(
-    ["Qwen2.5-72B-Instruct"]="level1 level2 :qwen_tmp_fewshot_semantic.jsonl"
+    ["AzureGPT4Agent"]="level1 level2 :gpt4o_tmp_fewshot_semantic.jsonl"
 )
 
 # Define the desired order of execution
-model_order=("Qwen2.5-72B-Instruct")
+model_order=("AzureGPT4Agent")
 
 # Run experiments in specified order
 for model in "${model_order[@]}"; do

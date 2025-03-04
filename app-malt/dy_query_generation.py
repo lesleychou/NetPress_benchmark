@@ -105,8 +105,8 @@ class QueryGenerator:
 
 
     def create_level_one_dataset(self, num_each_type):
-        operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
-        # operations = [('add')]
+        # operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
+        operations = ['list']
         for operation in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_1_query_groundtruth(operation_type=operation)
@@ -236,8 +236,8 @@ class QueryGenerator:
         
         
     def create_level_two_dataset(self, num_each_type):
-        operations = [('add', 'count'), ('remove', 'count'), ('add', 'list'), ('add', 'rank'), ('remove', 'list'), ('remove', 'rank')]
-        # operations = [('add', 'rank')]
+        # operations = [('add', 'count'), ('remove', 'count'), ('add', 'list'), ('add', 'rank'), ('remove', 'list'), ('remove', 'rank')]
+        operations = [('remove', 'list'), ('remove', 'rank')]
         for operation1, operation2 in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_2_query_sequential(operation_type_1=operation1, operation_type_2=operation2)
@@ -311,6 +311,11 @@ class QueryGenerator:
         with open(file_path, 'w') as f:
             for item in self.queries:
                 f.write(json.dumps(item) + "\n")
+    
+    def load_queries_from_file(self, file_path):
+        with open(file_path, 'r') as f:
+            for line in f:
+                self.queries.append(json.loads(line))
 
 # Usage
 # query_generator = QueryGenerator()
