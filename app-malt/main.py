@@ -11,6 +11,8 @@ solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_
 from dy_query_generation import QueryGenerator
 from malt_env import BenchmarkEvaluator
 import argparse
+from scipy import stats
+import math
 
 
 # define a configuration for the benchmark
@@ -53,49 +55,49 @@ def main(args):
         with open(output_path, 'w') as f:
             pass
 
-    # dynamically generate or load existing queries
-    query_generator = QueryGenerator()
-    benchmark_path = benchmark_config['dynamic_benchmark_path']
+    # # dynamically generate or load existing queries
+    # query_generator = QueryGenerator()
+    # benchmark_path = benchmark_config['dynamic_benchmark_path']
     
-    if benchmark_config['regenerate_query']:
-        print("Generating new queries due to regenerate_query=True")
-        query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
-        query_generator.save_queries_to_file(benchmark_path)
-    else:
-        if not os.path.exists(benchmark_path):
-            print(f"Benchmark file {benchmark_path} does not exist. Generating new queries...")
-            query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
-            query_generator.save_queries_to_file(benchmark_path)
-        else:
-            print(f"Loading existing benchmark from {benchmark_path}")
-            query_generator.load_queries_from_file(benchmark_path)
+    # if benchmark_config['regenerate_query']:
+    #     print("Generating new queries due to regenerate_query=True")
+    #     query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
+    #     query_generator.save_queries_to_file(benchmark_path)
+    # else:
+    #     if not os.path.exists(benchmark_path):
+    #         print(f"Benchmark file {benchmark_path} does not exist. Generating new queries...")
+    #         query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
+    #         query_generator.save_queries_to_file(benchmark_path)
+    #     else:
+    #         print(f"Loading existing benchmark from {benchmark_path}")
+    #         query_generator.load_queries_from_file(benchmark_path)
 
-    # Load the evaluator
-    evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
+    # # Load the evaluator
+    # evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
 
-    # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
-    benchmark_data = []
-    with jsonlines.open(benchmark_path) as reader:
-        for obj in reader:
-            benchmark_data.append(obj['messages'])
+    # # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
+    # benchmark_data = []
+    # with jsonlines.open(benchmark_path) as reader:
+    #     for obj in reader:
+    #         benchmark_data.append(obj['messages'])
     
-    # for each object in the benchmark list, get the question and answer
-    for obj in benchmark_data:
-        # obj is a list of dictionaries, load question, answer, task_label from it
-        for item in obj:
-            if 'question' in item:
-                current_query = item['question']
-            elif 'answer' in item:
-                golden_answer = item['answer']
-            elif 'task_label' in item:
-                task_label = item['task_label']
+    # # for each object in the benchmark list, get the question and answer
+    # for obj in benchmark_data:
+    #     # obj is a list of dictionaries, load question, answer, task_label from it
+    #     for item in obj:
+    #         if 'question' in item:
+    #             current_query = item['question']
+    #         elif 'answer' in item:
+    #             golden_answer = item['answer']
+    #         elif 'task_label' in item:
+    #             task_label = item['task_label']
             
-        ret, ground_truth_ret, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer)
-        evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, output_path)
+    #     ret, ground_truth_ret, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer)
+    #     evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, output_path)
 
-        # have to sleep for Gemini API quota
-        if benchmark_config['llm_model_type'] == 'GoogleGeminiAgent':
-            time.sleep(10)
+    #     # have to sleep for Gemini API quota
+    #     if benchmark_config['llm_model_type'] == 'GoogleGeminiAgent':
+    #         time.sleep(10)
 
     # Analyze the results
     # load the data from output_path
@@ -113,19 +115,30 @@ def main(args):
         grouped_results[task_label].append(result)
 
     task_labels = list(grouped_results.keys())
-    avg_latencies = [sum(result["Result-Latency"] for result in grouped_results[task_label]) / len(grouped_results[task_label]) for task_label in task_labels]
+    avg_latencies = []
+    std_latencies = []
+    for task_label in task_labels:
+        latencies = [result["Result-Latency"] for result in grouped_results[task_label]]
+        avg_latencies.append(np.mean(latencies))
+        std_latencies.append(np.std(latencies))
 
     # create figs directory if it doesn't exist
     figs_dir = os.path.join(args.output_dir, 'figs')
     if not os.path.exists(figs_dir):
         os.makedirs(figs_dir)
 
-    # plot the average query run latency for each task label
+    # plot the average query run latency for each task label with error bars
     plt.figure(figsize=(10, 6))
-    plt.bar(task_labels, avg_latencies, color='skyblue')
+    bars = plt.bar(task_labels, avg_latencies, color='skyblue', yerr=std_latencies, capsize=5)
     plt.xlabel('Task Label')
     plt.ylabel('Average Query Run Latency (seconds)')
-    plt.title('Average Query Run Latency by Task Label')
+    plt.title(f'Average Query Run Latency by Task Label ({args.llm_model_type})')
+    # Add error values on top of each bar
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + std_latencies[i],
+                f'±{std_latencies[i]:.2f}',
+                ha='center', va='bottom')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.savefig(os.path.join(figs_dir, f'average_latency_{args.llm_model_type}.png'), dpi=300)
@@ -133,25 +146,64 @@ def main(args):
 
     # plot the pass rate of correctness for each task label
     correctness_pass_rates = [sum(1 for result in grouped_results[task_label] if result["Result-Correctness"] == "Pass") / len(grouped_results[task_label]) * 100 for task_label in task_labels]
+    
+    # Calculate Standard Error of Mean (SEM) for each task label's pass rate
+    sem_values = []
+    sample_sizes = []   
+    
+    for task_label in task_labels:
+        # Get sample size for this task
+        n = len(grouped_results[task_label])
+        sample_sizes.append(n)
+        
+        # Calculate SEM using scipy
+        binary_outcomes = [1 if result["Result-Correctness"] == "Pass" else 0 for result in grouped_results[task_label]]
+        scipy_sem = stats.sem(binary_outcomes, ddof=1) * 100
+        sem_values.append(scipy_sem)
+    
+    # Calculate 95% confidence interval (1.96 * SEM)
+    error_margins = [1.96 * sem for sem in sem_values]
 
     plt.figure(figsize=(12, 6))
-    plt.bar(task_labels, correctness_pass_rates, color='green')
+    bars = plt.bar(task_labels, correctness_pass_rates, color='green', yerr=error_margins, capsize=5)
     plt.xlabel('Task Label')
     plt.ylabel('Correctness Pass Rate (%)')
-    plt.title('Correctness Pass Rate by Task Label')
+    plt.title(f'Correctness Pass Rate by Task Label ({args.llm_model_type}, N={sample_sizes})')
+    # Add error values on top of each bar
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + error_margins[i],
+                f'±{error_margins[i]:.2f}%',
+                ha='center', va='bottom')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.savefig(os.path.join(figs_dir, f'correctness_pass_rate_{args.llm_model_type}.png'), dpi=300)
     # plt.show()
-
+    
     # plot the pass rate of safety for each task label
     safety_pass_rates = [sum(1 for result in grouped_results[task_label] if result["Result-Safety"] == "Pass") / len(grouped_results[task_label]) * 100 for task_label in task_labels]
+    
+    # Calculate SEM for safety pass rates
+    safety_sem_values = []
+    for task_label in task_labels:
+        binary_outcomes = [1 if result["Result-Safety"] == "Pass" else 0 for result in grouped_results[task_label]]
+        scipy_sem = stats.sem(binary_outcomes, ddof=1) * 100
+        safety_sem_values.append(scipy_sem)
+    
+    # Calculate 95% confidence interval (1.96 * SEM)
+    safety_error_margins = [1.96 * sem for sem in safety_sem_values]
 
     plt.figure(figsize=(12, 6))
-    plt.bar(task_labels, safety_pass_rates, color='orange')
+    bars = plt.bar(task_labels, safety_pass_rates, color='orange', yerr=safety_error_margins, capsize=5)
     plt.xlabel('Task Label')
     plt.ylabel('Safety Pass Rate (%)')
-    plt.title('Safety Pass Rate by Task Label')
+    plt.title(f'Safety Pass Rate by Task Label ({args.llm_model_type}, N={sample_sizes})')
+    # Add error values on top of each bar
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + safety_error_margins[i],
+                f'±{safety_error_margins[i]:.2f}%',
+                ha='center', va='bottom')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.savefig(os.path.join(figs_dir, f'safety_pass_rate_{args.llm_model_type}.png'), dpi=300)
