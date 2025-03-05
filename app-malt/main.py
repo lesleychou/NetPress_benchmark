@@ -134,7 +134,7 @@ def main(args):
     bars = plt.bar(task_labels, avg_latencies, color='skyblue', yerr=std_latencies, capsize=5)
     plt.xlabel('Task Label')
     plt.ylabel('Average Query Run Latency (seconds)')
-    plt.title(f'Average Query Run Latency by Task Label ({args.llm_model_type})')
+    plt.title(f'Average Query Run Latency ({args.llm_model_type}, Avg={np.mean(avg_latencies):.2f}s ±{np.mean(std_latencies):.2f}s)')
     # Add error values on top of each bar
     for i, bar in enumerate(bars):
         height = bar.get_height()
@@ -170,7 +170,10 @@ def main(args):
     bars = plt.bar(task_labels, correctness_pass_rates, color='green', yerr=error_margins, capsize=5)
     plt.xlabel('Task Label')
     plt.ylabel('Correctness Pass Rate (%)')
-    plt.title(f'Correctness Pass Rate by Task Label ({args.llm_model_type}, N={sample_sizes})')
+    # print the average pass rate and error margin on the title
+    avg_pass_rate = np.mean(correctness_pass_rates)
+    error_margin = np.mean(error_margins)
+    plt.title(f'Correctness Pass Rate ({args.llm_model_type}, N={sample_sizes}, Avg={avg_pass_rate:.2f}% ±{error_margin:.2f}%)')
     # Add error values on top of each bar
     for i, bar in enumerate(bars):
         height = bar.get_height()
@@ -199,7 +202,10 @@ def main(args):
     bars = plt.bar(task_labels, safety_pass_rates, color='orange', yerr=safety_error_margins, capsize=5)
     plt.xlabel('Task Label')
     plt.ylabel('Safety Pass Rate (%)')
-    plt.title(f'Safety Pass Rate by Task Label ({args.llm_model_type}, N={sample_sizes})')
+    # print the average pass rate and error margin on the title
+    avg_pass_rate = np.mean(safety_pass_rates)
+    error_margin = np.mean(safety_error_margins)
+    plt.title(f'Safety Pass Rate ({args.llm_model_type}, N={sample_sizes}, Avg={avg_pass_rate:.2f}% ±{error_margin:.2f}%)')
     # Add error values on top of each bar
     for i, bar in enumerate(bars):
         height = bar.get_height()

@@ -106,7 +106,7 @@ class QueryGenerator:
 
     def create_level_one_dataset(self, num_each_type):
         # operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
-        operations = ['list']
+        operations = ['update', 'rank', 'count', 'list']
         for operation in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_1_query_groundtruth(operation_type=operation)
@@ -237,7 +237,7 @@ class QueryGenerator:
         
     def create_level_two_dataset(self, num_each_type):
         # operations = [('add', 'count'), ('remove', 'count'), ('add', 'list'), ('add', 'rank'), ('remove', 'list'), ('remove', 'rank')]
-        operations = [('remove', 'list'), ('remove', 'rank')]
+        operations = [('remove', 'list'), ('remove', 'rank'), ('remove', 'count')]
         for operation1, operation2 in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_2_query_sequential(operation_type_1=operation1, operation_type_2=operation2)
@@ -248,6 +248,21 @@ class QueryGenerator:
                     {"task_label": f"capacity planning, level-2, {operation1}-{operation2}"}
                     ]
                 })
+
+    def create_level_three_dataset(self, num_each_type):
+        # operations = [('add', 'count'), ('remove', 'count'), ('add', 'list'), ('add', 'rank'), ('remove', 'list'), ('remove', 'rank')]
+        operations = [('add', 'list'), ('add', 'rank'), ('add', 'count')]
+        for operation1, operation2 in operations:
+            for _ in range(num_each_type):
+                query, ground_truth, new_node = self.generate_level_2_query_sequential(operation_type_1=operation1, operation_type_2=operation2)
+                self.queries.append({
+                    "messages": [
+                    {"question": query},
+                    {"answer": ground_truth},
+                    {"task_label": f"capacity planning, level-3, {operation1}-{operation2}"}
+                    ]
+                })
+
 
     def genarate_level_3_query_for_loop(self, operation_type_1='add', operation_type_2='count'):
         """
@@ -270,34 +285,20 @@ class QueryGenerator:
                                     return return_object"""
             return template, ground_truth, None
         
-        # elif operation_type_1 == 'add' and operation_type_2 == 'rank':
-        #     parent_node_type = random.choice(['EK_AGG_BLOCK', 'EK_CONTROL_DOMAIN'])
-        #     child_node_type = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
-        #     parent_node_names = self.node_value_ranges[parent_node_type]
-
-        #     template = f"For each {parent_node_type}, add a new {child_node_type} to it. Rank the total number of {child_node_type} in the updated graph based on physical_capacity_bps attribute. Return a list of tuple, each tuple has node name and its total physical capacity."
-        #     ground_truth = f"""def ground_truth_process_graph(graph_data):
-        #                             for parent_node_name in {parent_node_names}:
-        #                                 new_node = {{"name": f"new_{child_node_type}_{{random.randint(1, 100)}}", "type": "{child_node_type}"}}
-        #                                 graph_data = solid_step_add_node_to_graph(graph_data, new_node, parent_node_name)
-        #                             ranked_child_nodes = solid_step_rank_child_nodes(graph_data, parent_node_name)
-        #                             return_object = {{'type': 'list', 'data': ranked_child_nodes}}
-        #                             return return_object"""
-        #     return template, ground_truth, None
         
-    def create_level_three_dataset(self, num_each_type):
-        # TODO: level-3 query creation has bugs
-        operations = [('add', 'rank')]
-        for operation1, operation2 in operations:
-            for _ in range(num_each_type):
-                query, ground_truth, new_node = self.genarate_level_3_query_for_loop(operation_type_1=operation1, operation_type_2=operation2)
-                self.queries.append({
-                    "messages": [
-                    {"question": query},
-                    {"answer": ground_truth},
-                    {"task_label": f"capacity planning, level-3, {operation1}-{operation2}"}
-                    ]
-                })
+    # def create_level_three_dataset(self, num_each_type):
+    #     # TODO: level-3 query creation has bugs
+    #     operations = [('add', 'rank')]
+    #     for operation1, operation2 in operations:
+    #         for _ in range(num_each_type):
+    #             query, ground_truth, new_node = self.genarate_level_3_query_for_loop(operation_type_1=operation1, operation_type_2=operation2)
+    #             self.queries.append({
+    #                 "messages": [
+    #                 {"question": query},
+    #                 {"answer": ground_truth},
+    #                 {"task_label": f"capacity planning, level-3, {operation1}-{operation2}"}
+    #                 ]
+    #             })
     
     def generate_queries(self, num_each_type=3, complexity_level=['level1', 'level2']):
         if 'level1' in complexity_level:
