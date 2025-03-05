@@ -3,12 +3,11 @@ cd ..
 cd app-malt
 
 # Define common parameters
-NUM_QUERIES=10
-BENCHMARK_PATH="data/tmp_benchmark_malt.jsonl"
+NUM_QUERIES=50
+BENCHMARK_PATH="data/sampled_50_benchmark_malt_qwen.jsonl"
 PROMPT_TYPE="few_shot_semantic"  # Define prompt_type
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
 # PROMPT_TYPE="zero_shot_cot"  # Define prompt_type
-
 
 # Function to run experiment for a model
 run_experiment() {
@@ -22,6 +21,9 @@ run_experiment() {
     
     echo "Running experiment for $llm_model_type..."
     
+    # Clear GPU cache before running
+    python -c "import torch; torch.cuda.empty_cache()" 
+    
     python main.py \
         --llm_model_type "$llm_model_type" \
         --prompt_type "$PROMPT_TYPE" \
@@ -29,13 +31,12 @@ run_experiment() {
         --complexity_level $complexity \
         --output_dir "$agent_output_dir" \
         --output_file "$output_file" \
-        --dynamic_benchmark_path "$BENCHMARK_PATH" \
-        --regenerate_query
-        }
+        --dynamic_benchmark_path "$BENCHMARK_PATH" 
+    }
 
 # Define models and their configurations
 declare -A model_configs=(
-    ["Qwen2.5-72B-Instruct"]="level1 level2 :qwen_tmp_fewshot_semantic.jsonl"
+    ["Qwen2.5-72B-Instruct"]="level1 level2 level3:qwen_fewshot_semantic_50.jsonl"
 )
 
 # Define the desired order of execution

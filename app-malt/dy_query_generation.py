@@ -53,7 +53,7 @@ class QueryGenerator:
             child_node_type = random.choice(['EK_PACKET_SWITCH', 'EK_PORT'])
             parent_node_name = random.choice(self.node_value_ranges[parent_node])
 
-            template = f"Count the {child_node_type} in the {parent_node_name}. Return only the count number."
+            template = f"Count the {child_node_type} in the {parent_node_name}. Return the count number as text."
             node1 = {'type': parent_node, 'name': parent_node_name}
             node2 = {'type': child_node_type, 'name': None}
             ground_truth = f"""def ground_truth_process_graph(graph_data):
@@ -131,7 +131,7 @@ class QueryGenerator:
             child_node_name = f"new_{child_node}_{random.randint(1, 100)}"
             parent_node_name = random.choice(self.node_value_ranges[parent_node])
 
-            template = f"Add {child_node_name} to {parent_node_name}. Count the {child_node} in {parent_node_name} in the updated graph. Return only the count number."
+            template = f"Add {child_node_name} to {parent_node_name}. Count the {child_node} in {parent_node_name} in the updated graph. Return the count number as text."
 
             new_node = {'name': child_node_name, 'type': child_node}
             ground_truth = f"""def ground_truth_process_graph(graph_data):
@@ -151,7 +151,7 @@ class QueryGenerator:
             child_node_name = random.choice(self.node_value_ranges[child_node])
             parent_node_substring = '.'.join(child_node_name.split('.')[:-1])
 
-            template = f"Remove {child_node_name} from the graph. Count the {child_node} in {parent_node_substring} in the updated graph. Return only the count number."
+            template = f"Remove {child_node_name} from the graph. Count the {child_node} in {parent_node_substring} in the updated graph. Return the count number as text."
 
             ground_truth = f"""def ground_truth_process_graph(graph_data):
                                     child_node_name = '{child_node_name}'

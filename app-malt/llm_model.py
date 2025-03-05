@@ -220,6 +220,10 @@ class QwenModel:
             prompt_text = prompt_template.format(input=query)
         else:
             # For base/cot prompts
+            prompt_template = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + prompt_suffix
+            )
             prompt_text = self.prompt_agent.prompt_prefix + prompt_suffix
             prompt_text = prompt_text.format(input=query)
 

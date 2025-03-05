@@ -282,10 +282,12 @@ def clean_up_llm_output_func(answer):
     return clean_code
 
 def check_list_equal(lst1, lst2):
+    # check list type. if list1 is a [['ju1.a1.m1.s2c2', 0], ['ju1.a1.m1.s2c3', 0]], then convert to [('ju1.a1.m1.s2c2', 0), ('ju1.a1.m1.s2c3', 0)]
     if lst1 and isinstance(lst1[0], list):
-        return Counter(json.dumps(i) for i in lst1) == Counter(json.dumps(i) for i in lst2)
-    else:
-        return Counter(lst1) == Counter(lst2)
+        lst1 = [tuple(i) for i in lst1]
+    if lst2 and isinstance(lst2[0], list):
+        lst2 = [tuple(i) for i in lst2]
+    return Counter(lst1) == Counter(lst2)
 
 
 def clean_up_output_graph_data(ret):

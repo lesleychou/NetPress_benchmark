@@ -45,6 +45,7 @@ class BenchmarkEvaluator:
         start_time = time.time()
 
         llm_answer = self.llm_agent.call_agent(current_query)
+        print("LLM answer: ", llm_answer)
 
         try:
             exec(llm_answer)
@@ -90,9 +91,6 @@ class BenchmarkEvaluator:
             gt_verifier_error = ""
         print("Ground truth verifier results: ", gt_verifier_results, gt_verifier_error)
         
-
-        print("LLM answer: ", llm_answer)
-        print("Ground truth code: ", goldenAnswerCode)
         if ret['type'] != 'graph':
             print("LLM code result: ", ret)
             print("Ground truth result: ", ground_truth_ret)
