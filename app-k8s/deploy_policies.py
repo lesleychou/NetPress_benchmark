@@ -5,10 +5,13 @@ import subprocess
 
 def deploy_policies(policy_names=None, root_dir=None):
     """Deploy policies to the Kubernetes cluster."""
+    policy_names.append("network-policy-deny-all")
+    print(f"Deploying policies: {policy_names}")
     for name in policy_names:
         filename = os.path.join(root_dir, "policies", f"{name}.yaml")
         try:
             result = subprocess.run(["kubectl", "apply", "-f", filename], check=True, text=True, capture_output=True)
+            print(f"Deployed {filename}:\n{result.stdout}")
         except subprocess.CalledProcessError as e:
             print(f"Failed to deploy {filename}:\n{e.stderr}")
 

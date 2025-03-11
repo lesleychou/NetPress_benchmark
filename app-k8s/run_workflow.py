@@ -8,22 +8,22 @@ from correct_policy import copy_yaml_to_new_folder
 from llm_agent import LLMAgent
 import json
 from datetime import datetime
-from file_util import file_write
+from file_util import file_write, summary_tests, plot_metrics
 from inject_errors import inject_config_errors_into_policies, generate_config
 
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
     parser.add_argument('--llm_agent_type', type=str, default="GPT-4o", choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o"], help='Choose the LLM agent')#"Qwen/Qwen2.5-72B-Instruct"，"GPT-4o"
-    parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
+    parser.add_argument('--num_queries', type=int, default=30, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/jiajun_benchmark/app-k8s", help='Directory to save output JSONL file')
     parser.add_argument('--microservice_dir', type=str, default="/home/ubuntu/microservices-demo", help='Directory to google microservice demo')
-    parser.add_argument('--max_iteration', type=int, default=20, help='Choose maximum trials for a query')
+    parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
     parser.add_argument('--full_test', type=int, default=1, choices=[0, 1], help='Enable full test if set to 1')
     parser.add_argument('--error_config', type=int, default=1, choices=[0, 1], help='Choose whether to use the pregenerated config')
-    parser.add_argument('--config_gen', type=int, default=0, help='Choose whether to generate new config')
-    parser.add_argument('--prompt_type', type=str, default="few_shot_basic", choices=["base", "cot", "few_shot_basic", "few_shot_semantic"], help='Choose the prompt type')
+    parser.add_argument('--config_gen', type=int, default=1, help='Choose whether to generate new config')
+    parser.add_argument('--prompt_type', type=str, default="base", choices=["base", "cot", "few_shot_basic", "few_shot_semantic"], help='Choose the prompt type')
     return parser.parse_args()
 
 expected_results = {
@@ -240,6 +240,7 @@ def run_config_error(args):
 
     # Create result directory and timestamped subdirectory
     result_dir = os.path.join(args.root_dir, "result", args.llm_agent_type, datetime.now().strftime("%Y%m%d_%H%M%S"))
+
     os.makedirs(result_dir, exist_ok=True)
     if args.config_gen == 1:
         generate_config(args.root_dir, policy_names, args.num_queries)
@@ -280,7 +281,7 @@ def run_config_error(args):
             pass  
 
         # Step 3: Inject errors into policies
-        modifiedpolicy = inject_config_errors_into_policies(policy_names, args.root_dir, inject_error_num, policies_to_inject, error_detail)
+        inject_config_errors_into_policies(policy_names, args.root_dir, inject_error_num, policies_to_inject, error_detail)
         
         # Step 4: Deploy policies
         deploy_policies(policy_names, args.root_dir)
@@ -290,7 +291,7 @@ def run_config_error(args):
         llm_command = "None"
         mismatch_summary = {}
 
-        for k in range(20):
+        for k in range(args.max_iteration):
             if k == 0:
                 pass
             else:
@@ -320,6 +321,9 @@ def run_config_error(args):
                 print(f"Success in iteration {k+1}")
                 file_write(llm_command, output, mismatch_summary, json_file_path, txt_file_path)
                 break
+        
+    summary_tests(result_dir)
+    plot_metrics(result_dir)
         # all_match, mismatch_summary = correctness_check(expected_results)
         # print(all_match)
         # print(mismatch_summary)

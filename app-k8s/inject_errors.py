@@ -130,7 +130,7 @@ def inject_errors_into_policies(policy_names, root_dir, complexity_level, error_
 def generate_config(root_dir, policy_names, num_queries):
     basic_errors = ["remove_ingress", "add_ingress", "change_port", "change_protocol", "add_egress"]
     error_combinations = list(itertools.combinations(basic_errors, 2))
-    
+    basic_errors = ["remove_ingress", "change_port", "add_egress"]#
     error_config = []
 
     # Generate basic errors
@@ -172,7 +172,7 @@ def generate_config(root_dir, policy_names, num_queries):
 
     # Generate combination errors
     for combo in error_combinations:
-        for _ in range(2):
+        for _ in range(num_queries):
             details = []
             for error in combo:
                 detail = {"type": error}

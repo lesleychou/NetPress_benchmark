@@ -99,10 +99,15 @@ def extract_command(text: str) -> str:
     """
     match = re.search(r'```(.*?)```', text, re.DOTALL)
     if match:
-        # command = match.group(1).strip()
+# command = match.group(1).strip()
+        # command = command.replace('\n', '')  # Remove all newline characters
+        # return command
+# command = match.group(1).strip()
         # command = command.replace('\n', '')  # Remove all newline characters
         # return command
         return match.group(1).strip()
+
+
     return ""
 
 
@@ -114,6 +119,146 @@ class LLMAgent:
             self.llm_agent = QwenModel(prompt_type=prompt_type)
         if llm_agent_type == "GPT-4o":
             self.llm_agent = AzureGPT4Agent(prompt_type=prompt_type)
+                                            
+# class AzureGPT4Agent:
+#     def __init__(self, prompt_type="base"):
+#         self.llm = AzureChatOpenAI(
+#             openai_api_version="2024-08-01-preview",
+#             deployment_name='ztn-sweden-gpt-4o',
+#             model_name='ztn-sweden-gpt-4o',
+#             temperature=0.0,
+#             max_tokens=4000,
+#         )
+#         self.prompt_type = prompt_type
+
+#     def call_agent(self, txt_file_path):
+#         print("Calling GPT-4o with prompt type:", self.prompt_type)
+        
+#         prompt = prompt_generation(txt_file_path)
+
+
+#         answer = self.llm.invoke(prompt).content
+        
+        
+#         print("model returned")
+#         print("llm answer:", answer)
+#         answer = extract_command(answer)
+#         print("extracted command:", answer)
+#         return answer
+
+
+# class QwenModel:
+#     def __init__(self):
+#         self.model_name = "Qwen/Qwen2.5-72B-Instruct"
+#         self.quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
+#         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#         self.tokenizer = AutoTokenizer.from_pretrained(
+#             self.model_name,
+#             device_map=self.device,
+#             cache_dir="/home/ubuntu"
+#         )
+#         self.llm = AutoModelForCausalLM.from_pretrained(
+#             self.model_name,
+#             device_map=self.device,
+#             quantization_config=self.quantization_config,
+#             cache_dir="/home/ubuntu"
+#         )
+
+#     def call_agent(self, txt_file_path):
+#         prompt = prompt_generation(txt_file_path)
+#         # Tokenize the prompt and get the input IDs
+#         prompt_tokens = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+#         prompt_input_ids = prompt_tokens["input_ids"]
+#         start_index = prompt_input_ids.shape[-1]
+        
+#         # Generate the output
+#         generated_ids = self.llm.generate(
+#             **prompt_tokens,
+#             max_new_tokens=512,
+#             do_sample=True,
+#             temperature=0.1
+#         )
+        
+#         # Remove the prompt part from the generated output
+#         generation_output = generated_ids[0][start_index:]
+#         answer = self.tokenizer.decode(generation_output, skip_special_tokens=True)
+#         print("llm answer:", answer)
+#         print("model returned")
+#         answer = extract_command(answer)
+#         print("extracted command:", answer)
+#         print("model returned")
+#         return answer
+
+# class AzureGPT4Agent:
+#     def __init__(self, prompt_type="base"):
+#         self.llm = AzureChatOpenAI(
+#             openai_api_version="2024-08-01-preview",
+#             deployment_name='ztn-sweden-gpt-4o',
+#             model_name='ztn-sweden-gpt-4o',
+#             temperature=0.0,
+#             max_tokens=4000,
+#         )
+#         self.prompt_type = prompt_type
+
+#     def call_agent(self, txt_file_path):
+#         print("Calling GPT-4o with prompt type:", self.prompt_type)
+        
+#         prompt = prompt_generation(txt_file_path)
+
+
+#         answer = self.llm.invoke(prompt).content
+        
+        
+#         print("model returned")
+#         print("llm answer:", answer)
+#         answer = extract_command(answer)
+#         print("extracted command:", answer)
+#         return answer
+
+
+# class QwenModel:
+#     def __init__(self):
+#         self.model_name = "Qwen/Qwen2.5-72B-Instruct"
+#         self.quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
+#         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#         self.tokenizer = AutoTokenizer.from_pretrained(
+#             self.model_name,
+#             device_map=self.device,
+#             cache_dir="/home/ubuntu"
+#         )
+#         self.llm = AutoModelForCausalLM.from_pretrained(
+#             self.model_name,
+#             device_map=self.device,
+#             quantization_config=self.quantization_config,
+#             cache_dir="/home/ubuntu"
+#         )
+
+#     def call_agent(self, txt_file_path):
+#         prompt = prompt_generation(txt_file_path)
+#         # Tokenize the prompt and get the input IDs
+#         prompt_tokens = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+#         prompt_input_ids = prompt_tokens["input_ids"]
+#         start_index = prompt_input_ids.shape[-1]
+        
+#         # Generate the output
+#         generated_ids = self.llm.generate(
+#             **prompt_tokens,
+#             max_new_tokens=512,
+#             do_sample=True,
+#             temperature=0.1
+#         )
+        
+#         # Remove the prompt part from the generated output
+#         generation_output = generated_ids[0][start_index:]
+#         answer = self.tokenizer.decode(generation_output, skip_special_tokens=True)
+#         print("llm answer:", answer)
+#         print("model returned")
+#         answer = extract_command(answer)
+#         print("extracted command:", answer)
+#         print("model returned")
+#         return answer
+
+
 
 # class AzureGPT4Agent:
 #     def __init__(self, prompt_type="base"):
@@ -213,6 +358,11 @@ class AzureGPT4Agent:
     def call_agent(self, txt_file_path):
         with open(txt_file_path, 'r') as txt_file:
             connectivitity_status = txt_file.read()
+        
+        max_length = 127000  
+        if len(connectivitity_status) > max_length:
+            connectivitity_status = connectivitity_status[:max_length]
+
         # Create prompt based on type
         if self.prompt_type == "few_shot_semantic":
             prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
@@ -232,15 +382,11 @@ class AzureGPT4Agent:
                 template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
             )
             input_data = {"input": connectivitity_status}
-   
 
-        
         chain = LLMChain(llm=self.llm, prompt=prompt)
         response = chain.run(input_data)
         response = extract_command(response)
         return response
-        
-
 
 class QwenModel:
     def __init__(self, prompt_type="base"):
@@ -274,6 +420,12 @@ class QwenModel:
     def call_agent(self, txt_file_path):
         with open(txt_file_path, 'r') as txt_file:
             connectivitity_status = txt_file.read()
+        
+       
+        max_length = 127000  
+        if len(connectivitity_status) > max_length:
+            connectivitity_status = connectivitity_status[:max_length]
+
         # 生成提示（根据类型调整）
         if self.prompt_type == "few_shot_semantic":
             prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)

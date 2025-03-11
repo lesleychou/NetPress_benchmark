@@ -73,7 +73,7 @@ def create_debug_container(pod_name, timeout=3):
         "--attach=false",  # Run in detached mode
         "--", "sleep", "infinity"  # Keep container alive
     ]
-
+    print(f"Creating debug container: {' '.join(debug_command)}")
     try:
         # Execute debug container creation
         subprocess.run(
@@ -107,16 +107,24 @@ def check_connectivity_with_debug(pod_name, debug_container_name, host, port, ti
     If the output contains "open", the connection is considered successful.
     """
     try:
+        # nc_command = [
+        #     "kubectl", "exec", "-it", pod_name,
+        #     "-c", debug_container_name,
+        #     "--", "nc", "-zv", "-w", str(timeout), host, str(port)
+        # ]
         nc_command = [
-            "kubectl", "exec", "-it", pod_name,
+            "kubectl", "exec", pod_name,  
             "-c", debug_container_name,
             "--", "nc", "-zv", "-w", str(timeout), host, str(port)
         ]
+        print(f"Checking connectivity: {' '.join(nc_command)}")
         result = subprocess.run(nc_command, capture_output=True, text=True, timeout=timeout+1)
         output = (result.stdout + result.stderr).strip()
         if "open" in output:
+            print("output: ", output)
             return True
         else:
+            print("output: ", output)
             return False
     except subprocess.TimeoutExpired:
         return False
