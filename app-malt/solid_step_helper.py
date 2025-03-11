@@ -270,13 +270,20 @@ def clean_up_llm_output_func(answer):
     :return: cleaned function
     '''
     start = answer.find("def process_graph")
-    end = -1
-    index = 0
-    for _ in range(2):  # change the number 2 to any 'n' to find the nth occurrence
-        end = answer.find("```", index)
-        index = end + 1
-    clean_code = answer[start:end].strip()
-    # remove the line that has "import package" in the code
+    if start == -1:
+        return ""  # Return empty string if process_graph function not found
+        
+    # Find the code block ending
+    code_block_end = answer.find("```", answer.find("```", start))
+    
+    # If we found proper code block markers
+    if code_block_end != -1:
+        clean_code = answer[start:code_block_end].strip()
+    else:
+        # Fallback to extract until the end of the string
+        clean_code = answer[start:].strip()
+    
+    # Remove the lines that have "import package" in the code
     clean_code = '\n'.join([line for line in clean_code.split('\n') if not line.strip().startswith("import")])
 
     return clean_code
