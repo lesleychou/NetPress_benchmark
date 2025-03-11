@@ -14,11 +14,10 @@ import argparse
 from scipy import stats
 import math
 
-
 # define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_model_type', type=str, default='AzureGPT4Agent', help='Choose the LLM agent', choices=['AzureGPT4Agent', 'GoogleGeminiAgent', 'Qwen2.5-72B-Instruct'])
+    parser.add_argument('--llm_model_type', type=str, default='AzureGPT4Agent', help='Choose the LLM agent', choices=['AzureGPT4Agent', 'GoogleGeminiAgent', 'Qwen2.5-72B-Instruct', 'QwenModel_finetuned'])
     parser.add_argument('--prompt_type', type=str, default='base', help='Choose the prompt type', choices=['base', 'cot', 'few_shot_basic', 'few_shot_semantic', 'few_shot_knn'])
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', nargs='+', default=['level1', 'level2'], help='Complexity level of queries to generate')
@@ -55,49 +54,49 @@ def main(args):
         with open(output_path, 'w') as f:
             pass
 
-    # dynamically generate or load existing queries
-    query_generator = QueryGenerator()
-    benchmark_path = benchmark_config['dynamic_benchmark_path']
+    # # dynamically generate or load existing queries
+    # query_generator = QueryGenerator()
+    # benchmark_path = benchmark_config['dynamic_benchmark_path']
     
-    if benchmark_config['regenerate_query']:
-        print("Generating new queries due to regenerate_query=True")
-        query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
-        query_generator.save_queries_to_file(benchmark_path)
-    else:
-        if not os.path.exists(benchmark_path):
-            print(f"Benchmark file {benchmark_path} does not exist. Generating new queries...")
-            query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
-            query_generator.save_queries_to_file(benchmark_path)
-        else:
-            print(f"Loading existing benchmark from {benchmark_path}")
-            query_generator.load_queries_from_file(benchmark_path)
+    # if benchmark_config['regenerate_query']:
+    #     print("Generating new queries due to regenerate_query=True")
+    #     query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
+    #     query_generator.save_queries_to_file(benchmark_path)
+    # else:
+    #     if not os.path.exists(benchmark_path):
+    #         print(f"Benchmark file {benchmark_path} does not exist. Generating new queries...")
+    #         query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
+    #         query_generator.save_queries_to_file(benchmark_path)
+    #     else:
+    #         print(f"Loading existing benchmark from {benchmark_path}")
+    #         query_generator.load_queries_from_file(benchmark_path)
 
-    # Load the evaluator
-    evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
+    # # Load the evaluator
+    # evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
 
-    # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
-    benchmark_data = []
-    with jsonlines.open(benchmark_path) as reader:
-        for obj in reader:
-            benchmark_data.append(obj['messages'])
+    # # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
+    # benchmark_data = []
+    # with jsonlines.open(benchmark_path) as reader:
+    #     for obj in reader:
+    #         benchmark_data.append(obj['messages'])
     
-    # for each object in the benchmark list, get the question and answer
-    for obj in benchmark_data:
-        # obj is a list of dictionaries, load question, answer, task_label from it
-        for item in obj:
-            if 'question' in item:
-                current_query = item['question']
-            elif 'answer' in item:
-                golden_answer = item['answer']
-            elif 'task_label' in item:
-                task_label = item['task_label']
+    # # for each object in the benchmark list, get the question and answer
+    # for obj in benchmark_data:
+    #     # obj is a list of dictionaries, load question, answer, task_label from it
+    #     for item in obj:
+    #         if 'question' in item:
+    #             current_query = item['question']
+    #         elif 'answer' in item:
+    #             golden_answer = item['answer']
+    #         elif 'task_label' in item:
+    #             task_label = item['task_label']
             
-        ret, ground_truth_ret, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer)
-        evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, output_path)
+    #     ret, ground_truth_ret, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer)
+    #     evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, output_path)
 
-        # have to sleep for Gemini API quota
-        if benchmark_config['llm_model_type'] == 'GoogleGeminiAgent':
-            time.sleep(10)
+    #     # have to sleep for Gemini API quota
+    #     if benchmark_config['llm_model_type'] == 'GoogleGeminiAgent':
+    #         time.sleep(10)
 
     # Analyze the results
     # load the data from output_path
@@ -134,7 +133,7 @@ def main(args):
     bars = plt.bar(task_labels, avg_latencies, color='skyblue', yerr=std_latencies, capsize=5)
     plt.xlabel('Task Label')
     plt.ylabel('Average Query Run Latency (seconds)')
-    plt.title(f'Average Query Run Latency by Task Label ({args.llm_model_type})')
+    plt.title(f'Average Query Run Latency ({args.llm_model_type}, Avg={np.mean(avg_latencies):.2f}s ±{np.mean(std_latencies):.2f}s)')
     # Add error values on top of each bar
     for i, bar in enumerate(bars):
         height = bar.get_height()
@@ -170,7 +169,10 @@ def main(args):
     bars = plt.bar(task_labels, correctness_pass_rates, color='green', yerr=error_margins, capsize=5)
     plt.xlabel('Task Label')
     plt.ylabel('Correctness Pass Rate (%)')
-    plt.title(f'Correctness Pass Rate by Task Label ({args.llm_model_type}, N={sample_sizes})')
+    # print the average pass rate and error margin on the title
+    avg_pass_rate = np.mean(correctness_pass_rates)
+    error_margin = np.mean(error_margins)
+    plt.title(f'Correctness Pass Rate ({args.llm_model_type}, N={sample_sizes}, Avg={avg_pass_rate:.2f}% ±{error_margin:.2f}%)')
     # Add error values on top of each bar
     for i, bar in enumerate(bars):
         height = bar.get_height()
@@ -199,7 +201,10 @@ def main(args):
     bars = plt.bar(task_labels, safety_pass_rates, color='orange', yerr=safety_error_margins, capsize=5)
     plt.xlabel('Task Label')
     plt.ylabel('Safety Pass Rate (%)')
-    plt.title(f'Safety Pass Rate by Task Label ({args.llm_model_type}, N={sample_sizes})')
+    # print the average pass rate and error margin on the title
+    avg_pass_rate = np.mean(safety_pass_rates)
+    error_margin = np.mean(safety_error_margins)
+    plt.title(f'Safety Pass Rate ({args.llm_model_type}, N={sample_sizes}, Avg={avg_pass_rate:.2f}% ±{error_margin:.2f}%)')
     # Add error values on top of each bar
     for i, bar in enumerate(bars):
         height = bar.get_height()

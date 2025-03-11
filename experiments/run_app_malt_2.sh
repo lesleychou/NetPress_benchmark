@@ -3,9 +3,9 @@ cd ..
 cd app-malt
 
 # Define common parameters
-NUM_QUERIES=30
-BENCHMARK_PATH="data/tmp_benchmark_malt.jsonl"
-PROMPT_TYPE="few_shot_semantic"  # Define prompt_type
+NUM_QUERIES=50
+BENCHMARK_PATH="data/sampled_50_benchmark_malt_2.jsonl"
+PROMPT_TYPE="cot"  # Define prompt_type
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
 # PROMPT_TYPE="zero_shot_cot"  # Define prompt_type
 
@@ -29,13 +29,12 @@ run_experiment() {
         --complexity_level $complexity \
         --output_dir "$agent_output_dir" \
         --output_file "$output_file" \
-        --dynamic_benchmark_path "$BENCHMARK_PATH" \
-        --regenerate_query
+        --dynamic_benchmark_path "$BENCHMARK_PATH"
         }
 
 # Define models and their configurations
 declare -A model_configs=(
-    ["AzureGPT4Agent"]="level1 level2 :gpt4o_tmp_fewshot_semantic.jsonl"
+    ["AzureGPT4Agent"]="level1 level2 level3:gpt4o_cot_50.jsonl"
 )
 
 # Define the desired order of execution

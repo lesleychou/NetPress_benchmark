@@ -16,7 +16,7 @@ import re
 import time
 import sys
 import numpy as np
-from llm_model import AzureGPT4Agent, GoogleGeminiAgent, QwenModel
+from llm_model import AzureGPT4Agent, GoogleGeminiAgent, QwenModel, QwenModel_finetuned
 from error_check import SafetyChecker
 
 
@@ -35,6 +35,8 @@ class BenchmarkEvaluator:
             self.llm_agent = GoogleGeminiAgent(prompt_type)
         elif llm_model_type == "Qwen2.5-72B-Instruct":
             self.llm_agent = QwenModel(prompt_type)
+        elif llm_model_type == "QwenModel_finetuned":
+            self.llm_agent = QwenModel_finetuned(prompt_type)
 
     def userQuery(self, current_query, golden_answer):
         # for each prompt in the prompt_list, append it as the value of {'query': prompt}
@@ -45,6 +47,7 @@ class BenchmarkEvaluator:
         start_time = time.time()
 
         llm_answer = self.llm_agent.call_agent(current_query)
+        print("LLM answer: ", llm_answer)
 
         try:
             exec(llm_answer)
@@ -90,9 +93,6 @@ class BenchmarkEvaluator:
             gt_verifier_error = ""
         print("Ground truth verifier results: ", gt_verifier_results, gt_verifier_error)
         
-
-        print("LLM answer: ", llm_answer)
-        print("Ground truth code: ", goldenAnswerCode)
         if ret['type'] != 'graph':
             print("LLM code result: ", ret)
             print("Ground truth result: ", ground_truth_ret)

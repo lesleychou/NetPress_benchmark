@@ -270,22 +270,31 @@ def clean_up_llm_output_func(answer):
     :return: cleaned function
     '''
     start = answer.find("def process_graph")
-    end = -1
-    index = 0
-    for _ in range(2):  # change the number 2 to any 'n' to find the nth occurrence
-        end = answer.find("```", index)
-        index = end + 1
-    clean_code = answer[start:end].strip()
-    # remove the line that has "import package" in the code
+    if start == -1:
+        return ""  # Return empty string if process_graph function not found
+        
+    # Find the code block ending
+    code_block_end = answer.find("```", answer.find("```", start))
+    
+    # If we found proper code block markers
+    if code_block_end != -1:
+        clean_code = answer[start:code_block_end].strip()
+    else:
+        # Fallback to extract until the end of the string
+        clean_code = answer[start:].strip()
+    
+    # Remove the lines that have "import package" in the code
     clean_code = '\n'.join([line for line in clean_code.split('\n') if not line.strip().startswith("import")])
 
     return clean_code
 
 def check_list_equal(lst1, lst2):
+    # check list type. if list1 is a [['ju1.a1.m1.s2c2', 0], ['ju1.a1.m1.s2c3', 0]], then convert to [('ju1.a1.m1.s2c2', 0), ('ju1.a1.m1.s2c3', 0)]
     if lst1 and isinstance(lst1[0], list):
-        return Counter(json.dumps(i) for i in lst1) == Counter(json.dumps(i) for i in lst2)
-    else:
-        return Counter(lst1) == Counter(lst2)
+        lst1 = [tuple(i) for i in lst1]
+    if lst2 and isinstance(lst2[0], list):
+        lst2 = [tuple(i) for i in lst2]
+    return Counter(lst1) == Counter(lst2)
 
 
 def clean_up_output_graph_data(ret):

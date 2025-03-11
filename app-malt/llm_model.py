@@ -24,6 +24,8 @@ import torch
 from huggingface_hub import login
 from vllm import LLM, SamplingParams
 from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent
+from modelscope import AutoModelForCausalLM, AutoTokenizer
+from modelscope import GenerationConfig
 
 # Login huggingface
 login(token="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")
@@ -220,6 +222,10 @@ class QwenModel:
             prompt_text = prompt_template.format(input=query)
         else:
             # For base/cot prompts
+            prompt_template = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + prompt_suffix
+            )
             prompt_text = self.prompt_agent.prompt_prefix + prompt_suffix
             prompt_text = prompt_text.format(input=query)
 
@@ -244,6 +250,101 @@ class QwenModel:
         # Use vLLM's native interface for generation
         outputs = self.llm.generate(prompt_text, self.sampling_params)
         answer = outputs[0].outputs[0].text
+        print("model returned")
+        code = clean_up_llm_output_func(answer)
+        return code
+
+class QwenModel_finetuned:
+    def __init__(self, prompt_type="base"):
+        self.model_name = "Fine-tuned-Qwen-7B"
+        self.model_path = "/home/ubuntu/fine-tune_qwen/Qwen/output_qwen"
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_path, 
+            trust_remote_code=True
+        )
+        # Set padding token to be same as EOS token, but with explicit attention mask handling
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        
+        self.llm = AutoModelForCausalLM.from_pretrained(
+            self.model_path, 
+            device_map="auto", 
+            trust_remote_code=True, 
+            fp16=True
+        ).eval()
+        
+        # Use the default generation config from the model
+        self.llm.generation_config = self.llm.generation_config
+        
+        self.prompt_type = prompt_type
+        # Store prompt agent for later use
+        if self.prompt_type == "cot":
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif self.prompt_type == "few_shot_basic":
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif self.prompt_type == "few_shot_semantic":
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
+        else:
+            self.prompt_agent = BasePromptAgent()
+
+    def call_agent(self, query):
+        print("Calling Fine-tuned Qwen with prompt type:", self.prompt_type)
+        
+        # Create prompt based on type
+        if self.prompt_type == "few_shot_semantic":
+            prompt_template = self.prompt_agent.get_few_shot_prompt(query)
+            # For few-shot semantic, we need to format with the specific query
+            prompt_text = prompt_template.format(input=query)
+        elif self.prompt_type == "few_shot_basic":
+            prompt_template = self.prompt_agent.get_few_shot_prompt()
+            # For few-shot basic, format with the query
+            prompt_text = prompt_template.format(input=query)
+        else:
+            # For base/cot prompts
+            prompt_template = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + prompt_suffix
+            )
+            prompt_text = self.prompt_agent.prompt_prefix + prompt_suffix
+            prompt_text = prompt_text.format(input=query)
+
+        # Print prompt template (keeping the same debugging output)
+        print("\nPrompt Template:")
+        print("-" * 80)
+        if isinstance(prompt_template, FewShotPromptTemplate):
+            print("Few Shot Prompt Template Configuration:")
+            print("\nInput Variables:", prompt_template.input_variables)
+            print("\nExamples:")
+            for i, example in enumerate(prompt_template.examples, 1):
+                print(f"\nExample {i}:")
+                print(f"Question: {example['question']}")
+                print(f"Answer: {example['answer']}")
+            print("\nExample Prompt Template:", prompt_template.example_prompt)
+            print("\nPrefix:", prompt_template.prefix)
+            print("\nSuffix:", prompt_template.suffix)
+        else:
+            print(prompt_text.strip())
+        print("-" * 80 + "\n")
+
+        # Explicitly create the attention mask to handle the warning
+        # Use the modelscope chat method with attention mask handling
+        try:
+            # First try the existing method which might work despite the warning
+            answer, _ = self.llm.chat(self.tokenizer, prompt_text, history=None)
+        except Exception as e:
+            print(f"Standard chat method failed with: {e}. Using fallback method with explicit attention mask.")
+            # Fallback to manual generation with explicit attention mask
+            inputs = self.tokenizer(prompt_text, return_tensors="pt").to(self.llm.device)
+            # Generate with explicit attention mask
+            with torch.no_grad():
+                outputs = self.llm.generate(
+                    input_ids=inputs["input_ids"],
+                    attention_mask=inputs.get("attention_mask", None),
+                    max_new_tokens=512,
+                    temperature=0.0
+                )
+            # Decode the output skipping the input tokens
+            answer = self.tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+        
         print("model returned")
         code = clean_up_llm_output_func(answer)
         return code
