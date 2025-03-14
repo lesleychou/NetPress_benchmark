@@ -3,7 +3,7 @@ import subprocess
 from inject_errors import inject_errors_into_policies
 from deploy_policies import deploy_policies
 import argparse
-from correctness_check import correctness_check
+from correctness_check import correctness_check, create_debug_container
 from correct_policy import copy_yaml_to_new_folder
 from llm_agent import LLMAgent
 import json
@@ -237,7 +237,7 @@ expected_results = {
 def run_config_error(args):
     llm = LLMAgent(llm_agent_type=args.llm_agent_type,  prompt_type=args.prompt_type)
     policy_names = [ "network-policy-adservice", "network-policy-cartservice", "network-policy-checkoutservice", "network-policy-currencyservice", "network-policy-emailservice", "network-policy-frontend", "network-policy-loadgenerator", "network-policy-paymentservice", "network-policy-productcatalogservice", "network-policy-recommendationservice", "network-policy-redis", "network-policy-shippingservice" ]
-
+    pod_names = ["adservice", "cartservice", "checkoutservice", "currencyservice", "emailservice", "frontend", "loadgenerator", "paymentservice", "productcatalogservice", "recommendationservice", "redis-cart", "shippingservice"]
     # Create result directory and timestamped subdirectory
     result_dir = os.path.join(args.root_dir, "result", args.llm_agent_type, datetime.now().strftime("%Y%m%d_%H%M%S"))
 
@@ -255,10 +255,17 @@ def run_config_error(args):
 
     txt_file_path = os.path.join(args.root_dir, "test.txt")
 
+    debug_container_mapping = {}
+    for pod_name in pod_names:
+        debug_container_name = create_debug_container(pod_name)
+        if debug_container_name:
+            debug_container_mapping[pod_name] = debug_container_name
+    print(debug_container_mapping)
+
     for i, error in enumerate(error_config["details"]):
-        policies_to_inject = error.get("policies_to_inject", [])  # 获取 policies_to_inject 列表
-        inject_error_num = error.get("inject_error_num", [])  # 获取 inject_error_num 列表
-        error_detail = error.get("error_detail", [])  # 获取 error_detail 列表
+        policies_to_inject = error.get("policies_to_inject", [])  
+        inject_error_num = error.get("inject_error_num", [])  
+        error_detail = error.get("error_detail", [])  
         
         print(f"Error {i+1}:")
         print(f"  Policies to inject: {policies_to_inject}")
@@ -316,7 +323,7 @@ def run_config_error(args):
             except subprocess.CalledProcessError as e:
                 print(f"Command failed:\n{e.stderr}")
                 output = e.stderr
-            all_match, mismatch_summary = correctness_check(expected_results)
+            all_match, mismatch_summary = correctness_check(expected_results, debug_container_mapping)
             if all_match:
                 print(f"Success in iteration {k+1}")
                 file_write(llm_command, output, mismatch_summary, json_file_path, txt_file_path)
@@ -324,7 +331,55 @@ def run_config_error(args):
         
     summary_tests(result_dir)
     plot_metrics(result_dir)
-        # all_match, mismatch_summary = correctness_check(expected_results)
+# all_match, mismatch_summary = correctness_check(expected_results)
+# print(all_match)
+        # print(mismatch_summary)
+        # with open(txt_file_path, "a", encoding="utf-8") as file:
+        #     file.write(f"Error {i+1}:" + "\n")
+        #     file.write(f"  Policies to inject: {policies_to_inject}" + "\n")
+        #     file.write(f"  Inject error numbers: {inject_error_num}" + "\n")
+        #     file.write(f"  Error details: {error_detail}" + "\n")
+        #     file.write(f"  All match: {all_match}" + "\n")
+        #     file.write(f"  Mismatch summary: {mismatch_summary}" + "\n")
+        #     if all_match:
+        #         file.write(f" Policy: {modifiedpolicy}" + "\n")
+       # all_match, mismatch_summary = correctness_check(expected_results)
+        # print(all_match)
+        # print(mismatch_summary)
+        # with open(txt_file_path, "a", encoding="utf-8") as file:
+        #     file.write(f"Error {i+1}:" + "\n")
+        #     file.write(f"  Policies to inject: {policies_to_inject}" + "\n")
+        #     file.write(f"  Inject error numbers: {inject_error_num}" + "\n")
+        #     file.write(f"  Error details: {error_detail}" + "\n")
+        #     file.write(f"  All match: {all_match}" + "\n")
+        #     file.write(f"  Mismatch summary: {mismatch_summary}" + "\n")
+        #     if all_match:
+        #         file.write(f" Policy: {modifiedpolicy}" + "\n")
+# all_match, mismatch_summary = correctness_check(expected_results)
+# print(all_match)
+        # print(mismatch_summary)
+        # with open(txt_file_path, "a", encoding="utf-8") as file:
+        #     file.write(f"Error {i+1}:" + "\n")
+        #     file.write(f"  Policies to inject: {policies_to_inject}" + "\n")
+        #     file.write(f"  Inject error numbers: {inject_error_num}" + "\n")
+        #     file.write(f"  Error details: {error_detail}" + "\n")
+        #     file.write(f"  All match: {all_match}" + "\n")
+        #     file.write(f"  Mismatch summary: {mismatch_summary}" + "\n")
+        #     if all_match:
+        #         file.write(f" Policy: {modifiedpolicy}" + "\n")
+       # all_match, mismatch_summary = correctness_check(expected_results)
+        # print(all_match)
+        # print(mismatch_summary)
+        # with open(txt_file_path, "a", encoding="utf-8") as file:
+        #     file.write(f"Error {i+1}:" + "\n")
+        #     file.write(f"  Policies to inject: {policies_to_inject}" + "\n")
+        #     file.write(f"  Inject error numbers: {inject_error_num}" + "\n")
+        #     file.write(f"  Error details: {error_detail}" + "\n")
+        #     file.write(f"  All match: {all_match}" + "\n")
+        #     file.write(f"  Mismatch summary: {mismatch_summary}" + "\n")
+        #     if all_match:
+        #         file.write(f" Policy: {modifiedpolicy}" + "\n")
+       # all_match, mismatch_summary = correctness_check(expected_results)
         # print(all_match)
         # print(mismatch_summary)
         # with open(txt_file_path, "a", encoding="utf-8") as file:
@@ -337,4 +392,7 @@ def run_config_error(args):
         #     if all_match:
         #         file.write(f" Policy: {modifiedpolicy}" + "\n")
 if __name__ == "__main__":
+    starttime = datetime.now()
     run_config_error(args=parse_args())
+    endtime = datetime.now()
+    print(f"Total time: {endtime - starttime}")
