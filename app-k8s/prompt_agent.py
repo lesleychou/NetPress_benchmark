@@ -130,7 +130,7 @@ class BasePromptAgent:
         kubectl get services
         ```
 
-        Replace the above command with any valid `kubectl` command that helps diagnose the issue.
+        Replace the above command with any valid `kubectl` command that helps diagnose the issue. You are not allowed to see the logs of the pods and Kubernetes events, and you are not use 'kubectl exec' and .
         Restriction: You are not allowed to see the logs of the pods and Kubernetes events.
         I will provide the output, and you can proceed with the next command.
         """   
