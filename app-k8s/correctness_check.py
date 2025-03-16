@@ -103,92 +103,6 @@ def create_debug_container(pod_name_prefix, timeout=3):
         print(f"Failed to detect debug container in pod {pod_name}")
     return debug_container_name
 
-# def cleanup_debug_containers():
-#     """Delete all pods that contain debug containers."""
-#     try:
-#         result = subprocess.run(
-#             ["kubectl", "get", "pods", "-o", "json"],
-#             capture_output=True, text=True, check=True
-#         )
-#         pods = json.loads(result.stdout).get("items", [])
-
-#         for pod in pods:
-#             pod_name = pod.get("metadata", {}).get("name", "")
-#             ephemeral_containers = pod.get("spec", {}).get("ephemeralContainers", [])
-
-#             if ephemeral_containers:
-#                 debug_containers = [ec["name"] for ec in ephemeral_containers if ec["name"].startswith("debugger-")]
-
-#                 if debug_containers:
-#                     print(f"Found debug containers {debug_containers} in pod {pod_name}.")
-
-#                     patch_command = [
-#                         "kubectl", "patch", "pod", pod_name, "--type=json",
-#                         "-p", '[{"op": "remove", "path": "/spec/ephemeralContainers"}]'
-#                     ]
-#                     try:
-#                         subprocess.run(patch_command, capture_output=True, text=True, check=True)
-#                         print(f"Successfully removed debug containers from pod {pod_name}.")
-#                     except subprocess.CalledProcessError:
-#                         print(f"Failed to patch pod {pod_name}, deleting the pod instead...")
-
-#                         delete_command = ["kubectl", "delete", "pod", pod_name]
-#                         try:
-#                             subprocess.run(delete_command, capture_output=True, text=True, check=True)
-#                             print(f"Deleted pod {pod_name}.")
-#                         except subprocess.CalledProcessError as e:
-#                             print(f"Failed to delete pod {pod_name}: {e.stderr}")
-
-#     except subprocess.CalledProcessError as e:
-#         print(f"Error fetching pods: {e.stderr}")
-
-
-# def restart_pod(pod_name, namespace="default"):
-#     """Force restart a pod by deleting it and letting the controller recreate it."""
-#     print(f"🔄 Restarting pod {pod_name} to remove debug containers...")
-#     try:
-#         subprocess.run(
-#             ["kubectl", "delete", "pod", pod_name, "-n", namespace, "--grace-period=0", "--force"],
-#             capture_output=True, text=True, check=True
-#         )
-#         print(f"✅ Successfully restarted pod {pod_name}.")
-#     except subprocess.CalledProcessError as e:
-#         print(f"❌ Failed to restart pod {pod_name}: {e.stderr}")
-
-# def cleanup_debug_containers():
-#     """Remove debug containers from pods by patching or restarting them."""
-#     try:
-#         # Fetch all pods in JSON format
-#         result = subprocess.run(
-#             ["kubectl", "get", "pods", "-o", "json"],
-#             capture_output=True, text=True, check=True
-#         )
-#         pods = json.loads(result.stdout).get("items", [])
-
-#         for pod in pods:
-#             pod_name = pod.get("metadata", {}).get("name", "")
-#             namespace = pod.get("metadata", {}).get("namespace", "default")
-#             ephemeral_containers = pod.get("spec", {}).get("ephemeralContainers", [])
-
-#             debug_containers = [ec["name"] for ec in ephemeral_containers if ec["name"].startswith("debugger-")]
-
-#             if debug_containers:
-#                 print(f"Found debug containers {debug_containers} in pod {pod_name}.")
-
-#                 # Attempt to patch the pod to remove ephemeralContainers
-#                 patch_command = [
-#                     "kubectl", "patch", "pod", pod_name, "--type=json", "-n", namespace,
-#                     "-p", '[{"op": "remove", "path": "/spec/ephemeralContainers"}]'
-#                 ]
-#                 try:
-#                     subprocess.run(patch_command, capture_output=True, text=True, check=True)
-#                     print(f"✅ Successfully removed debug containers from pod {pod_name}.")
-#                 except subprocess.CalledProcessError:
-#                     print(f"⚠️ Failed to patch pod {pod_name}, restarting the pod instead...")
-#                     restart_pod(pod_name, namespace)
-
-#     except subprocess.CalledProcessError as e:
-#         print(f"❌ Error fetching pods: {e.stderr}")
 def check_connectivity_with_debug(pod_name, debug_container_name, host, port, timeout=1):
     """
     Use the created debug container to execute the `nc` command to check connectivity.
@@ -218,22 +132,6 @@ def check_connectivity_with_debug(pod_name, debug_container_name, host, port, ti
         print(f"Error executing nc command: {e}")
         return False
 
-    #     # Check for connection failure indicators
-    #     if "Connection timed out" in output or "Connection refused" in output:
-    #         return False
-    #     # Check for exit code (non-zero indicates failure)
-    #     if result.returncode != 0:
-    #         return False
-    #     # Check for success indicator
-    #     if f"{host} ({port})" in output and "open" in output:
-    #         return True 
-    #     # Default to failure if unclear
-    #     return False
-    # except subprocess.TimeoutExpired:
-    #     return False
-    # except subprocess.CalledProcessError as e:
-    #     print(f"Error executing nc command: {e}")
-    #     return False
 
 def correctness_check(expected_results, debug_container_mapping):
     """
@@ -271,21 +169,21 @@ def process_pod(pod_prefix, targets, debug_container_mapping):
     pod_all_match = True
     pod_mismatch_messages = []
 
-    for target, expected in targets.items():
-        try:
-            host, port = target.split(":")
-            port = int(port)
-        except ValueError:
-            print(f"Invalid target {target}")
-            pod_all_match = False
-            pod_mismatch_messages.append(f"Invalid target {target}")
-            continue
-
-        actual = check_connectivity_with_debug(pod_name, debug_container_name, host, port)
-        if actual != expected:
-            mismatch_message = f"Mismatch: {pod_prefix} → {target} (Expected: {expected}, Actual: {actual})"
-            pod_mismatch_messages.append(mismatch_message)  # Record mismatch information
-            pod_all_match = False
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(check_connectivity_with_debug, pod_name, debug_container_name, *target.split(":")): target for target in targets}
+        for future in as_completed(futures):
+            target = futures[future]
+            expected = targets[target]
+            try:
+                actual = future.result()
+                if actual != expected:
+                    mismatch_message = f"Mismatch: {pod_prefix} → {target} (Expected: {expected}, Actual: {actual})"
+                    pod_mismatch_messages.append(mismatch_message)  # Record mismatch information
+                    pod_all_match = False
+            except Exception as e:
+                print(f"Error checking connectivity for {pod_prefix} → {target}: {e}")
+                pod_mismatch_messages.append(f"Error checking connectivity for {pod_prefix} → {target}: {e}")
+                pod_all_match = False
 
     return pod_all_match, "\n".join(pod_mismatch_messages)
 
