@@ -62,18 +62,14 @@ class BenchmarkEvaluator:
             ret = json.loads(ret)
         
         ret_graph_copy = None
-        ret_graph_copy = clean_up_updated_graph_data(ret)
-        verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
-        verifier_results, verifier_error = verifier.evaluate_all()
-        
-        # # TODO: the safety checker should be always called, even if the output is not a graph
-        # if ret['type'] == 'graph':
-        #     ret_graph_copy = clean_up_output_graph_data(ret)
-        #     verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
-        #     verifier_results, verifier_error = verifier.evaluate_all()
-        # else:
-        #     verifier_results = True
-        #     verifier_error = ""
+        # if ret is not error, then clean up the updated graph
+        if ret['type'] != 'error':
+            ret_graph_copy = clean_up_updated_graph_data(ret)
+            verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
+            verifier_results, verifier_error = verifier.evaluate_all()
+        else:
+            verifier_results = False
+            verifier_error = "The LLM code is not correct, so the safety checker is not applied."
         print("Verifier results: ", verifier_results, verifier_error)
 
         # Where we get the golden answer (ground truth) code for each query

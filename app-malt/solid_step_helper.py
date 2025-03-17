@@ -310,6 +310,10 @@ def clean_up_output_graph_data(ret):
     return ret_graph_copy
 
 def clean_up_updated_graph_data(ret):
+    # check if ret['updated_graph'] exists 
+    if 'updated_graph' not in ret:
+        raise ValueError("updated_graph not found in ret")
+
     if isinstance(ret['updated_graph'], nx.Graph):
         # Create a nx.graph copy, so I can compare two nx.graph later directly
         ret_graph_copy = ret['updated_graph']

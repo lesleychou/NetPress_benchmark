@@ -130,7 +130,8 @@ class ZeroShot_CoT_PromptAgent:
         Steps to consider:
         1. First, understand what the input graph structure looks like:
            - The graph is directed with nodes having 'name' and 'type' attributes
-           - Node types include EK_SUPERBLOCK, EK_CHASSIS, EK_RACK, etc.
+           - Each node has a 'type' attribute, in the format of EK_TYPE. 'type' must be a list, can include ['EK_SUPERBLOCK', 'EK_CHASSIS', 'EK_RACK', 'EK_AGG_BLOCK', 'EK_JUPITER', 'EK_PORT', 'EK_SPINEBLOCK', 'EK_PACKET_SWITCH', 'EK_CONTROL_POINT', 'EK_CONTROL_DOMAIN']
+           - Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3.
            - Edges have types like RK_CONTAINS, RK_CONTROL
         
         2. Always consider the hierarchy relationships:
@@ -149,6 +150,7 @@ class ZeroShot_CoT_PromptAgent:
            - Consider all contained nodes at each level
 
         5. Format the output appropriately:
+           - Do not write function within function!
            - Return a JSON object with 'type','data' and 'updated_graph' keys
            - Types can be: 'text', 'list', 'table', or 'graph'
            - Format 'data' according to the specified return type
