@@ -34,7 +34,7 @@ run_experiment() {
 
 # Define models and their configurations
 declare -A model_configs=(
-    ["AzureGPT4Agent"]="level1 level2 level3:gpt4o_cot_50.jsonl"
+    ["AzureGPT4Agent"]="level1 level2 level3:tmp_gpt4o_cot.jsonl"
 )
 
 # Define the desired order of execution

@@ -309,6 +309,18 @@ def clean_up_output_graph_data(ret):
 
     return ret_graph_copy
 
+def clean_up_updated_graph_data(ret):
+    if isinstance(ret['updated_graph'], nx.Graph):
+        # Create a nx.graph copy, so I can compare two nx.graph later directly
+        ret_graph_copy = ret['updated_graph']
+        jsonGraph = nx.node_link_data(ret['updated_graph'])
+        ret['updated_graph'] = jsonGraph
+
+    else:  # Convert the jsonGraph back to nx.graph, to check if they are identical later
+        ret_graph_copy = json_graph.node_link_graph(ret['updated_graph'])
+
+    return ret_graph_copy
+
 def node_attributes_are_equal(node1_attrs, node2_attrs):
     # Check if both nodes have the exact same set of attributes
     if set(node1_attrs.keys()) != set(node2_attrs.keys()):

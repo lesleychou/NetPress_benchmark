@@ -54,49 +54,49 @@ def main(args):
         with open(output_path, 'w') as f:
             pass
 
-    # # dynamically generate or load existing queries
-    # query_generator = QueryGenerator()
-    # benchmark_path = benchmark_config['dynamic_benchmark_path']
+    # dynamically generate or load existing queries
+    query_generator = QueryGenerator()
+    benchmark_path = benchmark_config['dynamic_benchmark_path']
     
-    # if benchmark_config['regenerate_query']:
-    #     print("Generating new queries due to regenerate_query=True")
-    #     query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
-    #     query_generator.save_queries_to_file(benchmark_path)
-    # else:
-    #     if not os.path.exists(benchmark_path):
-    #         print(f"Benchmark file {benchmark_path} does not exist. Generating new queries...")
-    #         query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
-    #         query_generator.save_queries_to_file(benchmark_path)
-    #     else:
-    #         print(f"Loading existing benchmark from {benchmark_path}")
-    #         query_generator.load_queries_from_file(benchmark_path)
+    if benchmark_config['regenerate_query']:
+        print("Generating new queries due to regenerate_query=True")
+        query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
+        query_generator.save_queries_to_file(benchmark_path)
+    else:
+        if not os.path.exists(benchmark_path):
+            print(f"Benchmark file {benchmark_path} does not exist. Generating new queries...")
+            query_generator.generate_queries(num_each_type=benchmark_config['num_queries'], complexity_level=benchmark_config['complexity_level'])
+            query_generator.save_queries_to_file(benchmark_path)
+        else:
+            print(f"Loading existing benchmark from {benchmark_path}")
+            query_generator.load_queries_from_file(benchmark_path)
 
-    # # Load the evaluator
-    # evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
+    # Load the evaluator
+    evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
 
-    # # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
-    # benchmark_data = []
-    # with jsonlines.open(benchmark_path) as reader:
-    #     for obj in reader:
-    #         benchmark_data.append(obj['messages'])
+    # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
+    benchmark_data = []
+    with jsonlines.open(benchmark_path) as reader:
+        for obj in reader:
+            benchmark_data.append(obj['messages'])
     
-    # # for each object in the benchmark list, get the question and answer
-    # for obj in benchmark_data:
-    #     # obj is a list of dictionaries, load question, answer, task_label from it
-    #     for item in obj:
-    #         if 'question' in item:
-    #             current_query = item['question']
-    #         elif 'answer' in item:
-    #             golden_answer = item['answer']
-    #         elif 'task_label' in item:
-    #             task_label = item['task_label']
+    # for each object in the benchmark list, get the question and answer
+    for obj in benchmark_data:
+        # obj is a list of dictionaries, load question, answer, task_label from it
+        for item in obj:
+            if 'question' in item:
+                current_query = item['question']
+            elif 'answer' in item:
+                golden_answer = item['answer']
+            elif 'task_label' in item:
+                task_label = item['task_label']
             
-    #     ret, ground_truth_ret, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer)
-    #     evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, output_path)
+        ret, ground_truth_ret, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ret_graph_copy = evaluator.userQuery(current_query, golden_answer)
+        evaluator.ground_truth_check(current_query, task_label, ret, ground_truth_ret, ret_graph_copy, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, output_path)
 
-    #     # have to sleep for Gemini API quota
-    #     if benchmark_config['llm_model_type'] == 'GoogleGeminiAgent':
-    #         time.sleep(10)
+        # have to sleep for Gemini API quota
+        if benchmark_config['llm_model_type'] == 'GoogleGeminiAgent':
+            time.sleep(10)
 
     # Analyze the results
     # load the data from output_path
