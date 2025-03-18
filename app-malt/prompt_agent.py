@@ -42,7 +42,7 @@ EXAMPLE_LIST = [
                                         node[1]['physical_capacity_bps'] = 72           
                                     break    
                                 graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)    
-                                # in the return_object, it should be a json object with two keys, 'type' and 'data'.
+                                # in the return_object, it should be a json object with three keys, 'type', 'data' and 'updated_graph'.
                                 return return_object''',
             },
             {
@@ -52,7 +52,7 @@ EXAMPLE_LIST = [
                                 graph_copy.add_node('new_EK_PORT_82', type=['EK_PORT'], physical_capacity_bps=1000)
                                 graph_copy.add_edge('ju1.a2.m4.s3c6', 'new_EK_PORT_82', type=['RK_CONTAINS'])
                                 graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)  
-                                # in the return_object, it should be a json object with two keys, 'type' and 'data'. 
+                                # in the return_object, it should be a json object with three keys, 'type', 'data' and 'updated_graph'. 
                                 return return_object''',
             },
             {
@@ -63,7 +63,7 @@ EXAMPLE_LIST = [
                                 for node in graph_copy.nodes(data=True):
                                     if 'EK_PACKET_SWITCH' in node[1]['type'] and node[0].startswith('ju1.a2.'):
                                         count += 1
-                                # the return_object should be a json object with two keys, 'type' and 'data'. 
+                                # the return_object should be a json object with three keys, 'type', 'data' and 'updated_graph'. 
                                 return return_object''',
             },
             {
@@ -78,7 +78,7 @@ EXAMPLE_LIST = [
                                 if node_to_remove:
                                     graph_copy.remove_node(node_to_remove)
                                 graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)
-                                # in the return_object, it should be a json object with two keys, 'type' and 'data'. 
+                                # in the return_object, it should be a json object with three keys, 'type', 'data' and 'updated_graph'. 
                                 return return_object''',
             },
         ]
