@@ -30,6 +30,6 @@ spec:
           app: frontend
     ports:
      - port: 5050
-       protocol: TCP
+       protocol: xxxx
   egress:
   - {}
