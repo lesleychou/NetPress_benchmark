@@ -513,7 +513,23 @@ def analyze_and_plot(folder_path, output_image="result_plot.png"):
     plt.savefig(output_image, dpi=300, bbox_inches='tight')
     print(f"结果已保存至: {os.path.abspath(output_image)}")
 
+def check_json_mismatches(folder_path):
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".json"):  # 仅处理 JSON 文件
+            file_path = os.path.join(folder_path, filename)
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list) and data:
+                        first_mismatch = data[0].get("mismatch_summary", "")
+                        if "No mismatches found." in first_mismatch:
+                            print(f"Mismatch found in: {filename}")
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"Error reading {filename}: {e}")
 
+# # 使用示例
+# folder_path = "/home/ubuntu/jiajun_benchmark/app-k8s/result/GPT-4o/agent_test/20250322_025008/base"  # 替换为实际路径
+# check_json_mismatches(folder_path)
 
 
 # if "__name__" == "__main__":

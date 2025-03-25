@@ -293,7 +293,7 @@ def static_benchmark_run(args):
         generate_config(file_path, args.num_queries)  
 
     # Instantiate LLM test taker
-    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm)
+    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm, prompt_type="base")
     args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type, datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     # Define error types

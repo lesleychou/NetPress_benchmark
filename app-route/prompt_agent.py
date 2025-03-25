@@ -2,12 +2,12 @@ import json
 import traceback
 from dotenv import load_dotenv
 import openai
-import pandas as pd
+
 from collections import Counter
-from prototxt_parser.prototxt import parse
+
 import os
 import networkx as nx
-import jsonlines
+
 import json
 import re
 import time
@@ -17,7 +17,7 @@ from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
 import warnings
 from langchain._api import LangChainDeprecationWarning
-from langchain_chroma import Chroma
+
 from langchain_core.example_selectors import SemanticSimilarityExampleSelector
 from langchain_openai import AzureOpenAIEmbeddings
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
@@ -135,7 +135,7 @@ class BasePromptAgent:
     def __init__(self):
         self.prompt_prefix = self.generate_prompt()
 
-    def _generate_prompt(self):
+    def generate_prompt(self):
         """
         Generates a JSON format prompt for fixing a Mininet network issue.
 
@@ -148,7 +148,9 @@ class BasePromptAgent:
         """
         prompt = (
             """In a Mininet network, the router r0 is experiencing issues, causing PingAll() to fail at some nodes. To diagnose and fix the problem, you will use network debugging commands to gather information about r0 and the network topology. Based on your findings, you will then execute the necessary commands to restore connectivity.
-            
+            You need to give the output in JSON format, which contains the machine and its command.
+            Then I will give you the latest PingAll() feedback from the network, and also your 
+            previous actions to the network and the actions' feedback to let you know more information.
             """
             
         )

@@ -7,6 +7,7 @@ warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain 
 from dotenv import load_dotenv
+from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent
 # Load environ variables from .env, will not override existing environ variables
 load_dotenv()
 # For Google Gemini
@@ -66,13 +67,14 @@ class LLMModel:
             "GPT-Agent"
         ]
 
-    def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None,vllm: bool = True):
+    def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None,vllm: bool = True, prompt_type: str = "cot"):
         self.model_name = model
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
         self.device = device
         self.api_key = api_key
         self.vllm = vllm
+        self.prompt_type=prompt_type
         self.model = self._create_model()
 
     @staticmethod
@@ -169,7 +171,8 @@ class LLMModel:
                 model_name="Qwen/Qwen2.5-72B-Instruct-GPTQ",
                 max_new_tokens=self.max_new_tokens,
                 temperature=self.temperature,
-                device=self.device
+                device=self.device,
+                prompt_type=self.prompt_type
             )
     
     def _initialize_Phi4(self):
@@ -201,7 +204,7 @@ class LLMModel:
     
     def _initialize_gpt_agent(self):
         """Initialize the GPT Agent model."""
-        return GPTAgentModel()
+        return GPTAgentModel(prompt_type=self.prompt_type)
 
     def _initialize_gemini(self):
         """Initialize the Google Gemini model."""
@@ -323,12 +326,25 @@ class QwenModel:
         The device for inference.
     """
 
-    def __init__(self, model_name, max_new_tokens, temperature, device):
+    def __init__(self, model_name, max_new_tokens, temperature, device, prompt_type):
         self.model_name = "Qwen/Qwen2.5-72B-Instruct"
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
         self.device = device
         self._load_model()
+        self.prompt_type = prompt_type
+        if prompt_type == "base":
+            print("base")
+            self.prompt_agent = BasePromptAgent()
+        elif prompt_type == "cot":
+            print("cot")
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif prompt_type == "few_shot_basic":
+            print("few_shot_basic")
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif prompt_type == "few_shot_semantic":
+            print("few_shot_semantic")
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
 
     def _load_model(self):
         """Load the Qwen model and tokenizer."""
@@ -357,9 +373,27 @@ class QwenModel:
         with open(file_path, 'r') as f:
             file_content = f.read()
 
-        # Generate prompt
-        prompt = LLMModel._generate_prompt(file_content, log_content)
-
+        connectivitity_status = file_content + log_content
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type in ["few_shot_basic"]:
+            prompt = self.prompt_agent.get_few_shot_prompt()
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type == "cot":
+            prompt = self.prompt_agent.generate_prompt()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt + "Here is the connectivity status:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
+        else:
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + "Here is the previous commands and the current pingall output:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
+        print("prompt:", prompt)
         start_time = time.time()
 
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)

@@ -127,7 +127,7 @@ class AzureGPT4Agent:
                 template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
             )
             input_data = {"input": connectivitity_status}
-
+        print("prompt:", prompt)
         chain = LLMChain(llm=self.llm, prompt=prompt)
         response = chain.run(input_data)
         response = extract_command(response)
