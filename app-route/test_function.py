@@ -6,7 +6,7 @@ from llm_model import LLMModel
 from mininet_logger import MininetLogger
 from file_utils import prepare_file, initialize_json_file, static_summarize_results, summarize_results, error_classification, plot_metrics_from_json, delete_result_folder, plot_combined_error_metrics, plot_metrics, static_plot_metrics
 from error_function import inject_errors
-from topology import generate_subnets, NetworkTopo
+from topology import generate_subnets, NetworkTopo, initialize_network
 from fast_ping import fastpingall
 from safety_check import safety_check, handler
 import argparse
@@ -17,6 +17,9 @@ import matplotlib.pyplot as plt
 import json
 from datetime import datetime
 from error_function import process_single_error, generate_config
+import subprocess
+
+
 
 
 def run(args):
@@ -211,7 +214,7 @@ def combined_error_test(args):
         num_hosts_per_subnet = random.randint(2, 4)
         num_switches = random.randint(2, 4)
         subnets = generate_subnets(num_switches)
-        
+
         # Instantiate Mininet topo
         topo = NetworkTopo(num_hosts_per_subnet, num_switches, subnets=subnets)
         net = Mininet(topo=topo, waitConnected=True)
@@ -288,38 +291,36 @@ def combined_error_test(args):
     plot_combined_error_metrics(args.root_dir, error_combinations)
 
 def static_benchmark_run(args):
-    file_path = args.root_dir + '/config.json'
+    # Run the command with sudo
+    subprocess.run(["sudo", "mn", "-c"], check=True)
+    file_path = args.root_dir + '/error_config.json'
     if args.static_benchmark_generation == 1:
         generate_config(file_path, args.num_queries)  
 
     # Instantiate LLM test taker
-    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm)
+    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm, prompt_type="base")
     args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type, datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     # Define error types
     with open(file_path, 'r') as f:
         config = json.load(f)
     queries = config.get("queries", [])
+
+    print(f"Number of queries: {len(queries)}")
     for i, query in enumerate(queries):
+        start_time = datetime.now()
         info(f'*** Injecting errors for query {i}\n')
         num_hosts_per_subnet = query.get("num_hosts_per_subnet", 1)
         num_switches = query.get("num_switches")
         errortype = query.get("errortype")
         errordetail = query.get("errordetail")
         errornumber = query.get("errornumber")
-        subnets = generate_subnets(num_switches)
-        print(errortype)
+        print("error_type:",errortype)
+        print("error_number:",errornumber)
+        print("error_detail:",errordetail)
         
-        # Instantiate Mininet topo
-        topo = NetworkTopo(num_hosts_per_subnet=num_hosts_per_subnet, num_switches=num_switches, subnets=subnets)
-        net = Mininet(topo=topo, waitConnected=True)
-        
-        # Start Mininet
-        net.start()
-        
-        # Enable IP forwarding on the router
-        router = net.get('r0')
-        info(router.cmd('sysctl -w net.ipv4.ip_forward=1'))
+        subnets, topo, net, router = initialize_network(num_hosts_per_subnet, num_switches)
+
         
         # Inject errors
         if errornumber == 1:
@@ -375,14 +376,19 @@ def static_benchmark_run(args):
                         lg.output(f"Error occurred while executing command on {machine}: {e}") 
                         
             # Pinging all hosts in the network
-            fastpingall(net)
-            
+            start_time = datetime.now()
+            net.pingAll(timeout=0.01)
+            end_time = datetime.now()
+            print(f"Time taken for pingAll: {end_time - start_time}")
+
             # Read log file content
             log_content = Mininet_log.get_log_content()
+            print(log_content)
             
             # Get LLM response
             machine, commands = llm_model.model.predict(log_content, result_file_path, json_path)
-            
+            print("machine:", machine)
+            print("commands:", commands)
             # # Read log content, if successful then breaks
             if Mininet_log.read_log_content(log_content, iter):
                 break
@@ -390,6 +396,8 @@ def static_benchmark_run(args):
             iter += 1
             
         net.stop()
+        end_time = datetime.now()
+        print(f"Time taken for query {i}: {end_time - start_time}")
 
     for subdir in os.listdir(args.root_dir):
         subdir_path = os.path.join(args.root_dir, subdir)

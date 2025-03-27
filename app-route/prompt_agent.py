@@ -2,12 +2,12 @@ import json
 import traceback
 from dotenv import load_dotenv
 import openai
-import pandas as pd
+
 from collections import Counter
-from prototxt_parser.prototxt import parse
+
 import os
 import networkx as nx
-import jsonlines
+
 import json
 import re
 import time
@@ -17,12 +17,40 @@ from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
 import warnings
 from langchain._api import LangChainDeprecationWarning
-from langchain_chroma import Chroma
+
 from langchain_core.example_selectors import SemanticSimilarityExampleSelector
 from langchain_openai import AzureOpenAIEmbeddings
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
 
+def _generate_prompt(file_content, log_content):
+    """
+    Generates a JSON format prompt for fixing a Mininet network issue.
+
+    Args:
+        file_content (str): The content of the file containing previous actions and feedback.
+        log_content (str): The latest feedback from the Mininet.
+
+    Returns:
+        str: A JSON-formatted string with 'machine' and 'command' keys.
+    """
+    prompt = (
+        """There is a mininet network, but there are some kinds of problems in the router r0, 
+        so it cannot function well and PingAll() fails at some nodes. You need to fix it.
+        I highly recommend you to use some commands to know the information of the router and 
+        the network to know the cause of the problem. But if you think the information is enough 
+        and you know the reason causing the problem, you have to give commands to fix it.
+        You need to give the output in JSON format, which contains the machine and its command.
+        Then I will give you the latest PingAll() feedback from the network, and also your 
+        previous actions to the network and the actions' feedback to let you know more information.
+        """
+        + "Here are the previous actions and their feedbacks:\n"
+        + file_content
+        + "This is the latest feedback from the mininet:\n"
+        + log_content
+        + "Please only give me the JSON format output, with key 'machine' and 'command' and their value. You can only give one command at a time and don't include 'sudo', and you are not allowed to use vtysh command."
+    )
+    return prompt
 EXAMPLE_LIST = [
     {
         "question": r'mismatch_summary": "Mismatch: frontend → currencyservice:7000 (Expected: True, Actual: False)\nMismatch: checkoutservice → currencyservice:7000 (Expected: True, Actual: False)',
@@ -108,28 +136,25 @@ class BasePromptAgent:
         self.prompt_prefix = self.generate_prompt()
 
     def generate_prompt(self):
-        prompt_prefix = """
-        We have a Google microservices architecture, the services and the desired communication relationships are as follows:
-        - **User** and **loadgenerator** can access the **frontend** service via HTTP.
-        - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
-        - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
-        - **recommendation** communicates with **productcatalog**.
-        - **cart** communicates with the **Redis cache** for storing cart data.
+        """
+        Generates a JSON format prompt for fixing a Mininet network issue.
 
-        Your task is to inspect the current network policies and verify if they meet the described communication patterns.  
-        Provide **one command at a time** to check connectivity or node accessibility.  
-        Each time, I will give you the pevious commands and their corresponding outputs. Also the current connectivity status will be provided., I will give you the mismacthes between the expected and actual connectivity status.
-        You should use this information to identify and fix misconfigurations step-by-step.  
+        Args:
+            file_content (str): The content of the file containing previous actions and feedback.
+            log_content (str): The latest feedback from the Mininet.
 
-        **Response format:**  
-        Put the command **directly** between triple backticks.  
-        You should use `kubectl patch` instead of `kubectl edit networkpolicy`.  
-
-        You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' and .
-        Restriction: You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' or to see the logs of the pods and Kubernetes events.
-        Also you should not change the existing correct network policies, you should maintain the originally correct connectivity status.
-        """   
-        return prompt_prefix
+        Returns:
+            str: A JSON-formatted string with 'machine' and 'command' keys.
+        """
+        prompt = (
+            """In a Mininet network, the router r0 is experiencing issues, causing PingAll() to fail at some nodes. To diagnose and fix the problem, you will use network debugging commands to gather information about r0 and the network topology. Based on your findings, you will then execute the necessary commands to restore connectivity.
+            You need to give the output in JSON format, which contains the machine and its command.
+            Then I will give you the latest PingAll() feedback from the network, and also your 
+            previous actions to the network and the actions' feedback to let you know more information.
+            """
+            
+        )
+        return prompt
 
 
 class ZeroShot_CoT_PromptAgent:
@@ -138,31 +163,32 @@ class ZeroShot_CoT_PromptAgent:
 
     def generate_prompt(self):
         cot_prompt_prefix = """
-        We have a Google microservices architecture, the services and the desired communication relationships are as follows:
-        - **User** and **loadgenerator** can access the **frontend** service via HTTP.
-        - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
-        - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
-        - **recommendation** communicates with **productcatalog**.
-        - **cart** communicates with the **Redis cache** for storing cart data.
-
-        Your task is to inspect the current network policies and verify if they meet the described communication patterns.  
-        Provide **one command at a time** to check connectivity or node accessibility.  
-        Each time, I will give you the pevious commands and their corresponding outputs. 
-        Also the current connectivity status will be provided., I will give you the mismacthes between the expected and actual connectivity status.
-        Here is an example of the mismatch summary:
-        Mismatch: frontend → currencyservice:7000 (Expected: True, Actual: False)
-        This mismatch means that the frontend service should be able to communicate with the currencyservice on port 7000, but it is not able to do so.
-        You should use this information to identify and fix misconfigurations step-by-step.  
-        Please think step by step to fix the misconfigurations.
-
-        **Response format:**  
-        Put the command **directly** between triple backticks.  
-        You should use `kubectl patch` instead of `kubectl edit networkpolicy`.  
-
-        You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' and .
-        Restriction: You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' or to see the logs of the pods and Kubernetes events.
-        Also you should not change the existing correct network policies, you should maintain the originally correct connectivity status.
-        """   
+        We have a Google microservices architecture as shown in the diagram, but there are connectivity issues between some nodes. Your task is to diagnose and fix the problem.
+        1. Steps to follow:
+        - Some nodes should only allow one-way access by restricting ingress and egress traffic.
+        - The connectivity rules are as follows: 
+            - **User** and **loadgenerator** can access the **frontend** service via HTTP.
+            - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
+            - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
+            - **recommendation** communicates with **productcatalog**.
+            - **cart** communicates with the **Redis cache** for storing cart data.
+        2. Analyze Connectivity Issues
+        - Infer potential problems based on the current connectivity status.
+        - If two nodes cannot communicate, the issue likely lies in the ingress and egress policies managing their connection.
+        3. Inspect Network Policies
+        - Identify the policies controlling ingress and egress for the affected nodes. Analyze the policy definitions to determine whether they are incorrectly configured.
+        - If one policy seems correct, check the corresponding policy on the other side.
+        4. Determine the Fix and Apply Changes
+        - Based on your analysis, determine the most effective fix.
+        - Instead of using 'kubectl edit networkpolicy', use 'kubectl patch' to make necessary modifications
+        5. Provide Fix Commands
+        - Format only one command.
+        - The command should be placed directly between triple backticks, without any JSON structure.
+        - Example:
+        ```
+        kubectl get services
+        ```
+        """
         return cot_prompt_prefix
 
 

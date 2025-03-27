@@ -1,7 +1,7 @@
 import subprocess
 import json
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
 
 def find_pod_by_prefix(prefix):
     """Find a pod whose name starts with the specified prefix."""
@@ -73,7 +73,7 @@ def create_debug_container(pod_name_prefix, timeout=3):
         "--attach=false",  # Run in detached mode
         "--", "sleep", "infinity"  # Keep container alive
     ]
-    print(f"Creating debug container: {' '.join(debug_command)}")
+    # print(f"Creating debug container: {' '.join(debug_command)}")
     try:
         # Execute debug container creation
         result=subprocess.run(
@@ -83,7 +83,7 @@ def create_debug_container(pod_name_prefix, timeout=3):
             timeout=timeout, 
             check=True
         )
-        print(f"{pod_name}{result.stdout}")
+        # print(f"{pod_name}{result.stdout}")
 
     except subprocess.TimeoutExpired:
         print(f"Timeout creating debug container in pod {pod_name}")
@@ -117,11 +117,11 @@ def check_connectivity_with_debug(pod_name, debug_container_name, host, port, ti
             "--", "nc", "-zv", "-w", str(timeout), host, str(port)
         ]
 
-        print(f"Checking connectivity: {' '.join(nc_command)}")
+        # print(f"Checking connectivity: {' '.join(nc_command)}")
         result = subprocess.run(nc_command, capture_output=True, text=True, timeout=timeout+1)
         output = (result.stdout + result.stderr).strip()
 
-        print(f"{pod_name}output: ", output)
+        # print(f"{pod_name}output: ", output)
         if "open" in output:
             return True
         else:
@@ -142,7 +142,7 @@ def correctness_check(expected_results, debug_container_mapping):
     all_match = True
     mismatch_messages = []  # Used to record all mismatch information
 
-    with ThreadPoolExecutor() as executor:
+    with ProcessPoolExecutor() as executor:  # Use ProcessPoolExecutor instead of ThreadPoolExecutor
         futures = {executor.submit(process_pod, pod_prefix, targets, debug_container_mapping): pod_prefix for pod_prefix, targets in expected_results.items()}
         for future in as_completed(futures):
             pod_all_match, pod_mismatch_summary = future.result()
@@ -156,6 +156,7 @@ def correctness_check(expected_results, debug_container_mapping):
     return all_match, mismatch_summary
 
 def process_pod(pod_prefix, targets, debug_container_mapping):
+    # Ensure this function and its arguments are serializable
     pod_name = find_pod_by_prefix(pod_prefix)
     if not pod_name:
         print(f"Pod {pod_prefix} not found")
@@ -169,7 +170,7 @@ def process_pod(pod_prefix, targets, debug_container_mapping):
     pod_all_match = True
     pod_mismatch_messages = []
 
-    with ThreadPoolExecutor() as executor:
+    with ProcessPoolExecutor() as executor:  # Use ProcessPoolExecutor here as well
         futures = {executor.submit(check_connectivity_with_debug, pod_name, debug_container_name, *target.split(":")): target for target in targets}
         for future in as_completed(futures):
             target = futures[future]
@@ -335,6 +336,12 @@ if __name__ == "__main__":
     }
 }
 
+    pod_names = ["adservice", "cartservice", "checkoutservice", "currencyservice", "emailservice", "frontend", "loadgenerator", "paymentservice", "productcatalogservice", "recommendationservice", "redis-cart", "shippingservice"]
+    debug_container_mapping = {}
+    for pod_name in pod_names:
+        debug_container_name = create_debug_container(pod_name)
+        if debug_container_name:
+            debug_container_mapping[pod_name] = debug_container_name
     starttime=time.time()
     all_match, mismatch_summary = correctness_check(expected_results, debug_container_mapping)
     print(f"\nFinal result: All tests passed: {all_match}")

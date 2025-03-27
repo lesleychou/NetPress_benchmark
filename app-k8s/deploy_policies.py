@@ -5,7 +5,7 @@ import subprocess
 
 def deploy_policies(policy_names=None, root_dir=None):
     """Deploy policies to the Kubernetes cluster."""
-    policy_names.append("network-policy-deny-all")
+    [ "network-policy-adservice", "network-policy-cartservice", "network-policy-checkoutservice", "network-policy-currencyservice", "network-policy-emailservice", "network-policy-frontend", "network-policy-loadgenerator", "network-policy-paymentservice", "network-policy-productcatalogservice", "network-policy-recommendationservice", "network-policy-redis", "network-policy-shippingservice", "network-policy-deny-all"]
     print(f"Deploying policies: {policy_names}")
     for name in policy_names:
         filename = os.path.join(root_dir, "policies", f"{name}.yaml")

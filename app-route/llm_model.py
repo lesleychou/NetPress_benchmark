@@ -7,6 +7,7 @@ warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain 
 from dotenv import load_dotenv
+from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent
 # Load environ variables from .env, will not override existing environ variables
 load_dotenv()
 # For Google Gemini
@@ -66,13 +67,14 @@ class LLMModel:
             "GPT-Agent"
         ]
 
-    def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None,vllm: bool = True):
+    def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None,vllm: bool = True, prompt_type: str = "cot"):
         self.model_name = model
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
         self.device = device
         self.api_key = api_key
         self.vllm = vllm
+        self.prompt_type=prompt_type
         self.model = self._create_model()
 
     @staticmethod
@@ -169,7 +171,8 @@ class LLMModel:
                 model_name="Qwen/Qwen2.5-72B-Instruct-GPTQ",
                 max_new_tokens=self.max_new_tokens,
                 temperature=self.temperature,
-                device=self.device
+                device=self.device,
+                prompt_type=self.prompt_type
             )
     
     def _initialize_Phi4(self):
@@ -201,7 +204,7 @@ class LLMModel:
     
     def _initialize_gpt_agent(self):
         """Initialize the GPT Agent model."""
-        return GPTAgentModel()
+        return GPTAgentModel(prompt_type=self.prompt_type)
 
     def _initialize_gemini(self):
         """Initialize the Google Gemini model."""
@@ -215,97 +218,6 @@ class LLMModel:
         """Perform inference with the loaded model."""
         # Replace with actual inference logic
         return f"Generating response for: '{input_text}' using {self.model_name}"
-
-
-class LlamaModel:
-    """
-    A specialized class for handling Meta-Llama models.
-
-    Parameters:
-    -----------
-    model_name : str
-        The name of the model.
-    max_new_tokens : int
-        The maximum number of new tokens to be generated.
-    temperature : float
-        The temperature for text generation.
-    device : str
-        The device for inference.
-    """
-
-    def __init__(self, model_name, max_new_tokens, temperature, device):
-        self.model_name = model_name
-        self.max_new_tokens = max_new_tokens
-        self.temperature = temperature
-        self.device = device
-        self._load_model()
-
-    def _load_model(self):
-        """Load the model and tokenizer."""
-        from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-        import torch
-
-        # Create BitsAndBytesConfig for 4-bit quantization
-        quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name,
-            device_map=self.device
-        )
-
-        # Load the model with 4-bit quantization
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            device_map=self.device,
-            quantization_config=quantization_config  # Use the quantization config
-        )
-
-    def predict(self, log_content, file_path, json_path, **kwargs):
-        """Generate a response based on the log content and file content."""
-
-        with open(file_path, 'r') as f:
-            file_content = f.read()
-
-        prompt = LLMModel._generate_prompt(file_content, log_content)
-
-        start_time = time.time()
-
-        model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
-        prompt_input_ids = model_inputs["input_ids"]
-        start_index = prompt_input_ids.shape[-1]
-        generated_ids = self.model.generate(
-            **model_inputs,
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=self.temperature,
-            **kwargs
-        )
-        generation_output = generated_ids[0][start_index:]
-        content = self.tokenizer.decode(generation_output, skip_special_tokens=True)
-        print("LLM output:", content)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-
-        # Read LLM output
-        machine = LLMModel.extract_value(content, "machine")
-        commands = LLMModel.extract_value(content, "command")
-        loss_rate = LLMModel.extract_number_before_percentage(log_content)
-
-        with open(file_path, "a") as f:
-            f.write("Log Content:\n")
-            f.write(log_content + "\n\n")
-            f.write(f"Machine: {machine}\n")
-            f.write(f"Commands: {commands}\n")
-            f.write("=" * 50 + "\n")
-
-        with open(json_path, "r") as json_file:
-            data = json.load(json_file)
-
-        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
-
-        with open(json_path, "w") as json_file:
-            json.dump(data, json_file, indent=4)
-        
-        return machine, commands
 
 class QwenModel:
     """
@@ -323,12 +235,25 @@ class QwenModel:
         The device for inference.
     """
 
-    def __init__(self, model_name, max_new_tokens, temperature, device):
+    def __init__(self, model_name, max_new_tokens, temperature, device, prompt_type):
         self.model_name = "Qwen/Qwen2.5-72B-Instruct"
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
         self.device = device
         self._load_model()
+        self.prompt_type = prompt_type
+        if prompt_type == "base":
+            print("base")
+            self.prompt_agent = BasePromptAgent()
+        elif prompt_type == "cot":
+            print("cot")
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif prompt_type == "few_shot_basic":
+            print("few_shot_basic")
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif prompt_type == "few_shot_semantic":
+            print("few_shot_semantic")
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
 
     def _load_model(self):
         """Load the Qwen model and tokenizer."""
@@ -357,9 +282,27 @@ class QwenModel:
         with open(file_path, 'r') as f:
             file_content = f.read()
 
-        # Generate prompt
-        prompt = LLMModel._generate_prompt(file_content, log_content)
-
+        connectivitity_status = file_content + log_content
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type in ["few_shot_basic"]:
+            prompt = self.prompt_agent.get_few_shot_prompt()
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type == "cot":
+            prompt = self.prompt_agent.generate_prompt()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt + "Here is the connectivity status:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
+        else:
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + "Here is the previous commands and the current pingall output:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
+        # print("prompt:", prompt)
         start_time = time.time()
 
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
@@ -474,270 +417,6 @@ class Qwen_vllm_Model:
         
         return machine, commands
 
-class Phi4Model:
-    """
-    A specialized class for handling Qwen/Qwen2.5-72B-Instruct models.
-
-    Parameters:
-    -----------
-    model_name : str
-        The name of the model.
-    max_new_tokens : int
-        The maximum number of new tokens to be generated.
-    temperature : float
-        The temperature for text generation.
-    device : str
-        The device for inference.
-    """
-
-    def __init__(self, model_name, max_new_tokens, temperature, device):
-        self.model_name = model_name
-        self.max_new_tokens = max_new_tokens
-        self.temperature = temperature
-        self.device = device
-        self._load_model()
-
-    def _load_model(self):
-        """Load the Phi-4 model and tokenizer."""
-        # from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-        # import torch
-
-        # model_path = "/home/ubuntu/Phi4"
-
-        # # Create BitsAndBytesConfig for 4-bit quantization
-        # self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        # self.model = AutoModelForCausalLM.from_pretrained(model_path)
-        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # self.model = self.model.to(self.device)
-        import transformers
-        self.pipeline = transformers.pipeline(
-            "text-generation",
-            model="microsoft/phi-4",
-            model_kwargs={"torch_dtype": "auto"},
-            device_map="auto",
-        )
-
-    def predict(self, log_content, file_path, json_path, **kwargs):
-        """Generate a response based on the log content and file content."""
-
-        with open(file_path, 'r') as f:
-            file_content = f.read()
-
-        # Generate prompt
-        # prompt = LLMModel._generate_prompt(file_content, log_content)
-        prompt = "hello"
-        start_time = time.time()
-
-        # model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
-        # generated_ids = self.model.generate(
-        #     **model_inputs,
-        #     max_new_tokens=512,
-        #     do_sample=True,
-        #     temperature=self.temperature,
-        #     **kwargs
-        # )
-        content = str(self.pipeline(prompt, max_new_tokens=512)[0]["generated_text"])
-        print(content)
-        # content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
-        print(content)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-
-        # Read LLM output
-        machine = LLMModel.extract_value(content, "machine")
-        commands = LLMModel.extract_value(content, "command")
-        loss_rate = LLMModel.extract_number_before_percentage(log_content)
-
-        with open(file_path, "a") as f:
-            f.write("Log Content:\n")
-            f.write(log_content + "\n\n")
-            f.write(f"Machine: {machine}\n")
-            f.write(f"Commands: {commands}\n")
-            f.write("=" * 50 + "\n")
-
-        with open(json_path, "r") as json_file:
-            data = json.load(json_file)
-
-        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
-
-        with open(json_path, "w") as json_file:
-            json.dump(data, json_file, indent=4)
-        
-        return machine, commands
-
-class GemmaModel:
-    """
-    A specialized class for handling YourModel.
-
-    Parameters:
-    -----------
-    model_name : str
-        The name of the model.
-    max_new_tokens : int
-        The maximum number of new tokens to be generated.
-    temperature : float
-        The temperature for text generation.
-    device : str
-        The device for inference.
-    """
-
-    def __init__(self, model_name, max_new_tokens, temperature, device):
-        self.model_name = model_name
-        self.max_new_tokens = max_new_tokens
-        self.temperature = temperature
-        self.device = device
-        self._load_model()
-
-    def _load_model(self):
-        from transformers import AutoTokenizer, AutoModelForCausalLM
-        import torch
-
-        self.tokenizer = AutoTokenizer.from_pretrained("google/gemma-7b")
-        self.model = AutoModelForCausalLM.from_pretrained("google/gemma-7b")
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = self.model.to(self.device)
-
-
-    def predict(self, log_content, file_path, json_path, **kwargs):
-        """Generate a response based on the log content and file content."""
-
-        with open(file_path, 'r') as f:
-            file_content = f.read()
-
-        prompt = LLMModel._generate_prompt(file_content, log_content)
-
-        start_time = time.time()
-
-        """Use your model to generate your reposnse here, results should be a str."""
-        model_inputs = self.tokenizer(prompt, return_tensors="pt").to("cuda")
-        outputs = self.model.generate(
-            **model_inputs,
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=self.temperature,
-            **kwargs
-        )
-        end_time = time.time()
-        content = self.tokenizer.decode(outputs[0])
-        print(content)
-
-        elapsed_time = end_time - start_time
-
-        # Read LLM output
-        machine = LLMModel.extract_value(content, "machine")
-        commands = LLMModel.extract_value(content, "command")
-        loss_rate = LLMModel.extract_number_before_percentage(log_content)
-
-        with open(file_path, "a") as f:
-            f.write("Log Content:\n")
-            f.write(log_content + "\n\n")
-            f.write(f"Machine: {machine}\n")
-            f.write(f"Commands: {commands}\n")
-            f.write("=" * 50 + "\n")
-
-        with open(json_path, "r") as json_file:
-            data = json.load(json_file)
-
-        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
-
-        with open(json_path, "w") as json_file:
-            json.dump(data, json_file, indent=4)
-        
-        return machine, commands
-
-class QwQModel:
-    """
-    A specialized class for handling Qwen/QwQ-32B-Preview  models.
-
-    Parameters:
-    -----------
-    model_name : str
-        The name of the model.
-    max_new_tokens : int
-        The maximum number of new tokens to be generated.
-    temperature : float
-        The temperature for text generation.
-    device : str
-        The device for inference.
-    """
-
-    def __init__(self, model_name, max_new_tokens, temperature, device):
-        self.model_name = model_name
-        self.max_new_tokens = max_new_tokens
-        self.temperature = temperature
-        self.device = device
-        self._load_model()
-
-    def _load_model(self):
-        """Load the QwQ model and tokenizer."""
-        from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-        import torch
-
-        # Create BitsAndBytesConfig for 4-bit quantization
-        quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name,
-            trust_remote_code=True,
-            device_map=self.device
-        )
-
-        # Load the QwQ model with 4-bit quantization
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            trust_remote_code=True,
-            device_map=self.device,
-            quantization_config=quantization_config  # Use the quantization config
-        )
-
-    def predict(self, log_content, file_path, json_path, **kwargs):
-        """Generate a response based on the log content and file content."""
-
-        with open(file_path, 'r') as f:
-            file_content = f.read()
-
-        # Generate prompt
-        prompt = LLMModel._generate_prompt(file_content, log_content)
-
-        start_time = time.time()
-
-        model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
-        prompt_input_ids = model_inputs["input_ids"]
-        start_index = prompt_input_ids.shape[-1]
-        generated_ids = self.model.generate(
-            **model_inputs,
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=self.temperature,
-            **kwargs
-        )
-        generation_output = generated_ids[0][start_index:]
-        content = self.tokenizer.decode(generation_output, skip_special_tokens=True)
-        print(content)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-
-        # Read LLM output
-        machine = LLMModel.extract_value(content, "machine")
-        commands = LLMModel.extract_value(content, "command")
-        loss_rate = LLMModel.extract_number_before_percentage(log_content)
-
-        with open(file_path, "a") as f:
-            f.write("Log Content:\n")
-            f.write(log_content + "\n\n")
-            f.write(f"Machine: {machine}\n")
-            f.write(f"Commands: {commands}\n")
-            f.write("=" * 50 + "\n")
-
-        with open(json_path, "r") as json_file:
-            data = json.load(json_file)
-
-        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
-
-        with open(json_path, "w") as json_file:
-            json.dump(data, json_file, indent=4)
-        
-        return machine, commands
-
 
 class GPTAgentModel:
     """
@@ -757,7 +436,8 @@ class GPTAgentModel:
         The API key for GPT Agent.
     """
 
-    def __init__(self):
+    def __init__(self, prompt_type="base"):
+        self.prompt_type = prompt_type
         self._load_model()
 
     def _load_model(self):
@@ -771,25 +451,54 @@ class GPTAgentModel:
             temperature=0.0,
             max_tokens=4000,
             )
+        if self.prompt_type == "base":
+            print("base")
+            self.prompt_agent = BasePromptAgent()
+        elif self.prompt_type == "cot":
+            print("cot")
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif self.prompt_type == "few_shot_basic":
+            print("few_shot_basic")
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif self.prompt_type == "few_shot_semantic":
+            print("few_shot_semantic")
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
         print("======GPT-4o successfully loaded=======")
 
     def predict(self, log_content, file_path, json_path, **kwargs):
         """Generate a response based on the log content and file content."""
         with open(file_path, 'r') as f:
             file_content = f.read()
-
-        prompt = LLMModel._generate_prompt(file_content, log_content)
-
-        start_time = time.time()
-
-        content = self.client.invoke(prompt).content
-        print("LLM output:", content)
+        connectivitity_status = file_content + log_content
 
         # content = response.choices[0].message.content
+        max_length = 127000  
+        if len(connectivitity_status) > max_length:
+            connectivitity_status = connectivitity_status[:max_length]
 
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-
+        # Create prompt based on type
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
+            input_data = {"input": connectivitity_status}
+        elif self.prompt_type in ["few_shot_basic"]:
+            prompt = self.prompt_agent.get_few_shot_prompt()
+            input_data = {"input": connectivitity_status}
+        elif self.prompt_type == "cot":
+            prompt = self.prompt_agent.generate_prompt()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt + "Here is the connectivity status:\n{input}"
+            )
+            input_data = {"input": connectivitity_status}
+        else:
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
+            )
+            input_data = {"input": connectivitity_status}
+        chain = LLMChain(llm=self.client, prompt=prompt)
+        content = chain.run(input_data)
+        print("LLM output:", content)
         # Read LLM output
         machine = LLMModel.extract_value(content, "machine")
         commands = LLMModel.extract_value(content, "command")
