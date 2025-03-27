@@ -95,8 +95,11 @@ def solid_step_add_node_to_graph(graph_data, new_node, parent_node_name=None):
             if graph_data.nodes[node].get('name') == parent_node_name:
                 parent_node_id = node
                 break
-    graph_data.add_edge(parent_node_id, new_node_id, type='RK_CONTAINS')
-
+        
+        # Only add the edge if parent_node_id was found
+        if parent_node_id is not None:
+            graph_data.add_edge(parent_node_id, new_node_id, type='RK_CONTAINS')
+            
     # For testing
     # parent_node_name = 'ju1.a1.m1'
     # new_node = {'name': 'new_port', 'type': 'EK_PORT'}
@@ -306,6 +309,22 @@ def clean_up_output_graph_data(ret):
 
     else:  # Convert the jsonGraph back to nx.graph, to check if they are identical later
         ret_graph_copy = json_graph.node_link_graph(ret['data'])
+
+    return ret_graph_copy
+
+def clean_up_updated_graph_data(ret):
+    # check if ret['updated_graph'] exists 
+    if 'updated_graph' not in ret:
+        raise ValueError("updated_graph not found in ret")
+
+    if isinstance(ret['updated_graph'], nx.Graph):
+        # Create a nx.graph copy, so I can compare two nx.graph later directly
+        ret_graph_copy = ret['updated_graph']
+        jsonGraph = nx.node_link_data(ret['updated_graph'])
+        ret['updated_graph'] = jsonGraph
+
+    else:  # Convert the jsonGraph back to nx.graph, to check if they are identical later
+        ret_graph_copy = json_graph.node_link_graph(ret['updated_graph'])
 
     return ret_graph_copy
 

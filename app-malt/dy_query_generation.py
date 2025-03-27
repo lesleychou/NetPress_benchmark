@@ -106,7 +106,7 @@ class QueryGenerator:
 
     def create_level_one_dataset(self, num_each_type):
         # operations = ['update', 'add', 'count', 'remove', 'list', 'rank']
-        operations = ['update', 'rank', 'count', 'list']
+        operations = ['add', 'rank', 'remove', 'list']
         for operation in operations:
             for _ in range(num_each_type):
                 query, ground_truth, new_node = self.generate_level_1_query_groundtruth(operation_type=operation)
@@ -169,7 +169,7 @@ class QueryGenerator:
             child_node_name = f"new_{child_node}_{random.randint(1, 100)}"
             parent_node_name = random.choice(self.node_value_ranges[parent_node])
 
-            template = f"Add {child_node_name} to {parent_node_name}. List direct child nodes of {parent_node_name} in the updated graph. Return a list of child nodes."
+            template = f"Add {child_node_name} to {parent_node_name}. List direct child nodes of {parent_node_name} in the updated graph. Return a list of child nodes name."
 
             new_node = {'name': child_node_name, 'type': child_node}
             ground_truth = f"""def ground_truth_process_graph(graph_data):
@@ -206,7 +206,7 @@ class QueryGenerator:
             child_node_name = random.choice(self.node_value_ranges[child_node])
             parent_node_substring = '.'.join(child_node_name.split('.')[:-1])
 
-            template = f"Remove {child_node_name} from the graph. List direct child nodes of {parent_node_substring} in the updated graph. Return a list of child nodes."
+            template = f"Remove {child_node_name} from the graph. List direct child nodes of {parent_node_substring} in the updated graph. Return a list of child nodes name."
 
             ground_truth = f"""def ground_truth_process_graph(graph_data):
                                     child_node_name = '{child_node_name}'

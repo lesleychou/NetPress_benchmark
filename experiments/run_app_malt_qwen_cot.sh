@@ -4,11 +4,10 @@ cd app-malt
 
 # Define common parameters
 NUM_QUERIES=50
-BENCHMARK_PATH="data/extra_50_benchmark_malt.jsonl"
-PROMPT_TYPE="few_shot_semantic"  # Define prompt_type
+BENCHMARK_PATH="data/sampled_30_benchmark_malt_qwen_cot.jsonl"
+PROMPT_TYPE="cot"  # Define prompt_type
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
 # PROMPT_TYPE="zero_shot_cot"  # Define prompt_type
-
 
 # Function to run experiment for a model
 run_experiment() {
@@ -22,6 +21,9 @@ run_experiment() {
     
     echo "Running experiment for $llm_model_type..."
     
+    # Clear GPU cache before running
+    python -c "import torch; torch.cuda.empty_cache()" 
+    
     python main.py \
         --llm_model_type "$llm_model_type" \
         --prompt_type "$PROMPT_TYPE" \
@@ -30,15 +32,15 @@ run_experiment() {
         --output_dir "$agent_output_dir" \
         --output_file "$output_file" \
         --dynamic_benchmark_path "$BENCHMARK_PATH" 
-        }
+    }
 
 # Define models and their configurations
 declare -A model_configs=(
-    ["AzureGPT4Agent"]="level1 level2 level3:extra_50_gpt4o_few_shot_semantic.jsonl"
+    ["QwenModel_finetuned"]="level1 level2 level3:qwen_cot_30.jsonl"
 )
 
 # Define the desired order of execution
-model_order=("AzureGPT4Agent")
+model_order=("QwenModel_finetuned")
 
 # Run experiments in specified order
 for model in "${model_order[@]}"; do

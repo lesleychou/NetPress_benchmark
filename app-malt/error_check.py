@@ -13,10 +13,6 @@ class SafetyChecker():
             self.graph = ret_graph
         else:
             self.graph = None
-        if ret_list:
-            self.output_list = ret_list
-        else:
-            self.output_list = None
 
     def evaluate_all(self):
         if self.graph:

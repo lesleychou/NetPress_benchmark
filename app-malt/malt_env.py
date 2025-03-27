@@ -7,7 +7,7 @@ import pandas as pd
 from prototxt_parser.prototxt import parse
 from collections import Counter
 import os
-from solid_step_helper import getGraphData, clean_up_llm_output_func, check_list_equal, node_attributes_are_equal, clean_up_output_graph_data, \
+from solid_step_helper import getGraphData, clean_up_llm_output_func, check_list_equal, node_attributes_are_equal, clean_up_output_graph_data, clean_up_updated_graph_data, \
     solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, solid_step_list_child_nodes, solid_step_update_node_value, solid_step_rank_child_nodes
 import networkx as nx
 import jsonlines
@@ -62,15 +62,14 @@ class BenchmarkEvaluator:
             ret = json.loads(ret)
         
         ret_graph_copy = None
-
-        # TODO: the safety checker should be always called, even if the output is not a graph
-        if ret['type'] == 'graph':
-            ret_graph_copy = clean_up_output_graph_data(ret)
+        # if ret is not error, then clean up the updated graph
+        if ret['type'] != 'error':
+            ret_graph_copy = clean_up_updated_graph_data(ret)
             verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
             verifier_results, verifier_error = verifier.evaluate_all()
         else:
-            verifier_results = True
-            verifier_error = ""
+            verifier_results = False
+            verifier_error = "The LLM code is not correct, so the safety checker is not applied."
         print("Verifier results: ", verifier_results, verifier_error)
 
         # Where we get the golden answer (ground truth) code for each query
@@ -94,8 +93,8 @@ class BenchmarkEvaluator:
         print("Ground truth verifier results: ", gt_verifier_results, gt_verifier_error)
         
         if ret['type'] != 'graph':
-            print("LLM code result: ", ret)
-            print("Ground truth result: ", ground_truth_ret)
+            print("LLM code result: ", ret['data'])
+            print("Ground truth result: ", ground_truth_ret['data'])
 
         ground_truth_ret['reply'] = goldenAnswerCode
         ret['reply'] = llm_answer

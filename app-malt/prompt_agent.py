@@ -42,7 +42,7 @@ EXAMPLE_LIST = [
                                         node[1]['physical_capacity_bps'] = 72           
                                     break    
                                 graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)    
-                                # in the return_object, it should be a json object with two keys, 'type' and 'data'.
+                                # in the return_object, it should be a json object with three keys, 'type', 'data' and 'updated_graph'.
                                 return return_object''',
             },
             {
@@ -52,7 +52,7 @@ EXAMPLE_LIST = [
                                 graph_copy.add_node('new_EK_PORT_82', type=['EK_PORT'], physical_capacity_bps=1000)
                                 graph_copy.add_edge('ju1.a2.m4.s3c6', 'new_EK_PORT_82', type=['RK_CONTAINS'])
                                 graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)  
-                                # in the return_object, it should be a json object with two keys, 'type' and 'data'. 
+                                # in the return_object, it should be a json object with three keys, 'type', 'data' and 'updated_graph'. 
                                 return return_object''',
             },
             {
@@ -63,7 +63,7 @@ EXAMPLE_LIST = [
                                 for node in graph_copy.nodes(data=True):
                                     if 'EK_PACKET_SWITCH' in node[1]['type'] and node[0].startswith('ju1.a2.'):
                                         count += 1
-                                # the return_object should be a json object with two keys, 'type' and 'data'. 
+                                # the return_object should be a json object with three keys, 'type', 'data' and 'updated_graph'. 
                                 return return_object''',
             },
             {
@@ -78,7 +78,7 @@ EXAMPLE_LIST = [
                                 if node_to_remove:
                                     graph_copy.remove_node(node_to_remove)
                                 graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)
-                                # in the return_object, it should be a json object with two keys, 'type' and 'data'. 
+                                # in the return_object, it should be a json object with three keys, 'type', 'data' and 'updated_graph'. 
                                 return return_object''',
             },
         ]
@@ -95,19 +95,15 @@ class BasePromptAgent:
         Each node can have other attributes depending on its type.
         Each directed edge also has a 'type' attribute, include RK_CONTAINS, RK_CONTROL.
         You should check relationship based on edge, check name based on node attribute. 
-        Nodes has hierarchy: CHASSIS contains PACKET_SWITCH, JUPITER contains SUPERBLOCK, SUPERBLOCK contains AGG_BLOCK, AGG_BLOCK contains PACKET_SWITCH, PACKET_SWITCH contains PORT
-        Adding new nodes need to consider attributes of the new node. Also consider adding edges based on their relationship with existing nodes. 
-        The name to add on each layer can be inferred from new node name string.
-        When adding new nodes, you should also add edges based on their relationship with existing nodes. 
+        Nodes has hierarchy: CHASSIS contains PACKET_SWITCH, JUPITER contains SUPERBLOCK, SUPERBLOCK contains AGG_BLOCK, AGG_BLOCK contains PACKET_SWITCH, PACKET_SWITCH contains PORT.
         Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3. 
-        When you add a new packet switch, should add a new port to it and use the default physical_capacity_bps as 1000.
         When calculating capacity of a node, you need to sum the physical_capacity_bps on the PORT of each hierarchy contains in this node.
-        When creating a new graph, need to filter nodes and edges with attributes from the original graph. 
         When update a graph, always create a graph copy, do not modify the input graph. 
         To find node based on type, check the name and type list. For example, [node[0] == 'ju1.a1.m1.s2c1' and 'EK_PACKET_SWITCH' in node[1]['type']].
 
-        Do not use multi-layer function. The output format should only return one object. The return_object will be a JSON object with two keys, 'type' and 'data'. The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table' or 'graph'.
+        Do not use multi-layer function. The output format should only return one object. The return_object will be a JSON object with two keys, 'type' and 'data' and "updated_graph". The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table' or 'graph'.
         The 'data' key should contain the data needed to render the output. If the output type is 'text' then the 'data' key should contain a string. If the output type is 'list' then the 'data' key should contain a list of items.
+        The 'updated_graph' key should contain the updated graph, no matter what the output type is. It should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
         If the output type is 'table' then the 'data' key should contain a list of lists where each list represents a row in the table.If the output type is 'graph' then the 'data' key should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
         node.startswith will not work for the node name. you have to check the node name with the node['name'].
 
@@ -134,10 +130,11 @@ class ZeroShot_CoT_PromptAgent:
         Steps to consider:
         1. First, understand what the input graph structure looks like:
            - The graph is directed with nodes having 'name' and 'type' attributes
-           - Node types include EK_SUPERBLOCK, EK_CHASSIS, EK_RACK, etc.
+           - Each node has a 'type' attribute, in the format of EK_TYPE. 'type' must be a list, can include ['EK_SUPERBLOCK', 'EK_CHASSIS', 'EK_RACK', 'EK_AGG_BLOCK', 'EK_JUPITER', 'EK_PORT', 'EK_SPINEBLOCK', 'EK_PACKET_SWITCH', 'EK_CONTROL_POINT', 'EK_CONTROL_DOMAIN']
+           - Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3.
            - Edges have types like RK_CONTAINS, RK_CONTROL
         
-        2. Consider the hierarchy relationships:
+        2. Always consider the hierarchy relationships:
            - CHASSIS contains PACKET_SWITCH
            - JUPITER contains SUPERBLOCK
            - SUPERBLOCK contains AGG_BLOCK
@@ -146,19 +143,18 @@ class ZeroShot_CoT_PromptAgent:
 
         3. When modifying the graph:
            - Create a copy of the graph before modifications
-           - Consider all required attributes for new nodes
            - Add appropriate edges based on relationships
-           - For new packet switches, add ports with default capacity 1000
         
         4. For capacity calculations:
            - Sum the physical_capacity_bps of PORTs in the hierarchy
            - Consider all contained nodes at each level
 
         5. Format the output appropriately:
-           - Return a JSON object with 'type' and 'data' keys
+           - Do not write function within function!
+           - Return a JSON object with 'type','data' and 'updated_graph' keys
            - Types can be: 'text', 'list', 'table', or 'graph'
-           - Format data according to the specified type
-
+           - Format 'data' according to the specified return type
+           - The 'updated_graph' key should contain the updated graph, no matter what the output type is. It should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
         """
         return cot_prompt_prefix
 

@@ -13,6 +13,7 @@ app-malt/benchmark/__pycache__/*
 app-malt/benchmark/.env
 app-malt/benchmark/logs/*
 app-malt/benchmark/data/benchmark_malt.jsonl
+app-malt/figs/*
 app-route/result/*
 *.log
 app-route/*.txt
