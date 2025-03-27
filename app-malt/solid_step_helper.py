@@ -95,8 +95,11 @@ def solid_step_add_node_to_graph(graph_data, new_node, parent_node_name=None):
             if graph_data.nodes[node].get('name') == parent_node_name:
                 parent_node_id = node
                 break
-    graph_data.add_edge(parent_node_id, new_node_id, type='RK_CONTAINS')
-
+        
+        # Only add the edge if parent_node_id was found
+        if parent_node_id is not None:
+            graph_data.add_edge(parent_node_id, new_node_id, type='RK_CONTAINS')
+            
     # For testing
     # parent_node_name = 'ju1.a1.m1'
     # new_node = {'name': 'new_port', 'type': 'EK_PORT'}

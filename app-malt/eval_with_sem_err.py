@@ -16,41 +16,171 @@ import math
 # python main.py --llm_agent_type AzureGPT4Agent --num_queries 2 --complexity_level level1 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
 
 def main():
+    parser = argparse.ArgumentParser(description='Evaluate semantic error detection performance')
+    parser.add_argument('--sampling_method', type=str, choices=['first', 'random'], default='first',
+                        help='Method to sample: "first" takes first N samples, "random" takes random N samples')
+    args = parser.parse_args()
 
     input_path = ["logs/AzureGPT4Agent_few_shot_semantic/new_gpt4o_few_shot_semantic.jsonl", 
+                  "logs/AzureGPT4Agent_few_shot_semantic/extra_50_gpt4o_few_shot_semantic.jsonl",
                   "logs/AzureGPT4Agent_cot/new_gpt4o_cot.jsonl",
-                  "logs/Qwen2.5-72B-Instruct_cot/new_qwen_cot_50.jsonl"]
+                  "logs/AzureGPT4Agent_cot/extra_50_gpt4o_cot.jsonl",
+                  "logs/Qwen2.5-72B-Instruct_cot/new_qwen_cot_50.jsonl",
+                  "logs/Qwen2.5-72B-Instruct_cot/extra_50_qwen_cot.jsonl",
+                  "logs/Qwen2.5-72B-Instruct_few_shot_semantic/new_qwen_few_shot_semantic_50.jsonl",
+                  "logs/Qwen2.5-72B-Instruct_few_shot_semantic/extra_50_qwen_few_shot_semantic.jsonl"]
     
-    # Load data from each file separately
-    all_results = []
+    # Define which files to merge
+    cot_merge_files = [
+        "logs/AzureGPT4Agent_cot/new_gpt4o_cot.jsonl",
+        "logs/AzureGPT4Agent_cot/extra_50_gpt4o_cot.jsonl"
+    ]
+    cot_merge_name = "gpt4o_cot_combined"
+
+    few_shot_merge_files = [
+        "logs/AzureGPT4Agent_few_shot_semantic/new_gpt4o_few_shot_semantic.jsonl",
+        "logs/AzureGPT4Agent_few_shot_semantic/extra_50_gpt4o_few_shot_semantic.jsonl"
+    ]
+    few_shot_merge_name = "gpt4o_few_shot_combined"
+    
+    # Add Qwen merge file definitions
+    qwen_cot_merge_files = [
+        "logs/Qwen2.5-72B-Instruct_cot/new_qwen_cot_50.jsonl",
+        "logs/Qwen2.5-72B-Instruct_cot/extra_50_qwen_cot.jsonl"
+    ]
+    qwen_cot_merge_name = "qwen_cot_combined"
+    
+    qwen_few_shot_merge_files = [
+        "logs/Qwen2.5-72B-Instruct_few_shot_semantic/new_qwen_few_shot_semantic_50.jsonl",
+        "logs/Qwen2.5-72B-Instruct_few_shot_semantic/extra_50_qwen_few_shot_semantic.jsonl"
+    ]
+    qwen_few_shot_merge_name = "qwen_few_shot_combined"
+    
+    # Load data from each file
+    file_results = {}
     for path in input_path:
+        print(f"Processing file: {path}")
         results = []
         with jsonlines.open(path) as reader:
             for obj in reader:
                 results.append(obj)
+        file_results[path] = results
+    
+    # Process results, merging specified files
+    all_results = []
+    processed_files = set()
+    
+    # Handle the CoT merged files
+    if set(cot_merge_files).issubset(set(input_path)):
+        merged_results = []
+        for merge_file in cot_merge_files:
+            merged_results.extend(file_results[merge_file])
+            processed_files.add(merge_file)
         
-        # Group the results by task label
+        # Group the merged results by task label
         grouped_results = {}
-        for result in results:
+        for result in merged_results:
             task_label = result["Label"]
             if task_label not in grouped_results:
                 grouped_results[task_label] = []
             grouped_results[task_label].append(result)
         
         all_results.append({
-            'path': path,
-            'name': os.path.basename(path).split('.')[0],
+            'path': '+'.join(cot_merge_files),
+            'name': cot_merge_name,
             'grouped_results': grouped_results
         })
 
-    sample_sizes = [10, 20, 50]
+    # Handle the Few Shot merged files
+    if set(few_shot_merge_files).issubset(set(input_path)):
+        merged_results = []
+        for merge_file in few_shot_merge_files:
+            merged_results.extend(file_results[merge_file])
+            processed_files.add(merge_file)
+        
+        # Group the merged results by task label
+        grouped_results = {}
+        for result in merged_results:
+            task_label = result["Label"]
+            if task_label not in grouped_results:
+                grouped_results[task_label] = []
+            grouped_results[task_label].append(result)
+        
+        all_results.append({
+            'path': '+'.join(few_shot_merge_files),
+            'name': few_shot_merge_name,
+            'grouped_results': grouped_results
+        })
+        
+    # Handle the Qwen CoT merged files
+    if set(qwen_cot_merge_files).issubset(set(input_path)):
+        merged_results = []
+        for merge_file in qwen_cot_merge_files:
+            merged_results.extend(file_results[merge_file])
+            processed_files.add(merge_file)
+        
+        # Group the merged results by task label
+        grouped_results = {}
+        for result in merged_results:
+            task_label = result["Label"]
+            if task_label not in grouped_results:
+                grouped_results[task_label] = []
+            grouped_results[task_label].append(result)
+        
+        all_results.append({
+            'path': '+'.join(qwen_cot_merge_files),
+            'name': qwen_cot_merge_name,
+            'grouped_results': grouped_results
+        })
+
+    # Handle the Qwen Few Shot merged files
+    if set(qwen_few_shot_merge_files).issubset(set(input_path)):
+        merged_results = []
+        for merge_file in qwen_few_shot_merge_files:
+            merged_results.extend(file_results[merge_file])
+            processed_files.add(merge_file)
+        
+        # Group the merged results by task label
+        grouped_results = {}
+        for result in merged_results:
+            task_label = result["Label"]
+            if task_label not in grouped_results:
+                grouped_results[task_label] = []
+            grouped_results[task_label].append(result)
+        
+        all_results.append({
+            'path': '+'.join(qwen_few_shot_merge_files),
+            'name': qwen_few_shot_merge_name,
+            'grouped_results': grouped_results
+        })
+    
+    # Then process any remaining files
+    for path in input_path:
+        if path not in processed_files:
+            results = file_results[path]
+            
+            # Group the results by task label
+            grouped_results = {}
+            for result in results:
+                task_label = result["Label"]
+                if task_label not in grouped_results:
+                    grouped_results[task_label] = []
+                grouped_results[task_label].append(result)
+            
+            all_results.append({
+                'path': path,
+                'name': os.path.basename(path).split('.')[0],
+                'grouped_results': grouped_results
+            })
+
+    sample_sizes = [5, 20, 100]
     
     # Create a figure with 3 subplots
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
     
     # Initialize lists to store data for plotting
     for i, sample_size in enumerate(sample_sizes):
-        print(f"\n=== STATISTICS FOR FIRST {sample_size} SAMPLES PER LABEL ===")
+        print(f"\n=== STATISTICS FOR {args.sampling_method.upper()} {sample_size} SAMPLES PER LABEL ===")
         
         safety_data = []
         correctness_data = []
@@ -67,8 +197,18 @@ def main():
             
             # Calculate overall statistics for correctness
             all_binary_outcomes = []
-            for task_label in task_labels:
-                samples = grouped_results[task_label][:sample_size]
+            for task_label in task_labels[1:]:
+                # Sample based on the specified method
+                if args.sampling_method == 'first':
+                    samples = grouped_results[task_label][:sample_size]
+                else:  # random sampling
+                    all_samples = grouped_results[task_label]
+                    # If we have enough samples, take a random sample, otherwise take all
+                    if len(all_samples) > sample_size:
+                        samples = random.sample(all_samples, sample_size)
+                    else:
+                        samples = all_samples
+                        
                 binary_outcomes = [1 if result["Result-Correctness"] == "Pass" else 0 for result in samples]
                 all_binary_outcomes.extend(binary_outcomes)
             
@@ -85,8 +225,18 @@ def main():
             
             # Calculate overall safety statistics
             all_binary_outcomes = []
-            for task_label in task_labels:
-                samples = grouped_results[task_label][:sample_size]
+            for task_label in task_labels[1:]:
+                # Sample based on the specified method
+                if args.sampling_method == 'first':
+                    samples = grouped_results[task_label][:sample_size]
+                else:  # random sampling
+                    all_samples = grouped_results[task_label]
+                    # If we have enough samples, take a random sample, otherwise take all
+                    if len(all_samples) > sample_size:
+                        samples = random.sample(all_samples, sample_size)
+                    else:
+                        samples = all_samples
+                        
                 binary_outcomes = [1 if result["Result-Safety"] == "Pass" else 0 for result in samples]
                 all_binary_outcomes.extend(binary_outcomes)
             
@@ -138,8 +288,10 @@ def main():
         ax.set_ylim(0, 105)
     
     plt.tight_layout()
-    plt.savefig('figs/safety_vs_correctness.png', dpi=300)
+    plt.savefig(f'figs/safety_vs_correctness_{args.sampling_method}_sampling.png', dpi=300)
     plt.show()
+
+    print(f"Figures saved to figs/safety_vs_correctness_{args.sampling_method}_sampling.png")
 
 # run the main function
 if __name__ == "__main__":
