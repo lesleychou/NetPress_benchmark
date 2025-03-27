@@ -88,7 +88,7 @@ def get_detail(error_type, hostnumber):
         return {}
 
 # Generate a configuration file with a specified number of queries for each error type
-def generate_config(filename='config.json', num_errors_per_type=5):
+def generate_config(filename='error_config.json', num_errors_per_type=5):
     queries = []
     error_types = [
         'disable_routing',

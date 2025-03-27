@@ -7,11 +7,11 @@ spec:
   - to:
     - podSelector:
         matchLabels:
-          app: shippingservice
+          app: adservice
   - to:
     - podSelector:
         matchLabels:
-          app: emailservice
+          app: shippingservice
   ingress:
   - from:
     - podSelector:
@@ -19,7 +19,7 @@ spec:
           app: frontend
     ports:
     - port: 5050
-      protocol: TCP
+      protocol: UDP
   podSelector:
     matchLabels:
       app: checkoutservice

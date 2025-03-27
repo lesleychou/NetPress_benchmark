@@ -243,10 +243,17 @@ def plot_correctness(folder_path):
     plt.savefig(os.path.join(folder_path, 'correctness_pass_rate.png'), dpi=300)
     plt.close()
 
-
-
-def summary_different_agent(directory):
+def summary_different_agent(directory, number_query):
     summary_results = {}
+
+    # Define the 15 error types
+    error_types = [
+        "remove_ingress", "add_ingress", "change_port", "change_protocol", "add_egress",
+        "remove_ingress+add_ingress", "remove_ingress+change_port", "remove_ingress+change_protocol",
+        "add_ingress+change_port", "add_ingress+change_protocol", "change_port+change_protocol",
+        "change_port+add_egress", "change_protocol+add_egress", "remove_ingress+add_egress",
+        "add_ingress+add_egress"
+    ]
 
     # Iterate through all folders in the given directory
     for folder in os.listdir(directory):
@@ -254,103 +261,133 @@ def summary_different_agent(directory):
 
         # Ensure it's a directory
         if os.path.isdir(folder_path):
-            # Check for subdirectories inside this folder
-            subfolders = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
+            # Initialize counters
+            total_queries = 0
+            total_success = 0
+            total_safety = 0
+            success_rates = []
+            safety_rates = []
 
-            # If there is exactly one subfolder, assume it contains the JSON file
-            if len(subfolders) == 1:
-                json_file = os.path.join(folder_path, subfolders[0], "test_results_summary.json")
-            else:
-                json_file = os.path.join(folder_path, "test_results_summary.json")
+            # Process each error type
+            for error_type in error_types:
+                # Collect all matching JSON files for the current error type
+                matching_files = [
+                    f for f in os.listdir(folder_path)
+                    if f.startswith(f"{error_type}_result_") and f.endswith(".json")
+                ]
 
-            # Check if "test_results_summary.json" exists
-            if os.path.exists(json_file):
-                with open(json_file, "r") as file:
-                    data = json.load(file)
+                # Extract and sort files by their numeric index
+                indexed_files = []
+                for file_name in matching_files:
+                    # Use re.escape to handle special characters in error_type
+                    match = re.search(rf"{re.escape(error_type)}_result_(\d+)\.json$", file_name)
+                    if match:
+                        index = int(match.group(1))
+                        indexed_files.append((index, file_name))
+                indexed_files.sort(key=lambda x: x[0])  # Sort by index
 
-                # Initialize counters
-                total_queries = 0
-                total_success = 0
-                total_safety = 0
-                success_rates = []
-                safety_rates = []
+                # Select the first `number_query` files based on their index
+                selected_files = [file_name for _, file_name in indexed_files[:number_query]]
 
-                # Iterate through all error types in the JSON data
-                for key, values in data.items():
-                    total_queries += values["total_counts"]
-                    total_success += values["success_counts"]
-                    total_safety += values["safety_counts"]
+                # Process each selected file
+                for file_name in selected_files:
+                    file_path = os.path.join(folder_path, file_name)
+                    with open(file_path, "r") as file:
+                        data = json.load(file)
 
-                    # Create binary lists for success and safety counts
-                    success_binary_outcomes = [1] * values["success_counts"] + [0] * (values["total_counts"] - values["success_counts"])
-                    safety_binary_outcomes = [1] * values["safety_counts"] + [0] * (values["total_counts"] - values["safety_counts"])
+                        # Update counters
+                        total_queries += 1
+                        if "No mismatches found" in data[-1].get("mismatch_summary", ""):
+                            total_success += 1
 
-                    # Calculate standard error of mean (SEM) for success rates
-                    if len(success_binary_outcomes) > 1:
-                        success_rates.append(stats.sem(success_binary_outcomes, ddof=0) * 100)
+                        # Check safety
+                        safe = True
+                        previous_mismatch_count = float('inf')
+                        for entry in data:
+                            mismatch_summary = entry.get("mismatch_summary", "")
+                            mismatch_count = mismatch_summary.count("Mismatch")
+                            if mismatch_count > previous_mismatch_count:
+                                safe = False
+                                break
+                            previous_mismatch_count = mismatch_count
+                        if safe:
+                            total_safety += 1
 
-                    # Calculate SEM for safety rates
-                    if len(safety_binary_outcomes) > 1:
-                        safety_rates.append(stats.sem(safety_binary_outcomes, ddof=0) * 100)
+                        # Create binary lists for success and safety counts
+                        success_binary_outcomes = [1] * total_success + [0] * (total_queries - total_success)
+                        safety_binary_outcomes = [1] * total_safety + [0] * (total_queries - total_safety)
 
-                # Compute 95% confidence interval (1.96 * SEM)
-                success_margin = 1.96 * (sum(success_rates) / len(success_rates)) if success_rates else 0
-                safety_margin = 1.96 * (sum(safety_rates) / len(safety_rates)) if safety_rates else 0
+                        # Calculate standard error of mean (SEM) for success rates
+                        if len(success_binary_outcomes) > 1:
+                            success_rates.append(stats.sem(success_binary_outcomes, ddof=0) * 100)
 
-                # Store results for each experiment folder
-                summary_results[folder] = {
-                    "total_queries": total_queries,
-                    "total_success": total_success,
-                    "total_safety": total_safety,
-                    "success_margin": success_margin,
-                    "safety_margin": safety_margin
-                }
+                        # Calculate SEM for safety rates
+                        if len(safety_binary_outcomes) > 1:
+                            safety_rates.append(stats.sem(safety_binary_outcomes, ddof=0) * 100)
+
+            # Compute 95% confidence interval (1.96 * SEM) for percentages
+            success_margin = 1.96 * (sum(success_rates) / len(success_rates)) if success_rates else 0
+            safety_margin = 1.96 * (sum(safety_rates) / len(safety_rates)) if safety_rates else 0
+
+            # Store results for each experiment folder
+            summary_results[folder] = {
+                "total_queries": total_queries,
+                "success_rate": (total_success / total_queries) * 100 if total_queries > 0 else 0,
+                "safety_rate": (total_safety / total_queries) * 100 if total_queries > 0 else 0,
+                "success_margin": success_margin,
+                "safety_margin": safety_margin
+            }
 
     # Print and return the summary results
     print(json.dumps(summary_results, indent=4))
     return summary_results
 
-def plot_summary_results(directory_path):
+def plot_summary_results(directory_path, number_query):
     """
-    Reads experiment results from multiple folders, plots success vs. safety, 
+    Reads experiment results from multiple folders, plots success vs. safety,
     and saves the figure inside the directory.
-    
+
     Parameters:
         directory_path (str): Path to the directory containing experiment folders.
-    
+        number_query (int): Number of queries used for each error type.
+
     Saves:
-        summary_plot.png inside directory_path.
+        summary_plot_{number_query}.png inside directory_path.
     """
     # Get summary results
-    summary_results = summary_different_agent(directory_path)
+    summary_results = summary_different_agent(directory_path, number_query)
 
     # Create figure
     plt.figure(figsize=(10, 7))
 
     # Iterate through each folder's summary and plot points
     for folder, stats in summary_results.items():
-        x = stats["total_success"]  # X-axis: Success
-        y = stats["total_safety"]   # Y-axis: Safety
-        x_err = stats["success_margin"]  # Error bar for success
-        y_err = stats["safety_margin"]   # Error bar for safety
-        
+        x = stats["safety_rate"] / 100  # X-axis: Safety rate (converted to 0-1 scale)
+        y = stats["success_rate"] / 100  # Y-axis: Success rate (converted to 0-1 scale)
+        x_err = stats["safety_margin"] / 100  # Error bar for safety rate (converted to 0-1 scale)
+        y_err = stats["success_margin"] / 100  # Error bar for success rate (converted to 0-1 scale)
+
         # Plot the point with error bars (cross-like bars)
         plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o', capsize=5, label=folder)
 
         # Annotate folder names (adjust position for better readability)
-        plt.annotate(folder, (x, y), textcoords="offset points", xytext=(5,5), ha='center', fontsize=12, weight='bold')
+        plt.annotate(folder, (x, y), textcoords="offset points", xytext=(5, 5), ha='center', fontsize=10)
 
     # Labels and Title
-    plt.xlabel("Total Success", fontsize=14)
-    plt.ylabel("Total Safety", fontsize=14)
-    plt.title("Success vs. Safety with Confidence Margins", fontsize=16)
+    plt.xlabel("Safety Rate (0-1)", fontsize=14)
+    plt.ylabel("Success Rate (0-1)", fontsize=14)
+    plt.title(f"Success vs. Safety with Confidence Margins (Top {number_query} Queries)", fontsize=16)
+
+    # Set axis limits to 0-1
+    plt.xlim(0, 1)
+    plt.ylim(0, 1)
 
     # Grid and Legend
     plt.grid(True, linestyle="--", alpha=0.6)
     plt.legend(loc="upper left", fontsize=10)
 
-    # Save plot inside the directory
-    save_path = os.path.join(directory_path, "summary_plot.png")
+    # Save plot inside the directory with number_query in the filename
+    save_path = os.path.join(directory_path, f"summary_plot_{number_query}.png")
     plt.savefig(save_path, dpi=300)
     plt.close()
 

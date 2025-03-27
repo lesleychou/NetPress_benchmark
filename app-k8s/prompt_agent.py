@@ -109,7 +109,7 @@ class BasePromptAgent:
 
     def generate_prompt(self):
         prompt_prefix = """
-        We have a Google microservices architecture as shown in the diagram. The services and their communication relationships are as follows:
+        We have a Google microservices architecture, the services and the desired communication relationships are as follows:
         - **User** and **loadgenerator** can access the **frontend** service via HTTP.
         - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
         - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
@@ -118,21 +118,16 @@ class BasePromptAgent:
 
         Your task is to inspect the current network policies and verify if they meet the described communication patterns.  
         Provide **one command at a time** to check connectivity or node accessibility.  
-        I will return the output of your command along with previous outputs.  
-        Use this information to **identify and fix misconfigurations step-by-step**.  
-        **Do not create policies beyond those implied by the architecture.**  
+        Each time, I will give you the pevious commands and their corresponding outputs. Also the current connectivity status will be provided., I will give you the mismacthes between the expected and actual connectivity status.
+        You should use this information to identify and fix misconfigurations step-by-step.  
 
         **Response format:**  
-        Put the command **directly** between triple backticks without any JSON structure.  
-        - Use `kubectl patch` instead of `kubectl edit networkpolicy`.  
-        - Example:
-        ```
-        kubectl get services
-        ```
+        Put the command **directly** between triple backticks.  
+        You should use `kubectl patch` instead of `kubectl edit networkpolicy`.  
 
-        Replace the above command with any valid `kubectl` command that helps diagnose the issue. You are not allowed to see the logs of the pods and Kubernetes events, and you are not use 'kubectl exec' and .
-        Restriction: You are not allowed to see the logs of the pods and Kubernetes events.
-        I will provide the output, and you can proceed with the next command.
+        You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' and .
+        Restriction: You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' or to see the logs of the pods and Kubernetes events.
+        Also you should not change the existing correct network policies, you should maintain the originally correct connectivity status.
         """   
         return prompt_prefix
 
@@ -143,32 +138,31 @@ class ZeroShot_CoT_PromptAgent:
 
     def generate_prompt(self):
         cot_prompt_prefix = """
-        We have a Google microservices architecture as shown in the diagram, but there are connectivity issues between some nodes. Your task is to diagnose and fix the problem.
-        1. Steps to follow:
-        - Some nodes should only allow one-way access by restricting ingress and egress traffic.
-        - The connectivity rules are as follows: 
-            - **User** and **loadgenerator** can access the **frontend** service via HTTP.
-            - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
-            - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
-            - **recommendation** communicates with **productcatalog**.
-            - **cart** communicates with the **Redis cache** for storing cart data.
-        2. Analyze Connectivity Issues
-        - Infer potential problems based on the current connectivity status.
-        - If two nodes cannot communicate, the issue likely lies in the ingress and egress policies managing their connection.
-        3. Inspect Network Policies
-        - Identify the policies controlling ingress and egress for the affected nodes. Analyze the policy definitions to determine whether they are incorrectly configured.
-        - If one policy seems correct, check the corresponding policy on the other side.
-        4. Determine the Fix and Apply Changes
-        - Based on your analysis, determine the most effective fix.
-        - Instead of using 'kubectl edit networkpolicy', use 'kubectl patch' to make necessary modifications
-        5. Provide Fix Commands
-        - Format only one command.
-        - The command should be placed directly between triple backticks, without any JSON structure.
-        - Example:
-        ```
-        kubectl get services
-        ```
-        """
+        We have a Google microservices architecture, the services and the desired communication relationships are as follows:
+        - **User** and **loadgenerator** can access the **frontend** service via HTTP.
+        - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
+        - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
+        - **recommendation** communicates with **productcatalog**.
+        - **cart** communicates with the **Redis cache** for storing cart data.
+
+        Your task is to inspect the current network policies and verify if they meet the described communication patterns.  
+        Provide **one command at a time** to check connectivity or node accessibility.  
+        Each time, I will give you the pevious commands and their corresponding outputs. 
+        Also the current connectivity status will be provided., I will give you the mismacthes between the expected and actual connectivity status.
+        Here is an example of the mismatch summary:
+        Mismatch: frontend → currencyservice:7000 (Expected: True, Actual: False)
+        This mismatch means that the frontend service should be able to communicate with the currencyservice on port 7000, but it is not able to do so.
+        You should use this information to identify and fix misconfigurations step-by-step.  
+        Please think step by step to fix the misconfigurations.
+
+        **Response format:**  
+        Put the command **directly** between triple backticks.  
+        You should use `kubectl patch` instead of `kubectl edit networkpolicy`.  
+
+        You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' and .
+        Restriction: You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' or to see the logs of the pods and Kubernetes events.
+        Also you should not change the existing correct network policies, you should maintain the originally correct connectivity status.
+        """   
         return cot_prompt_prefix
 
 

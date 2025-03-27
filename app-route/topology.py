@@ -3,7 +3,10 @@ from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.node import Node
 from mininet.cli import CLI
-
+from mininet.net import Mininet
+from mininet.log import info
+from llm_model import LLMModel  
+from mininet.log import setLogLevel, info, lg
 
 
 class LinuxRouter( Node ):
@@ -67,7 +70,19 @@ def generate_subnets(num_switches):
     # Return the list of generated subnets
     return subnets
 
-
+def initialize_network(num_hosts_per_subnet, num_switches):
+    subnets = generate_subnets(num_switches)
+    # Instantiate Mininet topo
+    topo = NetworkTopo(num_hosts_per_subnet, num_switches, subnets)
+    net = Mininet(topo=topo, waitConnected=True)
+    
+    # Start Mininet
+    net.start()
+    
+    # Enable IP forwarding on the router
+    router = net.get('r0')
+    info(router.cmd('sysctl -w net.ipv4.ip_forward=1'))
+    return subnets, topo, net, router
 
 if __name__ == '__main__':
     num_hosts_per_subnet = 5

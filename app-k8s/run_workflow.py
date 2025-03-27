@@ -16,7 +16,7 @@ import time
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
     parser.add_argument('--llm_agent_type', type=str, default="GPT-4o", choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o"], help='Choose the LLM agent')#"Qwen/Qwen2.5-72B-Instruct"，"GPT-4o"
-    parser.add_argument('--num_queries', type=int, default=50, help='Number of queries to generate for each type')
+    parser.add_argument('--num_queries', type=int, default=2, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/jiajun_benchmark/app-k8s", help='Directory to save output JSONL file')
     parser.add_argument('--microservice_dir', type=str, default="/home/ubuntu/microservices-demo", help='Directory to google microservice demo')
@@ -194,16 +194,16 @@ def run_config_error(args):
     if args.agent_test == 0:
         result_dir = os.path.join(args.root_dir, "result", args.llm_agent_type, datetime.now().strftime("%Y%m%d_%H%M%S"))
     else:
-        # result_dir = os.path.join(args.root_dir, args.prompt_type)
-        result_dir = "/home/ubuntu/jiajun_benchmark/app-k8s/result/GPT-4o/agent_test/20250323_053917/few-shot-basic"
+        result_dir = os.path.join(args.root_dir, args.prompt_type)
+        # result_dir = "/home/ubuntu/jiajun_benchmark/app-k8s/result/GPT-4o/agent_test/20250323_053917/cot"
 
     os.makedirs(result_dir, exist_ok=True)
     if args.config_gen == 1:
         generate_config(args.root_dir, policy_names, args.num_queries)
 
     # Read error configuration
-    # error_config_path = os.path.join(args.root_dir, "error_config.json")
-    error_config_path = "/home/ubuntu/jiajun_benchmark/app-k8s/result/GPT-4o/agent_test/20250323_053917/error_config.json"
+    error_config_path = os.path.join(args.root_dir, "error_config.json")
+    # error_config_path = "/home/ubuntu/jiajun_benchmark/app-k8s/result/GPT-4o/agent_test/20250323_053917/error_config.json"
     with open(error_config_path, 'r') as error_config_file:
         error_config = json.load(error_config_file)
         
@@ -275,12 +275,13 @@ def run_config_error(args):
             # Use LLM to generate command line code
             llm_command = llm.llm_agent.call_agent(txt_file_path)
             print(f"Generated LLM command: {llm_command}")
-
+            endtime = datetime.now()
+            print(f"LLM generation time: {endtime - starttime}")
             # Check if llm_command is None
             if llm_command is None:
                 print("Error: llm_command is None")
                 continue
-
+            starttime = datetime.now()
             # Use subprocess to execute the command line code
             try:
                 output = subprocess.run(llm_command,shell=True,executable='/bin/bash',check=True,text=True,capture_output=True,timeout=10).stdout
@@ -290,25 +291,30 @@ def run_config_error(args):
             except subprocess.CalledProcessError as e:
                 print(f"Command failed:\n{e.stderr}")
                 output = e.stderr
+            endtime = datetime.now()
+            print(f"LLM command execution time: {endtime - starttime}")
+
+            starttime = datetime.now()
             all_match, mismatch_summary = correctness_check(expected_results, debug_container_mapping)
+            endtime = datetime.now()    
+            print(f"Correctness check time: {endtime - starttime}")
             if all_match:
                 print(f"Success in iteration {k+1}")
                 file_write(llm_command, output, mismatch_summary, json_file_path, txt_file_path)
                 break
-            endtime = datetime.now()
-            print(f"LLM interaction time: {endtime - starttime}")
     summary_tests(result_dir)
     plot_metrics(result_dir)
 
 def run_agent_test(args):
     args.root_dir = os.path.join(args.root_dir, "result", args.llm_agent_type,"agent_test", datetime.now().strftime("%Y%m%d_%H%M%S"))
+    args.root_dir = "/home/ubuntu/jiajun_benchmark/app-k8s/result/GPT-4o/agent_test/20250323_053917"
     for i in range(4):
         if i == 0:
             deploy_k8s_cluster("/home/ubuntu/microservices-demo")
             args.prompt_type = "base"
             args.config_gen = 1
             run_config_error(args)
-        elif i == 1:
+        if i == 1:
             deploy_k8s_cluster("/home/ubuntu/microservices-demo")
             args.config_gen = 0
             args.prompt_type = "cot"
@@ -318,34 +324,36 @@ def run_agent_test(args):
             args.prompt_type = "few_shot_basic"
             args.config_gen = 0
             run_config_error(args)
-        # elif i == 3: 
-        #     deploy_k8s_cluster("/home/ubuntu/microservices-demo")   
-        #     args.prompt_type = "few_shot_semantic"
-        #     args.config_gen = 0
-        #     run_config_error(args)
+        elif i == 3: 
+            deploy_k8s_cluster("/home/ubuntu/microservices-demo")   
+            args.prompt_type = "few_shot_semantic"
+            args.config_gen = 0
+            run_config_error(args)
 
     policies_dir = os.path.join(args.root_dir, "policies")
     if os.path.exists(policies_dir):
         shutil.rmtree(policies_dir)
     
-    plot_summary_results(args.root_dir)
+    plot_summary_results(args.root_dir,5)
+    plot_summary_results(args.root_dir,20)
+    plot_summary_results(args.root_dir,50)
 
 if __name__ == "__main__":
 # starttime = datetime.now()
-    deploy_k8s_cluster("/home/ubuntu/microservices-demo")
-    args=parse_args()
-    args.config_gen = 0
-    args.prompt_type = "few_shot_basic"
     # deploy_k8s_cluster("/home/ubuntu/microservices-demo")
-    run_config_error(args)
+    args=parse_args()
+    # args.config_gen = 0
+    # args.prompt_type = "few_shot_basic"
+    # deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+    # run_config_error(args)
     # endtime = datetime.now()
     # print(f"Total time: {endtime - starttime}")
     # starttime = datetime.now()
     # args = parse_args()
-    # if args.agent_test == 1:
-    #     run_agent_test(args=parse_args())
-    # else:
-    #     run_config_error(args=parse_args())
+    if args.agent_test == 1:
+        run_agent_test(args=parse_args())
+    else:
+        run_config_error(args=parse_args())
     # endtime = datetime.now()
     # print(f"Total time: {endtime - starttime}")
     # deploy_k8s_cluster("/home/ubuntu/microservices-demo")
