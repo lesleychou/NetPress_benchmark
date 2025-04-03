@@ -1,6 +1,7 @@
 import logging
 import re
 from mininet.log import setLogLevel, lg
+import os
 
 class MininetLogger:
     """
@@ -11,10 +12,27 @@ class MininetLogger:
         self.log_level = logging.INFO
         self.formatter = '%(message)s'
 
-    def setup_logger(self):
-        self.clear_handlers()
-        with open(self.log_file, 'w'):
-            pass
+    def setup_logger(self, error_type=None, log_dir='logs'):
+        """
+        Sets up the logger for Mininet.
+
+        Parameters:
+            error_type (str, optional): The type of error to include in the log file name.
+            log_dir (str): The directory to store log files.
+        """
+        if error_type:
+            log_number = 0
+            while True:
+                log_file_name = f'error_type_{error_type}_{log_number}.log'
+                log_file_path = os.path.join(log_dir, log_file_name)
+                if not os.path.exists(log_file_path):
+                    self.log_file = log_file_path
+                    with open(self.log_file, 'w'):
+                        pass
+                    break
+                log_number += 1
+        else:
+            self.log_file = 'mininet.log'
 
         file_handler = logging.FileHandler(self.log_file)
         file_handler.setLevel(self.log_level)
@@ -24,7 +42,6 @@ class MininetLogger:
         lg.addHandler(file_handler)
         lg.setLevel(self.log_level)
         setLogLevel('info')  # Set Mininet log level
-
 
     def clear_handlers(self):
         """Removes all handlers from the Mininet logger."""

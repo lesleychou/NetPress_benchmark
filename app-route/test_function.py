@@ -9,6 +9,7 @@ from error_function import inject_errors
 from topology import generate_subnets, NetworkTopo, initialize_network
 from fast_ping import fastpingall
 from safety_check import safety_check, handler
+from mininet.cli import CLI
 import argparse
 import random
 import signal
@@ -18,7 +19,7 @@ import json
 from datetime import datetime
 from error_function import process_single_error, generate_config
 import subprocess
-
+import time
 
 
 
@@ -296,11 +297,17 @@ def static_benchmark_run(args):
     file_path = args.root_dir + '/error_config.json'
     if args.static_benchmark_generation == 1:
         generate_config(file_path, args.num_queries)  
-
+    if args.agent_test == 1:
+        print ("Running agent test for ", args.prompt_type)
     # Instantiate LLM test taker
-    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm, prompt_type="base")
-    args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type, datetime.now().strftime("%Y%m%d-%H%M%S"))
-
+    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm, prompt_type=args.prompt_type)
+    if args.agent_test == 0:
+        args.root_dir = os.path.join(args.root_dir, 'result',args.llm_agent_type, datetime.now().strftime("%Y%m%d-%H%M%S"))
+    else:
+        if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
+            args.root_dir = os.path.join(args.root_dir, args.prompt_type+"_Qwen")
+        else:
+            args.root_dir = os.path.join(args.root_dir, args.prompt_type+"_GPT")
     # Define error types
     with open(file_path, 'r') as f:
         config = json.load(f)
@@ -308,7 +315,7 @@ def static_benchmark_run(args):
 
     print(f"Number of queries: {len(queries)}")
     for i, query in enumerate(queries):
-        start_time = datetime.now()
+        start_time_1 = datetime.now()
         info(f'*** Injecting errors for query {i}\n')
         num_hosts_per_subnet = query.get("num_hosts_per_subnet", 1)
         num_switches = query.get("num_switches")
@@ -318,9 +325,19 @@ def static_benchmark_run(args):
         print("error_type:",errortype)
         print("error_number:",errornumber)
         print("error_detail:",errordetail)
-        
+        print("num_hosts_per_subnet:",num_hosts_per_subnet)
+        print("num_switches:",num_switches)
+        # errortype = "drop_traffic_to_from_subnet"
+        # errornumber = 1
+        # num_hosts_per_subnet = 3
+        # num_switches = 3
+        # errordetail ={
+        #         "subnet": "192.168.3.0/24"
+        #     }
+        start_time = datetime.now()
         subnets, topo, net, router = initialize_network(num_hosts_per_subnet, num_switches)
-
+        end_time = datetime.now()
+        print(f"Time taken for network initialization: {end_time - start_time}")
         
         # Inject errors
         if errornumber == 1:
@@ -331,13 +348,13 @@ def static_benchmark_run(args):
                     process_single_error(router, subnets, et, ed)
             else:
                 info('*** For multiple error injection, errortype and errordetail must be lists of length equal to errornumber\n')
-
-        # Start logging
-        Mininet_log = MininetLogger()
         
         # Create directory and file to store result
         if isinstance(errortype, list):
             errortype = '+'.join(errortype)  
+
+        # Start logging
+        Mininet_log = MininetLogger()
 
         result_dir = os.path.join(args.root_dir, errortype)
 
@@ -351,7 +368,7 @@ def static_benchmark_run(args):
         iter = 0
         while iter < args.max_iteration:
             # Set up logging
-            Mininet_log.setup_logger()
+            Mininet_log.setup_logger(errortype, log_dir='logs')
             
             # Execute LLM command
             if iter != 0:
@@ -366,7 +383,7 @@ def static_benchmark_run(args):
                         
                         # Try executing the command
                         lg.output(net[machine].cmd(commands))
-                        
+                        print("LLM command executed successfully")
                         # Disable the alarm after successful execution
                         signal.alarm(0)
                     except TimeoutError as te:
@@ -374,21 +391,36 @@ def static_benchmark_run(args):
                     except Exception as e:
                         # Handle the exception, log the error, and continue
                         lg.output(f"Error occurred while executing command on {machine}: {e}") 
+
+
                         
             # Pinging all hosts in the network
             start_time = datetime.now()
-            net.pingAll(timeout=0.01)
+            try:
+                net.pingAll(timeout=0.02)
+            except Exception as e:
+                print(f"Fatal error during pingAll: {e}")
+            # fastpingall(net, timeout=5)
             end_time = datetime.now()
             print(f"Time taken for pingAll: {end_time - start_time}")
 
-            # Read log file content
+            # Read log file contents
             log_content = Mininet_log.get_log_content()
             print(log_content)
             
             # Get LLM response
-            machine, commands = llm_model.model.predict(log_content, result_file_path, json_path)
-            print("machine:", machine)
-            print("commands:", commands)
+            attempt = 0
+            while True:
+                attempt += 1
+                print(f"Attempt {attempt}: Calling LLM...")
+                try:
+                    machine, commands = llm_model.model.predict(log_content, result_file_path, json_path)
+                    print(f"Generated LLM command: {machine} {commands}")
+                    break
+                except Exception as e:
+                    print(f"Error while generating LLM command: {e}")
+                    time.sleep(3)
+
             # # Read log content, if successful then breaks
             if Mininet_log.read_log_content(log_content, iter):
                 break
@@ -396,8 +428,8 @@ def static_benchmark_run(args):
             iter += 1
             
         net.stop()
-        end_time = datetime.now()
-        print(f"Time taken for query {i}: {end_time - start_time}")
+        end_time_1 = datetime.now()
+        print(f"Time taken for query {i}: {end_time_1 - start_time_1}")
 
     for subdir in os.listdir(args.root_dir):
         subdir_path = os.path.join(args.root_dir, subdir)

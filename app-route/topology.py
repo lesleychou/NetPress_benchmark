@@ -5,7 +5,6 @@ from mininet.node import Node
 from mininet.cli import CLI
 from mininet.net import Mininet
 from mininet.log import info
-from llm_model import LLMModel  
 from mininet.log import setLogLevel, info, lg
 
 
@@ -85,17 +84,25 @@ def initialize_network(num_hosts_per_subnet, num_switches):
     return subnets, topo, net, router
 
 if __name__ == '__main__':
-    num_hosts_per_subnet = 5
-    num_switches = 5
-    subnets = generate_subnets(num_hosts_per_subnet, num_switches)
+    import sys
+    import io
+    num_hosts_per_subnet = 3
+    num_switches = 3
+    # subnets = generate_subnets(num_hosts_per_subnet)
 
-    topo = NetworkTopo(num_hosts_per_subnet=num_hosts_per_subnet,
-                        num_switches=num_switches,
-                        subnets=subnets)
+    # topo = NetworkTopo(num_hosts_per_subnet=num_hosts_per_subnet,
+    #                     num_switches=num_switches,
+    #                     subnets=subnets)
 
-    net = Mininet(topo=topo)
-    net.start()
+    # net = Mininet(topo=topo)
+    # net.start()
+    subnets, topo, net, router = initialize_network(num_hosts_per_subnet, num_switches)
 
     CLI(net)
+    net.stop()
+    import subprocess
+    output = subprocess("pingall", stdout=sys.stdout)
+    print(output)
+
 
     net.stop()
