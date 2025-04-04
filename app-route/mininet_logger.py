@@ -20,6 +20,7 @@ class MininetLogger:
             error_type (str, optional): The type of error to include in the log file name.
             log_dir (str): The directory to store log files.
         """
+        os.makedirs(log_dir, exist_ok=True)  # Create log directory if it doesn't exist
         if error_type:
             log_number = 0
             while True:
