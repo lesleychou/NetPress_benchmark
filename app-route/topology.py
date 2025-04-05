@@ -1,101 +1,109 @@
-
+import os
 from mininet.topo import Topo
 from mininet.net import Mininet
-from mininet.node import Node
+from mininet.node import Node, RemoteController
 from mininet.cli import CLI
-from mininet.net import Mininet
-from mininet.log import info
-from llm_model import LLMModel  
-from mininet.log import setLogLevel, info, lg
+from mininet.log import info, setLogLevel
+from mininet.node import OVSController
+import socket
 
 
-class LinuxRouter( Node ):
-    "A Node with IP forwarding enabled."
+class LinuxRouter(Node):
+    """A Node with IP forwarding enabled."""
 
-    # pylint: disable=arguments-differ
-    def config( self, **params ):
-        super( LinuxRouter, self).config( **params )
-        # Enable forwarding on the router
-        self.cmd( 'sysctl nesudo python topo.pyt.ipv4.ip_forward=1' )
+    def config(self, **params):
+        super(LinuxRouter, self).config(**params)
+        # Enable IP forwarding on the router
+        self.cmd('sysctl -w net.ipv4.ip_forward=1')
 
-    def terminate( self ):
-        self.cmd( 'sysctl net.ipv4.ip_forward=0' )
-        super( LinuxRouter, self ).terminate()
+    def terminate(self):
+        self.cmd('sysctl -w net.ipv4.ip_forward=0')
+        super(LinuxRouter, self).terminate()
 
 
 class NetworkTopo(Topo):
-    "A LinuxRouter connecting multiple IP subnets"
+    """A LinuxRouter connecting multiple IP subnets"""
 
-    def build(self, num_hosts_per_subnet=5, num_switches=5, subnets=None, **_opts):
-
-        # Create the router
-        router = self.addNode('r0', cls=LinuxRouter, ip=subnets[0][0])
+    def build(self, num_hosts_per_subnet=5, num_switches=5, subnets=None, prefix=""):
+        # Create the router with a unique name
+        router_name = f"{prefix}r0"
+        router = self.addNode(router_name, cls=LinuxRouter, ip=subnets[0][0])
 
         # Create switches
-        switches = [self.addSwitch(f's{i+1}') for i in range(num_switches)]
+        switches = [self.addSwitch(f"{prefix}s{i+1}") for i in range(num_switches)]
 
         # Link each switch to the router with a unique interface
         for i, switch in enumerate(switches):
-            self.addLink(switch, router, intfName2=f'r0-eth{i+1}', 
+            self.addLink(switch, router, intfName2=f"{router_name}-eth{i+1}", 
                          params2={'ip': subnets[i % len(subnets)][0]})
 
-            # Create multiple hosts for each switch, hence each subnet
+            # Create multiple hosts for each switch
             for j in range(num_hosts_per_subnet):
                 host_ip = f'{subnets[i][0].split(".")[0]}.{subnets[i][0].split(".")[1]}.{subnets[i][0].split(".")[2]}.{100+j}/24'
-                host = self.addHost(f'h{i*num_hosts_per_subnet + j + 1}', 
-                                    ip=host_ip, 
-                                    defaultRoute=f'via {subnets[i][0].split("/")[0]}')
-                self.addLink(host, switch)
+                host_name = f"{prefix}h{i*num_hosts_per_subnet + j + 1}"
+                self.addHost(host_name, ip=host_ip, defaultRoute=f'via {subnets[i][0].split("/")[0]}')
+                self.addLink(host_name, switch)
 
 
-def generate_subnets(num_switches):
-    # Base IP address to start subnet generation
-    base_ip = [192, 168, 1, 1]
+def generate_subnets(num_switches, base_ip=[192, 168, 1, 1]):
+    """Generate subnets, ensuring the third octet does not exceed 255"""
     subnets = []
     
-    # Loop through the number of switches to create subnets
     for i in range(num_switches):
-        # Create a new subnet IP by modifying the third octet
         subnet_ip = base_ip.copy()
-        subnet_ip[2] += i  # Increment the third octet for each subnet
+        subnet_ip[2] = (subnet_ip[2] + i) % 255  # Avoid exceeding 255
+
+        subnet = f"{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.{subnet_ip[3]}/24"
+        host_ip = f"{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.100/24"
+        subnet_address = f"{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.0/24"
         
-        # Generate subnet information (subnet, host IP, subnet address)
-        subnet = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.{subnet_ip[3]}/24'
-        host_ip = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.100/24'  # Example host IP within the subnet
-        subnet_address = f'{subnet_ip[0]}.{subnet_ip[1]}.{subnet_ip[2]}.0/24'  # Subnet address with .0
-        
-        # Append the generated subnet details as a tuple to the subnets list
         subnets.append((subnet, host_ip, subnet_address))
     
-    # Return the list of generated subnets
     return subnets
 
-def initialize_network(num_hosts_per_subnet, num_switches):
+
+def find_free_port(start=6700, end=7000):
+    """ 查找可用的 OpenFlow 端口 """
+    for port in range(start, end):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(('127.0.0.1', port)) != 0:
+                return port
+    return None
+
+def initialize_network(num_hosts_per_subnet, num_switches, unique_id):
     subnets = generate_subnets(num_switches)
-    # Instantiate Mininet topo
-    topo = NetworkTopo(num_hosts_per_subnet, num_switches, subnets)
-    net = Mininet(topo=topo, waitConnected=True)
-    
-    # Start Mininet
+    prefix = f"p{unique_id % 100}_"
+
+    # 构建拓扑
+    topo = NetworkTopo(num_hosts_per_subnet, num_switches, subnets, prefix)
+
+    # 明确不要默认 controller
+    net = Mininet(topo=topo, waitConnected=True, controller=None, cleanup=True, autoSetMacs=True)
+
+    # 使用唯一端口启动 controller
+    controller_port = find_free_port(start=6700, end=7000)
+    net.addController(name=f"c{unique_id}", controller=OVSController, port=controller_port)
+
     net.start()
-    
-    # Enable IP forwarding on the router
-    router = net.get('r0')
+
+    # 启用路由器 IP 转发
+    router = net.get(f"{prefix}r0")
     info(router.cmd('sysctl -w net.ipv4.ip_forward=1'))
+
+    print(f"✅ Process {unique_id}: Mininet started with OVSController on port {controller_port}")
     return subnets, topo, net, router
 
-if __name__ == '__main__':
-    num_hosts_per_subnet = 5
-    num_switches = 5
-    subnets = generate_subnets(num_hosts_per_subnet, num_switches)
 
-    topo = NetworkTopo(num_hosts_per_subnet=num_hosts_per_subnet,
-                        num_switches=num_switches,
-                        subnets=subnets)
 
-    net = Mininet(topo=topo)
-    net.start()
 
+if __name__ == "__main__":
+    setLogLevel("info")
+    os.makedirs("logs", exist_ok=True)
+
+    num_hosts = 3
+    num_switches = 3
+    unique_id = os.getpid()  # Use process ID to ensure uniqueness
+
+    subnets, topo, net, router = initialize_network(num_hosts, num_switches, unique_id)
     CLI(net)
-
     net.stop()

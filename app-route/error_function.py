@@ -38,8 +38,18 @@ def error_wrong_routing_table(router, subnets):
     # Delete original routing, add wrong routing
     num_subnets = len(subnets)
     selected_indices = random.sample(range(num_subnets), 2)
-    router.cmd(f'ip route del {subnets[selected_indices[0]][2]} dev r0-eth{selected_indices[0]+1}')
-    router.cmd(f'ip route add {subnets[selected_indices[0]][2]} dev r0-eth{selected_indices[1]+1}')
+
+    interface1 = selected_indices[0] + 1
+    interface2 = selected_indices[1] + 1
+
+    if interface1 > num_subnets:
+        interface1 %= num_subnets
+    if interface2 > num_subnets:
+        interface2 %= num_subnets
+
+    info(f'*** Injecting error: Wrong routing table from {subnets[selected_indices[0]][2]} (delete via r0-eth{interface1}) and add via r0-eth{interface2}\n')
+    router.cmd(f'ip route del {subnets[selected_indices[0]][2]} dev r0-eth{interface1}')
+    router.cmd(f'ip route add {subnets[selected_indices[0]][2]} dev r0-eth{interface2}')
     
 
 # Complexty control: randomly pick given number error type to inject
@@ -98,7 +108,7 @@ def generate_config(filename='error_config.json', num_errors_per_type=5):
         'wrong_routing_table'
     ]
     
-    # Single error queries: Generate num_errors_per_type for each error type
+    # Generate queries for each error type
     for et in error_types:
         for _ in range(num_errors_per_type):
             num_hosts_per_subnet = random.randint(2, 4)
@@ -113,24 +123,27 @@ def generate_config(filename='error_config.json', num_errors_per_type=5):
             }
             queries.append(query)
     
-    # Combined queries: Generate one query for each combination of two different error types
+    # Generate combined queries
     for et1, et2 in combinations(error_types, 2):
-        num_hosts_per_subnet = random.randint(2, 4)
-        num_switches = random.randint(2, 4)
-        detail1 = get_detail(et1, num_switches)
-        detail2 = get_detail(et2, num_switches)
-        query = {
-            "num_switches": num_switches,
-            "num_hosts_per_subnet": num_hosts_per_subnet,
-            "errornumber": 2,
-            "errortype": [et1, et2],
-            "errordetail": [detail1, detail2]
-        }
-        queries.append(query)
+        for _ in range(num_errors_per_type):
+            num_hosts_per_subnet = random.randint(2, 4)
+            num_switches = random.randint(2, 4)
+            detail1 = get_detail(et1, num_switches)
+            detail2 = get_detail(et2, num_switches)
+            query = {
+                "num_switches": num_switches,
+                "num_hosts_per_subnet": num_hosts_per_subnet,
+                "errornumber": 2,
+                "errortype": [et1, et2],
+                "errordetail": [detail1, detail2]
+            }
+            queries.append(query)
     
     config = {"queries": queries}
     
+    # Write to file
     with open(filename, 'w') as f:
+        f.truncate(0)  # Clear the file content
         json.dump(config, f, indent=4)
     
     print(f"Config file {filename} generated with {len(queries)} queries.")

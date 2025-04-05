@@ -495,6 +495,7 @@ class GPTAgentModel:
                 template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
             )
             input_data = {"input": connectivitity_status}
+        start_time = time.time()
         chain = LLMChain(llm=self.client, prompt=prompt)
         content = chain.run(input_data)
         print("LLM output:", content)
@@ -512,7 +513,8 @@ class GPTAgentModel:
 
         with open(json_path, "r") as json_file:
             data = json.load(json_file)
-
+        end_time = time.time()
+        elapsed_time = end_time - start_time
         data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
 
         with open(json_path, "w") as json_file:
