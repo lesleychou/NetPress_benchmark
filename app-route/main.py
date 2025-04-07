@@ -3,15 +3,17 @@ import os
 from test_function import combined_error_test, run_full_test, run, static_benchmark_run, static_benchmark_run_modify
 from file_utils import plot_results, process_results
 from datetime import datetime
-from error_function import generate_config
+# from error_function import generate_config
 from multiprocessing import Process
-from test_function import run_benchmark_parallel
+from test_function import run_benchmark_parallel, static_benchmark_run_modify
+from advanced_error_function import generate_config, process_single_error
+
 
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
     parser.add_argument('--llm_agent_type', type=str, default="GPT-Agent", help='Choose the LLM agent')#"GPT-Agent"
-    parser.add_argument('--num_queries', type=int, default=1, help='Number of queries to generate for each type')
+    parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/jiajun_benchmark/app-route", help='Directory to save output JSONL file')
     parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
@@ -73,3 +75,11 @@ if __name__ == "__main__":
         end_time = datetime.now()
         duration = end_time - start_time
         print(f"Benchmark completed in {duration}")
+
+
+    # Create a directory to save results
+    # save_result_path = os.path.join(args.root_dir, 'result', args.llm_agent_type, "agenttest", datetime.now().strftime("%Y%m%d-%H%M%S"))
+    # os.makedirs(save_result_path, exist_ok=True)
+    # args.root_dir = save_result_path
+    # generate_config(os.path.join(save_result_path, "error_config.json"), num_errors_per_type=args.num_queries)
+    # static_benchmark_run_modify(args)
