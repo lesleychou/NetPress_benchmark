@@ -25,93 +25,93 @@ warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 EXAMPLE_LIST = [
     {
         "question": r"""
-    h1 -> h2 X X r0 
-    h2 -> h1 X X r0 
-    h3 -> X X h4 r0 
-    h4 -> X X h3 r0 
-    r0 -> h1 h2 h3 h4 
+    p29_h1 -> p29_h2 X X p29_r0 
+    p29_h2 -> p29_h1 X X p29_r0 
+    p29_h3 -> X X p29_h4 p29_r0 
+    p29_h4 -> X X p29_h3 p29_r0 
+    p29_r0 -> p29_h1 p29_h2 p29_h3 p29_h4 
     *** Results: 40% dropped (12/20 received)
         """,
         "answer": r"""
-        machine: r0 
+        machine: p29_r0 
         command: sysctl net.ipv4.ip_forward
-        machine: r0 
+        machine: p29_r0 
         command: sysctl -w net.ipv4.ip_forward=1
 '"""
     },
     {
         "question": r"""
-    h1 -> h2 X X X 
-    h2 -> h1 X X X 
-    h3 -> X X h4 r0
-    h4 -> X X h3 r0 
-    r0 -> X X h3 h4 
+    p29_h1 -> p29_h2 X X X 
+    p29_h2 -> p29_h1 X X X 
+    p29_h3 -> X X p29_h4 p29_r0
+    p29_h4 -> X X p29_h3 p29_r0 
+    p29_r0 -> X X p29_h3 p29_h4 
     *** Results: 60% dropped (8/20 received)
 """,
         "answer": r"""
-        machine: r0
+        machine: p29_r0
         command: ip link show
-        machine: r0
-        command: ip link set dev r0-eth1 up
+        machine: p29_r0
+        command: ip link set dev p29_r0-eth1 up
 '"""
     },
     {
         "question": r"""
-    h1 -> h2 X X r0 
-    h2 -> h1 X X r0 
-    h3 -> X X h4 X 
-    h4 -> X X h3 X 
-    r0 -> h1 h2 X X 
+    p29_h1 -> p29_h2 X X p29_r0 
+    p29_h2 -> h1 X X p29_r0 
+    p29_h3 -> X X p29_h4 X 
+    p29_h4 -> X X p29_h3 X 
+    p29_r0 -> p29_h1 p29_h2 X X 
     *** Results: 60% dropped (8/20 received)
         """,
         "answer": r"""
-        machine: r0
+        machine: p29_r0
         command: iptables -L -v --line-numbers
-        machine: r0
+        machine: p29_r0
         command: iptables -D INPUT 1
-        machine: r0
+        machine: p29_r0
         command: iptables -D OUTPUT 1
 
 '"""
     },
     {
         "question": r"""
-    h1 -> h2 X X X X X 
-    h2 -> h1 X X X X X 
-    h3 -> X X h4 h5 h6 r0 
-    h4 -> X X h3 h5 h6 r0 
-    h5 -> X X h3 h4 h6 r0 
-    h6 -> X X h3 h4 h5 r0 
-    r0 -> X X h3 h4 h5 h6
+    p29_h1 -> p29_h2 X X X X X 
+    p29_h2 -> p29_h1 X X X X X 
+    p29_h3 -> X X p29_h4 p29_h5 p29_h6 p29_r0 
+    p29_h4 -> X X p29_h3 p29_h5 p29_h6 p29_r0 
+    p29_h5 -> X X p29_h3 p29_h4 p29_h6 p29_r0 
+    p29_h6 -> X X p29_h3 p29_h4 p29_h5 p29_r0 
+    p29_r0 -> X X p29_h3 p29_h4 p29_h5 p29_h6
     *** Results: 47% dropped (22/42 received)
 """,
         "answer": r"""
-    machine: r0
+    machine: p29_r0
     command: ip route
-    machine: r0
-    command: ip route del 192.168.1.0/24 dev r0-eth2
-    machine: r0
-    command: ip route add 192.168.1.0/24 dev r0-eth1
+    machine: p29_r0
+    command: ip route del 192.168.1.0/24 dev p29_r0-eth2
+    machine: p29_r0
+    command: ip route add 192.168.1.0/24 dev p29_r0-eth1
 """
     },
     {
         "question": r"""
-    h1 -> h2 h3 h4 X X X X r0 
-    h2 -> h1 h3 h4 X X X X r0 
-    h3 -> h1 h2 h4 X X X X r0 
-    h4 -> h1 h2 h3 X X X X r0 
-    h5 -> X X X X h6 h7 h8 X 
-    h6 -> X X X X h5 h7 h8 X 
-    h7 -> X X X X h5 h6 h8 X 
-    h8 -> X X X X h5 h6 h7 X 
-    r0 -> h1 h2 h3 h4 X X X X 
+    p29_h1 -> p29_h2 p29_h3 p29_h4 X X X X p29_r0 
+    p29_h2 -> p29_h1 p29_h3 p29_h4 X X X X p29_r0 
+    p29_h3 -> p29_h1 p29_h2 p29_h4 X X X X p29_r0 
+    p29_h4 -> p29_h1 p29_h2 p29_h3 X X X X p29_r0 
+    p29_h5 -> X X X X p29_h6 p29_h7 p29_h8 X 
+    p29_h6 -> X X X X p29_h5 p29_h7 p29_h8 X 
+    p29_h7 -> X X X X p29_h5 p29_h6 p29_h8 X 
+    p29_h8 -> X X X X p29_h5 p29_h6 p29_h7 X 
+    p29_r0 -> p29_h1 p29_h2 p29_h3 p29_h4 X X X X 
     *** Results: 55% dropped (32/72 received)
 """,
         "answer": r"""
-    machine: r0
-    commandL: r0 ip addr show dev r0-eth2
-    machine: r0
-    command: ip addr add 192.168.2.1/24 dev r0-eth2
+    machine: p29_r0
+    command: p29_r0 ip addr show dev p29_r0-eth2
+    machine: p29_r0
+    command: ip addr add 192.168.2.1/24 dev p29_r0-eth2
 """
     }
 
@@ -143,6 +143,7 @@ class BasePromptAgent:
         You need to give the output in JSON format, which contains the machine and its command.
         Please only give me the JSON format output, with key 'machine' and 'command' and their value. 
         You can only give one command at a time because I can only execute one command.
+        You should be careful that the router's name may not be r0, but we may use prefix to identify the router's name, like p29_r0. And also the same for the host's name and the interface's name, so it can be p29_h1, p29_h2, p29_r0-eth1, p29_r0-eth2, etc. However, the prefix may not be p29, it can be other names like p30, p31, etc.
         Also please don't include 'sudo', and you are not allowed to use vtysh command, also you can not use ping command because the ping result is already given to you.
         Then I will give you the latest PingAll() feedback from the network, and also your 
         previous actions to the network and the actions' feedback to let you know more information.
@@ -167,6 +168,7 @@ class ZeroShot_CoT_PromptAgent:
         You need to give the output in JSON format, which contains the machine and its command.
         Please only give me the JSON format output, with key 'machine' and 'command' and their value. 
         You can only give one command at a time because I can only execute one command.
+        You should be careful that the router's name may not be r0, but we may use prefix to identify the router's name, like p29_r0. And also the same for the host's name and the interface's name, so it can be p29_h1, p29_h2, p29_r0-eth1, p29_r0-eth2, etc. However, the prefix may not be p29, it can be other names like p30, p31, etc.
         Also please don't include 'sudo', and you are not allowed to use vtysh command, also you can not use ping command because the ping result is already given to you.
         Then I will give you the latest PingAll() feedback from the network, and also your 
         previous actions to the network and the actions' feedback to let you know more information.

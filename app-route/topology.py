@@ -6,6 +6,7 @@ from mininet.cli import CLI
 from mininet.log import info, setLogLevel
 from mininet.node import OVSController
 import socket
+import fcntl
 
 
 class LinuxRouter(Node):
@@ -62,31 +63,23 @@ def generate_subnets(num_switches, base_ip=[192, 168, 1, 1]):
     return subnets
 
 
-def find_free_port(start=6700, end=7000):
-    """ 查找可用的 OpenFlow 端口 """
-    for port in range(start, end):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            if s.connect_ex(('127.0.0.1', port)) != 0:
-                return port
-    return None
-
 def initialize_network(num_hosts_per_subnet, num_switches, unique_id):
     subnets = generate_subnets(num_switches)
     prefix = f"p{unique_id % 100}_"
 
-    # 构建拓扑
+    # Build the topology
     topo = NetworkTopo(num_hosts_per_subnet, num_switches, subnets, prefix)
 
-    # 明确不要默认 controller
+    # Explicitly disable the default controller
     net = Mininet(topo=topo, waitConnected=True, controller=None, cleanup=True, autoSetMacs=True)
 
-    # 使用唯一端口启动 controller
-    controller_port = find_free_port(start=6700, end=7000)
-    net.addController(name=f"c{unique_id}", controller=OVSController, port=controller_port)
+    # Use a unique port for the controller
+    controller_port = 6700 + unique_id % 100  # Ensure this port is unique
+    controller = net.addController(name=f"c{unique_id}", controller=OVSController, port=controller_port)
 
     net.start()
 
-    # 启用路由器 IP 转发
+    # Enable IP forwarding on the router
     router = net.get(f"{prefix}r0")
     info(router.cmd('sysctl -w net.ipv4.ip_forward=1'))
 

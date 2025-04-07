@@ -235,7 +235,7 @@ class QwenModel:
         The device for inference.
     """
 
-    def __init__(self, model_name, max_new_tokens, temperature, device, prompt_type):
+    def __init__(self, model_name, max_new_tokens, temperature, device, prompt_type="base"):
         self.model_name = "Qwen/Qwen2.5-72B-Instruct"
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature

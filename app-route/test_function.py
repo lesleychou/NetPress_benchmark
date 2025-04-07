@@ -4,7 +4,7 @@ from llm_model import LLMModel
 from mininet.log import setLogLevel, info, lg
 from mininet_logger import MininetLogger
 from file_utils import prepare_file, initialize_json_file, static_summarize_results, summarize_results, error_classification, plot_metrics_from_json, delete_result_folder, plot_combined_error_metrics, plot_metrics, static_plot_metrics
-from error_function import inject_errors
+# from error_function import inject_errors
 from topology import generate_subnets, NetworkTopo, initialize_network
 from fast_ping import fastpingall
 from safety_check import safety_check, handler
@@ -16,11 +16,12 @@ import os
 import matplotlib.pyplot as plt
 import json
 from datetime import datetime
-from error_function import process_single_error, generate_config
+# from error_function import process_single_error, generate_config
 import subprocess
 import time
 from multiprocessing import Process
 from file_utils import process_results, plot_results
+from advanced_error_function import generate_config, process_single_error
 
 def run(args):
     """
@@ -456,14 +457,14 @@ def static_benchmark_run_modify(args):
     try:
         # Get the unique process ID to distinguish between different instances
         unique_id = os.getpid()
-        args.root_dir = os.path.join(args.root_dir,)
+        args.root_dir = os.path.join(args.root_dir)
         os.makedirs(args.root_dir, exist_ok=True)
 
         # Generate or load the error configuration file
         file_path = os.path.join(args.root_dir, 'error_config.json')
 
         print(f"Process {unique_id}: Running benchmark with prompt type {args.prompt_type}")
-
+        print(file_path)
         # Load the error configuration
         with open(file_path, 'r') as f:
             config = json.load(f)
@@ -484,7 +485,26 @@ def static_benchmark_run_modify(args):
             errortype = query.get("errortype")
             errordetail = query.get("errordetail")
             errornumber = query.get("errornumber")
+            # print("error_type:",errortype)
+            # print("error_number:",errornumber)
+            # print("error_detail:",errordetail)
+            # print("num_hosts_per_subnet:",num_hosts_per_subnet)
+            # print("num_switches:",num_switches)
+            # errortype = "wrong_routing_table"
+            # errornumber = 1
+            # num_hosts_per_subnet = 2
+            # num_switches = 4
+            # errordetail = {
+            #     "from": "192.168.3.0/24",
+            #     "to": "192.168.1.0/24",
+            #     "del_interface": "r0-eth3",
+            #     "add_interface": "r0-eth1",
+            #     "method": 5,
+            #     "to_ip": "192.168.1.1"
+            # }
             Mininet_log = MininetLogger()
+            log_dir = os.path.join(args.root_dir, 'logs')
+            os.makedirs(log_dir, exist_ok=True)
             print(f"Process {unique_id}: Initializing Mininet instance")
             start_time = datetime.now()
 
@@ -496,14 +516,16 @@ def static_benchmark_run_modify(args):
 
             # Inject errors into the network
             if errornumber == 1:
-                process_single_error(router, subnets, errortype, errordetail)
+                print(f"Process {unique_id}: Injecting single error")
+                process_single_error(router, subnets, errortype, errordetail, unique_id)
             else:
                 if isinstance(errortype, list) and isinstance(errordetail, list) and len(errortype) == errornumber and len(errordetail) == errornumber:
                     for et, ed in zip(errortype, errordetail):
-                        process_single_error(router, subnets, et, ed)
+                        process_single_error(router, subnets, et, ed, unique_id)
                 else:
                     print(f"Process {unique_id}: Error: For multiple error injection, errortype and errordetail must be lists of length equal to errornumber")
                     continue
+            # CLI(net)   
             if isinstance(errortype, list):
                 errortype = '+'.join(errortype)  
             # Create result directory and files
@@ -520,7 +542,7 @@ def static_benchmark_run_modify(args):
             iter = 0
             while iter < args.max_iteration:
                 # Set up logging
-                Mininet_log.setup_logger(errortype, log_dir='logs')
+                Mininet_log.setup_logger(errortype, log_dir)
 
                 # Execute LLM command
                 if iter != 0:
@@ -547,7 +569,7 @@ def static_benchmark_run_modify(args):
                 # Ping all hosts in the network
                 start_time = datetime.now()
                 try:
-                    net.pingAll(timeout=0.02)
+                    net.pingAll(timeout=0.1)
                 except Exception as e:
                     print(f"Process {unique_id}: Error during pingAll: {e}")
                 end_time = datetime.now()
@@ -556,7 +578,7 @@ def static_benchmark_run_modify(args):
                 # Read log file content
                 log_content = Mininet_log.get_log_content()
                 print(log_content)
-
+                start_time
                 # Get LLM response
                 attempt = 0
                 while True:
@@ -573,7 +595,8 @@ def static_benchmark_run_modify(args):
                 # Check log content, exit loop if successful
                 if Mininet_log.read_log_content(log_content, iter):
                     break
-
+                end_time = datetime.now()
+                print(f"Time taken for LLM response: {end_time - start_time}")
                 iter += 1
 
             # Stop the Mininet instance
@@ -587,6 +610,16 @@ def static_benchmark_run_modify(args):
 
     except Exception as e:
         print(f"Process {unique_id}: Error occurred: {e}")
+    result_path = os.path.join(args.root_dir, args.prompt_type)
+    for subdir in os.listdir(result_path):
+        subdir_path = os.path.join(result_path, subdir)
+        if os.path.isdir(subdir_path):
+            json_result_path = os.path.join(subdir_path, f'{subdir}_result.json')
+            static_summarize_results(subdir_path, json_result_path)
+
+    static_plot_metrics(result_path)
+
+import shutil  # 用于删除文件夹
 
 def run_benchmark_parallel(args):
     """
@@ -632,6 +665,12 @@ def run_benchmark_parallel(args):
     # Wait for all processes to complete
     for process in processes:
         process.join()
+
+
+    logs_path = os.path.join(save_result_path, "logs")
+    if os.path.exists(logs_path):
+        print(f"Deleting logs folder: {logs_path}")
+        shutil.rmtree(logs_path)
 
     # Process the results and generate plots
     process_results(save_result_path)
