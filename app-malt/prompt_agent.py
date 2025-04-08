@@ -88,33 +88,74 @@ class BasePromptAgent:
         self.prompt_prefix = self.generate_prompt()
 
     def generate_prompt(self):
-        prompt_prefix = """
-        Generate the Python code needed to process the network graph to answer the user question or request. The network graph data is stored as a networkx graph object, the Python code you generate should be in the form of a function named process_graph that takes a single input argument graph_data and returns a single object return_object. The input argument graph_data will be a networkx graph object with nodes and edges.
-        The graph is directed and each node has a 'name' attribute to represent itself.
-        Each node has a 'type' attribute, in the format of EK_TYPE. 'type' must be a list, can include ['EK_SUPERBLOCK', 'EK_CHASSIS', 'EK_RACK', 'EK_AGG_BLOCK', 'EK_JUPITER', 'EK_PORT', 'EK_SPINEBLOCK', 'EK_PACKET_SWITCH', 'EK_CONTROL_POINT', 'EK_CONTROL_DOMAIN'].
-        Each node can have other attributes depending on its type.
-        Each directed edge also has a 'type' attribute, include RK_CONTAINS, RK_CONTROL.
-        You should check relationship based on edge, check name based on node attribute. 
-        Nodes has hierarchy: CHASSIS contains PACKET_SWITCH, JUPITER contains SUPERBLOCK, SUPERBLOCK contains AGG_BLOCK, AGG_BLOCK contains PACKET_SWITCH, PACKET_SWITCH contains PORT.
-        Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3. 
-        When calculating capacity of a node, you need to sum the physical_capacity_bps on the PORT of each hierarchy contains in this node.
-        When update a graph, always create a graph copy, do not modify the input graph. 
-        To find node based on type, check the name and type list. For example, [node[0] == 'ju1.a1.m1.s2c1' and 'EK_PACKET_SWITCH' in node[1]['type']].
+        # old_prompt = """
+        # Generate the Python code needed to process the network graph to answer the user question or request. The network graph data is stored as a networkx graph object, the Python code you generate should be in the form of a function named process_graph that takes a single input argument graph_data and returns a single object return_object. The input argument graph_data will be a networkx graph object with nodes and edges.
+        # The graph is directed and each node has a 'name' attribute to represent itself.
+        # Each node has a 'type' attribute, in the format of EK_TYPE. 'type' must be a list, can include ['EK_SUPERBLOCK', 'EK_CHASSIS', 'EK_RACK', 'EK_AGG_BLOCK', 'EK_JUPITER', 'EK_PORT', 'EK_SPINEBLOCK', 'EK_PACKET_SWITCH', 'EK_CONTROL_POINT', 'EK_CONTROL_DOMAIN'].
+        # Each node can have other attributes depending on its type.
+        # Each directed edge also has a 'type' attribute, include RK_CONTAINS, RK_CONTROL.
+        # You should check relationship based on edge, check name based on node attribute. 
+        # Nodes has hierarchy: CHASSIS contains PACKET_SWITCH, JUPITER contains SUPERBLOCK, SUPERBLOCK contains AGG_BLOCK, AGG_BLOCK contains PACKET_SWITCH, PACKET_SWITCH contains PORT.
+        # Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3. 
+        # When calculating capacity of a node, you need to sum the physical_capacity_bps on the PORT of each hierarchy contains in this node.
+        # When update a graph, always create a graph copy, do not modify the input graph. 
+        # To find node based on type, check the name and type list. For example, [node[0] == 'ju1.a1.m1.s2c1' and 'EK_PACKET_SWITCH' in node[1]['type']].
 
-        Do not use multi-layer function. The output format should only return one object. The return_object will be a JSON object with two keys, 'type' and 'data' and "updated_graph". The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table' or 'graph'.
-        The 'data' key should contain the data needed to render the output. If the output type is 'text' then the 'data' key should contain a string. If the output type is 'list' then the 'data' key should contain a list of items.
-        The 'updated_graph' key should contain the updated graph, no matter what the output type is. It should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
-        If the output type is 'table' then the 'data' key should contain a list of lists where each list represents a row in the table.If the output type is 'graph' then the 'data' key should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
-        node.startswith will not work for the node name. you have to check the node name with the node['name'].
+        # Do not use multi-layer function. The output format should only return one object. The return_object will be a JSON object with two keys, 'type' and 'data' and "updated_graph". The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table' or 'graph'.
+        # The 'data' key should contain the data needed to render the output. If the output type is 'text' then the 'data' key should contain a string. If the output type is 'list' then the 'data' key should contain a list of items.
+        # The 'updated_graph' key should contain the updated graph, no matter what the output type is. It should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
+        # If the output type is 'table' then the 'data' key should contain a list of lists where each list represents a row in the table.If the output type is 'graph' then the 'data' key should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
+        # node.startswith will not work for the node name. you have to check the node name with the node['name'].
 
-        Context: When the user requests to make changes to the graph, it is generally appropriate to return the graph. 
-        In the Python code you generate, you should process the networkx graph object to produce the needed output.
+        # Context: When the user requests to make changes to the graph, it is generally appropriate to return the graph. 
+        # In the Python code you generate, you should process the networkx graph object to produce the needed output.
 
-        Remember, your reply should always start with string "\nAnswer:\n", and you should generate a function called "def process_graph".
-        All of your output should only contain the defined function without example usages, no additional text, and display in a Python code block.
-        Do not include any package import in your answer.
+        # Remember, your reply should always start with string "\nAnswer:\n", and you should generate a function called "def process_graph".
+        # All of your output should only contain the defined function without example usages, no additional text, and display in a Python code block.
+        # Do not include any package import in your answer.
+        # """
+
+        prompt = """
+        You need to behave like a network engineer who processes graph data to answer user queries about capacity planning.
+        
+        Your task is to generate the Python code needed to process the network graph to answer the user question or request. The code should take the form of a function named process_graph that accepts a single input argument graph_data and returns a single object return_object.
+
+        Graph Structure:
+        - The input graph_data is a networkx graph object with nodes and edges
+        - The graph is directed and each node has a 'name' attribute to represent itself
+        - Each node has a 'type' attribute in the format of EK_TYPE. 'type' must be a list, which can include ['EK_SUPERBLOCK', 'EK_CHASSIS', 'EK_RACK', 'EK_AGG_BLOCK', 'EK_JUPITER', 'EK_PORT', 'EK_SPINEBLOCK', 'EK_PACKET_SWITCH', 'EK_CONTROL_POINT', 'EK_CONTROL_DOMAIN']
+        - Each node can have other attributes depending on its type
+        - Each directed edge also has a 'type' attribute, including RK_CONTAINS, RK_CONTROL
+        
+        Important Guidelines:
+        - Check relationships based on edge, check name based on node attribute
+        - Nodes follow this hierarchy: CHASSIS contains PACKET_SWITCH, JUPITER contains SUPERBLOCK, SUPERBLOCK contains AGG_BLOCK, AGG_BLOCK contains PACKET_SWITCH, PACKET_SWITCH contains PORT
+        - Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3
+        - When calculating capacity of a node, sum the physical_capacity_bps on the PORT of each hierarchy contained in this node
+        - When updating a graph, always create a graph copy, do not modify the input graph
+        - To find a node based on type, check the name and type list. For example, [node[0] == 'ju1.a1.m1.s2c1' and 'EK_PACKET_SWITCH' in node[1]['type']]
+        - node.startswith will not work for the node name. You have to check the node name with the node['name']
+
+        
+        Output Format:
+        - Do not use multi-layer functions. The output format should only return one object
+        - The return_object must be a JSON object with three keys: 'type', 'data', and 'updated_graph'
+        - The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table', or 'graph'
+        - The 'data' key should contain the data needed to render the output:
+          * If output type is 'text': 'data' should contain a string
+          * If output type is 'list': 'data' should contain a list of items
+          * If output type is 'table': 'data' should contain a list of lists where each list represents a row in the table
+          * If output type is 'graph': 'data' should contain a graph JSON
+        - The 'updated_graph' key should always contain the updated graph as "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)"
+          
+        Response Format:
+        - Your reply should always start with string "\\nAnswer:\\n"
+        - You should generate a function called "def process_graph"
+        - All of your output should only contain the defined function without example usages, no additional text, and displayed in a Python code block
+        - Do not include any package imports in your answer
         """
-        return prompt_prefix    
+
+        return prompt    
 
 
 class ZeroShot_CoT_PromptAgent:
@@ -123,38 +164,45 @@ class ZeroShot_CoT_PromptAgent:
 
     def generate_prompt(self):
         cot_prompt_prefix = """
-        Please think of the problem step by step based on the following instructions:
-
-        Generate the Python code needed to process the network graph to answer the user question or request. The network graph data is stored as a networkx graph object, the Python code you generate should be in the form of a function named process_graph that takes a single input argument graph_data and returns a single object return_object. The input argument graph_data will be a networkx graph object with nodes and edges.
+        You need to behave like a network engineer who processes graph data to answer user queries about capacity planning.
         
-        Steps to consider:
-        1. First, understand what the input graph structure looks like:
-           - The graph is directed with nodes having 'name' and 'type' attributes
-           - Each node has a 'type' attribute, in the format of EK_TYPE. 'type' must be a list, can include ['EK_SUPERBLOCK', 'EK_CHASSIS', 'EK_RACK', 'EK_AGG_BLOCK', 'EK_JUPITER', 'EK_PORT', 'EK_SPINEBLOCK', 'EK_PACKET_SWITCH', 'EK_CONTROL_POINT', 'EK_CONTROL_DOMAIN']
-           - Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3.
-           - Edges have types like RK_CONTAINS, RK_CONTROL
-        
-        2. Always consider the hierarchy relationships:
-           - CHASSIS contains PACKET_SWITCH
-           - JUPITER contains SUPERBLOCK
-           - SUPERBLOCK contains AGG_BLOCK
-           - AGG_BLOCK contains PACKET_SWITCH
-           - PACKET_SWITCH contains PORT
+        Your task is to generate the Python code needed to process the network graph to answer the user question or request. The code should take the form of a function named process_graph that accepts a single input argument graph_data and returns a single object return_object.
 
-        3. When modifying the graph:
-           - Create a copy of the graph before modifications
-           - Add appropriate edges based on relationships
+        Graph Structure:
+        - The input graph_data is a networkx graph object with nodes and edges
+        - The graph is directed and each node has a 'name' attribute to represent itself
+        - Each node has a 'type' attribute in the format of EK_TYPE. 'type' must be a list, which can include ['EK_SUPERBLOCK', 'EK_CHASSIS', 'EK_RACK', 'EK_AGG_BLOCK', 'EK_JUPITER', 'EK_PORT', 'EK_SPINEBLOCK', 'EK_PACKET_SWITCH', 'EK_CONTROL_POINT', 'EK_CONTROL_DOMAIN']
+        - Each node can have other attributes depending on its type
+        - Each directed edge also has a 'type' attribute, including RK_CONTAINS, RK_CONTROL
         
-        4. For capacity calculations:
-           - Sum the physical_capacity_bps of PORTs in the hierarchy
-           - Consider all contained nodes at each level
+        Important Guidelines:
+        - Check relationships based on edge, check name based on node attribute
+        - Nodes follow this hierarchy: CHASSIS contains PACKET_SWITCH, JUPITER contains SUPERBLOCK, SUPERBLOCK contains AGG_BLOCK, AGG_BLOCK contains PACKET_SWITCH, PACKET_SWITCH contains PORT
+        - Each PORT node has an attribute 'physical_capacity_bps'. For example, a PORT node name is ju1.a1.m1.s2c1.p3
+        - When calculating capacity of a node, sum the physical_capacity_bps on the PORT of each hierarchy contained in this node
+        - When updating a graph, always create a graph copy, do not modify the input graph
+        - To find a node based on type, check the name and type list. For example, [node[0] == 'ju1.a1.m1.s2c1' and 'EK_PACKET_SWITCH' in node[1]['type']]
+        - node.startswith will not work for the node name. You have to check the node name with the node['name']
 
-        5. Format the output appropriately:
-           - Do not write function within function!
-           - Return a JSON object with 'type','data' and 'updated_graph' keys
-           - Types can be: 'text', 'list', 'table', or 'graph'
-           - Format 'data' according to the specified return type
-           - The 'updated_graph' key should contain the updated graph, no matter what the output type is. It should be a graph json "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)".
+        
+        Output Format:
+        - Do not use multi-layer functions. The output format should only return one object
+        - The return_object must be a JSON object with three keys: 'type', 'data', and 'updated_graph'
+        - The 'type' key should indicate the output format depending on the user query or request. It should be one of 'text', 'list', 'table', or 'graph'
+        - The 'data' key should contain the data needed to render the output:
+          * If output type is 'text': 'data' should contain a string
+          * If output type is 'list': 'data' should contain a list of items
+          * If output type is 'table': 'data' should contain a list of lists where each list represents a row in the table
+          * If output type is 'graph': 'data' should contain a graph JSON
+        - The 'updated_graph' key should always contain the updated graph as "graph_json = nx.readwrite.json_graph.node_link_data(graph_copy)"
+          
+        Response Format:
+        - Your reply should always start with string "\\nAnswer:\\n"
+        - You should generate a function called "def process_graph"
+        - All of your output should only contain the defined function without example usages, no additional text, and displayed in a Python code block
+        - Do not include any package imports in your answer
+
+        Please think step by step and provide your output.
         """
         return cot_prompt_prefix
 
