@@ -22,6 +22,7 @@ import time
 from multiprocessing import Process
 from file_utils import process_results, plot_results
 from advanced_error_function import generate_config, process_single_error
+import shutil
 
 def run(args):
     """
@@ -572,6 +573,8 @@ def static_benchmark_run_modify(args):
                     net.pingAll(timeout=0.1)
                 except Exception as e:
                     print(f"Process {unique_id}: Error during pingAll: {e}")
+                    if e == "Command execution timed out":
+                        break
                 end_time = datetime.now()
                 print(f"Time taken for pingAll: {end_time - start_time}")
 
@@ -619,7 +622,7 @@ def static_benchmark_run_modify(args):
 
     static_plot_metrics(result_path)
 
-import shutil  # 用于删除文件夹
+
 
 def run_benchmark_parallel(args):
     """
@@ -642,13 +645,14 @@ def run_benchmark_parallel(args):
     generate_config(os.path.join(save_result_path, "error_config.json"), num_errors_per_type=args.num_queries)
 
     # Define a wrapper function to run static benchmarks
-    def run_static_benchmark(prompt_type, static_benchmark_generation):
+    def run_static_benchmark(prompt_type, static_benchmark_generation,llm_agent_type):
         """
         Wrapper function to create an independent args instance per process.
         This ensures no conflicts between parallel processes.
         """
         args_copy = argparse.Namespace(**vars(args))  # Deep copy args to avoid conflicts
         args_copy.prompt_type = prompt_type
+        args_copy.llm_agent_type = llm_agent_type
         args_copy.static_benchmark_generation = static_benchmark_generation
         static_benchmark_run_modify(args_copy)
 
@@ -658,10 +662,13 @@ def run_benchmark_parallel(args):
     # Create and start processes for each prompt type
     processes = []
     for prompt_type in prompt_types:
-        process = Process(target=run_static_benchmark, args=(prompt_type, args.static_benchmark_generation))
+        process = Process(target=run_static_benchmark, args=(prompt_type, args.static_benchmark_generation, args.llm_agent_type))
         processes.append(process)
         process.start()
 
+    process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
+    processes.append(process)
+    process.start()
     # Wait for all processes to complete
     for process in processes:
         process.join()
