@@ -4,7 +4,7 @@ from langchain._api import LangChainDeprecationWarning
 from azure.identity import DefaultAzureCredential, AzureCliCredential
 
 # Get the Azure Credential
-credential = AzureCliCredential()
+credential = DefaultAzureCredential()
 
 
 # Set the API type to `azure_ad`

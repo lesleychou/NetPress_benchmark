@@ -13,7 +13,7 @@ import math
 
 # anexample of how to use main.py with input args
 # Example usage:
-# python main.py --llm_agent_type AzureGPT4Agent --num_queries 2 --complexity_level level1 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
+# python eval_with_sem_err.py --sampling_method random
 
 def main():
     parser = argparse.ArgumentParser(description='Evaluate semantic error detection performance')

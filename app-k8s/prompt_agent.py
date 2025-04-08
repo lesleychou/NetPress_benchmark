@@ -108,28 +108,55 @@ class BasePromptAgent:
         self.prompt_prefix = self.generate_prompt()
 
     def generate_prompt(self):
-        prompt_prefix = """
-        We have a Google microservices architecture, the services and the desired communication relationships are as follows:
+        # old_prompt = """
+        # We have a Google microservices architecture, the services and the desired communication relationships are as follows:
+        # - **User** and **loadgenerator** can access the **frontend** service via HTTP.
+        # - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
+        # - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
+        # - **recommendation** communicates with **productcatalog**.
+        # - **cart** communicates with the **Redis cache** for storing cart data.
+
+        # Your task is to inspect the current network policies and verify if they meet the described communication patterns.  
+        # Provide **one command at a time** to check connectivity or node accessibility.  
+        # Each time, I will give you the pevious commands and their corresponding outputs. Also the current connectivity status will be provided., I will give you the mismacthes between the expected and actual connectivity status.
+        # You should use this information to identify and fix misconfigurations step-by-step.  
+
+        # **Response format:**  
+        # Put the command **directly** between triple backticks.  
+        # You should use `kubectl patch` instead of `kubectl edit networkpolicy`.  
+
+        # You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' and .
+        # Restriction: You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' or to see the logs of the pods and Kubernetes events.
+        # Also you should not change the existing correct network policies, you should maintain the originally correct connectivity status.
+        # """   
+
+        prompt = """
+        You need to behave like a network engineer who can find the root cause of network policy deployment issues and fix them in the microservices architecture.
+        Our microservices architecture contains following services and desired communication relationships:
         - **User** and **loadgenerator** can access the **frontend** service via HTTP.
         - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
         - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
         - **recommendation** communicates with **productcatalog**.
         - **cart** communicates with the **Redis cache** for storing cart data.
 
-        Your task is to inspect the current network policies and verify if they meet the described communication patterns.  
-        Provide **one command at a time** to check connectivity or node accessibility.  
-        Each time, I will give you the pevious commands and their corresponding outputs. Also the current connectivity status will be provided., I will give you the mismacthes between the expected and actual connectivity status.
-        You should use this information to identify and fix misconfigurations step-by-step.  
+        Your task is to inspect the current network policies and verify if they meet the described communication patterns. If there are any mismatches, you should fix them.
 
-        **Response format:**  
-        Put the command **directly** between triple backticks.  
-        You should use `kubectl patch` instead of `kubectl edit networkpolicy`.  
+        How the interaction works:
+        - Provide **one command at a time** to check connectivity or node accessibility.
+        - Each time, I will give you the previous commands and their corresponding outputs.
+        - I will also provide the current connectivity status, including any mismatches between the expected and actual connectivity status.
+        - Use this information to identify and fix misconfigurations step-by-step.
 
-        You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' and .
-        Restriction: You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' or to see the logs of the pods and Kubernetes events.
-        Also you should not change the existing correct network policies, you should maintain the originally correct connectivity status.
-        """   
-        return prompt_prefix
+        **Response format:**
+        Put the command **directly** between triple backticks.
+        You should use `kubectl patch` instead of `kubectl edit networkpolicy`.
+
+        Important notes:
+        - You are not allowed to see the logs of the pods and Kubernetes events.
+        - You are not allowed to use 'kubectl exec'.
+        - Your new command should not change the existing correct network policies if not necessary; Please maintain the originally correct connectivity status.
+        """
+        return prompt
 
 
 class ZeroShot_CoT_PromptAgent:
@@ -138,30 +165,32 @@ class ZeroShot_CoT_PromptAgent:
 
     def generate_prompt(self):
         cot_prompt_prefix = """
-        We have a Google microservices architecture, the services and the desired communication relationships are as follows:
+        You need to behave like a network engineer who can find the root cause of network policy deployment issues and fix them in the microservices architecture.
+        Our microservices architecture contains following services and desired communication relationships:
         - **User** and **loadgenerator** can access the **frontend** service via HTTP.
         - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
         - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
         - **recommendation** communicates with **productcatalog**.
         - **cart** communicates with the **Redis cache** for storing cart data.
 
-        Your task is to inspect the current network policies and verify if they meet the described communication patterns.  
-        Provide **one command at a time** to check connectivity or node accessibility.  
-        Each time, I will give you the pevious commands and their corresponding outputs. 
-        Also the current connectivity status will be provided., I will give you the mismacthes between the expected and actual connectivity status.
-        Here is an example of the mismatch summary:
-        Mismatch: frontend → currencyservice:7000 (Expected: True, Actual: False)
-        This mismatch means that the frontend service should be able to communicate with the currencyservice on port 7000, but it is not able to do so.
-        You should use this information to identify and fix misconfigurations step-by-step.  
-        Please think step by step to fix the misconfigurations.
+        Your task is to inspect the current network policies and verify if they meet the described communication patterns. If there are any mismatches, you should fix them.
 
-        **Response format:**  
-        Put the command **directly** between triple backticks.  
-        You should use `kubectl patch` instead of `kubectl edit networkpolicy`.  
+        How the interaction works:
+        - Provide **one command at a time** to check connectivity or node accessibility.
+        - Each time, I will give you the previous commands and their corresponding outputs.
+        - I will also provide the current connectivity status, including any mismatches between the expected and actual connectivity status.
+        - Use this information to identify and fix misconfigurations step-by-step.
 
-        You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' and .
-        Restriction: You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' or to see the logs of the pods and Kubernetes events.
-        Also you should not change the existing correct network policies, you should maintain the originally correct connectivity status.
+        **Response format:**
+        Put the command **directly** between triple backticks.
+        You should use `kubectl patch` instead of `kubectl edit networkpolicy`.
+
+        Important notes:
+        - You are not allowed to see the logs of the pods and Kubernetes events.
+        - You are not allowed to use 'kubectl exec'.
+        - Your new command should not change the existing correct network policies if not necessary; Please maintain the originally correct connectivity status.
+
+        Please think step by step and provide your output.
         """   
         return cot_prompt_prefix
 
