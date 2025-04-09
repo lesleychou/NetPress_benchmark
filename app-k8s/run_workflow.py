@@ -194,29 +194,37 @@ async def run_agent_test(args):
             # args.prompt_type = "base"
             # args.config_gen = 1
             # await run_config_error(args)
-        # elif i == 1:
-        #     deploy_k8s_cluster("/home/ubuntu/microservices-demo")
-        #     args.config_gen = 1
-        #     args.prompt_type = "cot"
-        #     await run_config_error(args)
-        # elif i == 2:
-        #     deploy_k8s_cluster("/home/ubuntu/microservices-demo")
-        #     args.prompt_type = "few_shot_basic"
-        #     args.config_gen = 0
-        #     await run_config_error(args)
-        elif i == 3:
+        elif i == 1:
+            start_time = datetime.now()
             # deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+            args.config_gen = 1
+            args.prompt_type = "cot"
+            await run_config_error(args)
+            end_time = datetime.now()
+            print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
+        elif i == 2:
+            start_time = datetime.now()
+            deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+            args.prompt_type = "few_shot_basic"
+            args.config_gen = 0
+            await run_config_error(args)
+            end_time = datetime.now()
+            print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
+        elif i == 3:
+            start_time = datetime.now()
+            deploy_k8s_cluster("/home/ubuntu/microservices-demo")
             args.prompt_type = "few_shot_semantic"
             args.config_gen = 0
             await run_config_error(args)
-
+            end_time = datetime.now()
+            print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
     policies_dir = os.path.join(args.root_dir, "policies")
     if os.path.exists(policies_dir):
         shutil.rmtree(policies_dir)
 
+    plot_summary_results(args.root_dir, 1)
     plot_summary_results(args.root_dir, 5)
-    plot_summary_results(args.root_dir, 20)
-    plot_summary_results(args.root_dir, 50)
+    plot_summary_results(args.root_dir, 10)
 
 # Main entry point
 if __name__ == "__main__":
