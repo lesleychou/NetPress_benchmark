@@ -3,6 +3,7 @@ import json
 import matplotlib.pyplot as plt
 import shutil
 from scipy import stats
+from fast_ping import parallelPing
 
 def prepare_file(file_path):
     """

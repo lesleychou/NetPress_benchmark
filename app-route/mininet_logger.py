@@ -12,7 +12,7 @@ class MininetLogger:
         self.log_level = logging.INFO
         self.formatter = '%(message)s'
 
-    def setup_logger(self, error_type=None, log_dir='logs'):
+    def setup_logger(self, log_path=None, log_dir='logs'):
         """
         Sets up the logger for Mininet.
 
@@ -21,17 +21,8 @@ class MininetLogger:
             log_dir (str): The directory to store log files.
         """
         os.makedirs(log_dir, exist_ok=True)  # Create log directory if it doesn't exist
-        if error_type:
-            log_number = 0
-            while True:
-                log_file_name = f'error_type_{error_type}_{log_number}.log'
-                log_file_path = os.path.join(log_dir, log_file_name)
-                if not os.path.exists(log_file_path):
-                    self.log_file = log_file_path
-                    with open(self.log_file, 'w'):
-                        pass
-                    break
-                log_number += 1
+        if log_path:
+            self.log_file = os.path.join(log_dir, f'mininet_{log_path}.log')
         else:
             self.log_file = 'mininet.log'
 

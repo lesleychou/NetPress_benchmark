@@ -6,7 +6,7 @@ from mininet_logger import MininetLogger
 from file_utils import prepare_file, initialize_json_file, static_summarize_results, summarize_results, error_classification, plot_metrics_from_json, delete_result_folder, plot_combined_error_metrics, plot_metrics, static_plot_metrics
 # from error_function import inject_errors
 from topology import generate_subnets, NetworkTopo, initialize_network
-from fast_ping import fastpingall
+from fast_ping import fastpingall, parallelPing
 from safety_check import safety_check, handler
 from mininet.cli import CLI
 import argparse
@@ -530,7 +530,10 @@ def static_benchmark_run_modify(args):
             if isinstance(errortype, list):
                 errortype = '+'.join(errortype)  
             # Create result directory and files
-            result_dir = os.path.join(args.root_dir, args.prompt_type, errortype)
+            if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
+                result_dir = os.path.join(args.root_dir, args.prompt_type+"_Qwen", errortype)
+            else:      
+                result_dir = os.path.join(args.root_dir, args.prompt_type+"_GPT", errortype)
             os.makedirs(result_dir, exist_ok=True)
 
             result_file_path = os.path.join(result_dir, f'result_{i+1}.txt')
@@ -538,12 +541,15 @@ def static_benchmark_run_modify(args):
 
             prepare_file(result_file_path)
             initialize_json_file(json_path)
-
+            if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
+                log_path = args.prompt_type+"_Qwen"
+            else:      
+                log_path = args.prompt_type+"_GPT"
             # LLM interacts with Mininet
             iter = 0
             while iter < args.max_iteration:
                 # Set up logging
-                Mininet_log.setup_logger(errortype, log_dir)
+                Mininet_log.setup_logger(log_path, log_dir)
 
                 # Execute LLM command
                 if iter != 0:
@@ -570,18 +576,20 @@ def static_benchmark_run_modify(args):
                 # Ping all hosts in the network
                 start_time = datetime.now()
                 try:
-                    net.pingAll(timeout=0.1)
+                    # net.pingAll(timeout=0.1)
+                    pingall, loss_percent = parallelPing(net, timeout=0.1)
                 except Exception as e:
                     print(f"Process {unique_id}: Error during pingAll: {e}")
                     if e == "Command execution timed out":
                         break
                 end_time = datetime.now()
                 print(f"Time taken for pingAll: {end_time - start_time}")
-
+                
                 # Read log file content
-                log_content = Mininet_log.get_log_content()
+                
+                log_content = Mininet_log.get_log_content()+f"Pingall result: {pingall}\n"
                 print(log_content)
-                start_time
+
                 # Get LLM response
                 attempt = 0
                 while True:
@@ -596,7 +604,8 @@ def static_benchmark_run_modify(args):
                         time.sleep(3)
 
                 # Check log content, exit loop if successful
-                if Mininet_log.read_log_content(log_content, iter):
+                if loss_percent == 0:
+                    print(f"Query{i}: Success in {iter} iterations")
                     break
                 end_time = datetime.now()
                 print(f"Time taken for LLM response: {end_time - start_time}")
@@ -658,7 +667,7 @@ def run_benchmark_parallel(args):
 
     # Get the list of prompt types from args (comma-separated)
     prompt_types = ["cot", "few_shot_basic", "few_shot_semantic"]
-
+    # prompt_types = ["cot"]
     # Create and start processes for each prompt type
     processes = []
     for prompt_type in prompt_types:
