@@ -351,6 +351,7 @@ class QwenModel_finetuned:
  
 
 # ReAct agent
+from langchain import hub
 from langchain.agents import Tool, AgentExecutor, create_react_agent
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_experimental.tools.python.tool import PythonAstREPLTool
@@ -370,7 +371,7 @@ class ReAct_Agent:
     def call_agent(self, query):
         print("Calling ReAct agent withGPT-4o with prompt type:", self.prompt_type)
         
-        prompt = PromptTemplate(
+        prompt_template = PromptTemplate(
                 input_variables=["input"],
                 template=self.prompt_agent.prompt_prefix + prompt_suffix
             )
@@ -378,7 +379,7 @@ class ReAct_Agent:
         # Print prompt template
         print("\nPrompt Template:")
         print("-" * 80)
-        print(prompt.template.strip())
+        print(prompt_template.template.strip())
         print("-" * 80 + "\n")
 
         # Set up the Python REPL tool
@@ -413,7 +414,8 @@ class ReAct_Agent:
         print("The ReAct agent can access the following tools: Python REPL, DuckDuckGo Search")
 
         # Create a ReAct agent
-        agent = create_react_agent(self.llm, tools, prompt)
+        react_format_prompt = hub.pull('hwchase17/react')
+        agent = create_react_agent(self.llm, tools, react_format_prompt)
         print("ReAct agent created")
 
         print("Setting up agent executor...")
@@ -422,11 +424,13 @@ class ReAct_Agent:
             tools = tools,
             verbose = True, # explain all reasoning steps
             handle_parsing_errors=True, # continue on error 
-            max_iterations = 3 # try up to 10 times to find the best answer
+            max_iterations = 3 # try up to 3 times to find the best answer
         )
         print("ReAct agent executor set up")
         # Format the input correctly based on the prompt type
-        output = agent_executor.invoke({'input': query})
+        import pdb; pdb.set_trace()
+
+        output = agent_executor.invoke({'input': prompt_template.format(input=query)})
         # Return the output in the same format as other agents
         answer = output['output']
         print("model returned")
