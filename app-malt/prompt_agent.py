@@ -229,7 +229,6 @@ class FewShot_Basic_PromptAgent(ZeroShot_CoT_PromptAgent):
         return few_shot_prompt
 
 
-# TODO: add few shot examples for knn
 class FewShot_Semantic_PromptAgent(ZeroShot_CoT_PromptAgent):
     def __init__(self):
         self.examples = EXAMPLE_LIST
@@ -262,13 +261,3 @@ class FewShot_Semantic_PromptAgent(ZeroShot_CoT_PromptAgent):
             input_variables=["input"]
         )
         return few_shot_prompt
-
-
-# class FewShot_KNN_PromptAgent(ZeroShot_CoT_PromptAgent):
-#     def __init__(self):
-#         super().__init__()  # Initialize the parent class
-#         self.prompt_prefix = self.generate_prompt()
-
-#     def generate_prompt(self):
-#         few_shot_prompt_prefix = super().generate_prompt() + str(examples)
-#         return few_shot_prompt_prefix

@@ -349,57 +349,86 @@ class QwenModel_finetuned:
         code = clean_up_llm_output_func(answer)
         return code
  
-class LlamaModel:
+
+# ReAct agent
+from langchain.agents import Tool, AgentExecutor, create_react_agent
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_experimental.tools.python.tool import PythonAstREPLTool
+class ReAct_Agent:
     def __init__(self, prompt_type="base"):
-        self.model_name = "meta-llama/Meta-Llama-3.1-70B-Instruct"
-        self.quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name,
-            device_map=self.device,
-            cache_dir="/home/ubuntu"
-        )
-        self.llm = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            device_map=self.device,
-            quantization_config=self.quantization_config,
-            cache_dir="/home/ubuntu"
+        self.llm = AzureChatOpenAI(
+            openai_api_version="2024-08-01-preview",
+            deployment_name='ztn-sweden-gpt-4o',
+            model_name='ztn-sweden-gpt-4o',
+            temperature=0.0,
+            max_tokens=4000,
         )
         self.prompt_type = prompt_type
-        # Select prompt agent based on type
-        if self.prompt_type == "cot":
-            prompt_agent = ZeroShot_CoT_PromptAgent()
-        elif self.prompt_type == "few_shot_basic":
-            prompt_agent = FewShot_Basic_PromptAgent()
-        else:
-            prompt_agent = BasePromptAgent()
-
-        self.prompt = prompt_agent.prompt_prefix + prompt_suffix
+        self.prompt_agent = BasePromptAgent()
+        
 
     def call_agent(self, query):
-        print("Calling Llama")
-        prompt_text = self.prompt + query + " Please do not repeat the prompt text in your response, only give the format output."
-        prompt_text = prompt_text.strip()
-        print("prompt_text:", prompt_text)
+        print("Calling ReAct agent withGPT-4o with prompt type:", self.prompt_type)
         
-        # Tokenize the prompt and get the input IDs
-        prompt_tokens = self.tokenizer(prompt_text, return_tensors="pt").to(self.device)
-        prompt_input_ids = prompt_tokens["input_ids"]
-        start_index = prompt_input_ids.shape[-1]
-        
-        # Generate the output
-        generated_ids = self.llm.generate(
-            **prompt_tokens,
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=0.1
+        prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + prompt_suffix
+            )
+
+        # Print prompt template
+        print("\nPrompt Template:")
+        print("-" * 80)
+        print(prompt.template.strip())
+        print("-" * 80 + "\n")
+
+        # Set up the Python REPL tool
+        python_repl = PythonAstREPLTool()
+        python_repl_tool = Tool(
+            name = 'Python REPL',
+            func = python_repl.run,
+            description = '''
+            A Python shell. Use this to execute python commands. 
+            Input should be a valid python command. 
+            When using this tool, sometimes output is abbreviated - make sure 
+            it does not look abbreviated before using it in your answer.
+            '''
         )
-        
-        # Remove the prompt part from the generated output
-        generation_output = generated_ids[0][start_index:]
-        answer = self.tokenizer.decode(generation_output, skip_special_tokens=True)
-        
-        print("llm answer:", answer)
+        print("Python REPL tool set up")
+
+        # Set up the DuckDuckGo Search tool
+        search = DuckDuckGoSearchRun()
+        duckduckgo_tool = Tool(
+            name = 'DuckDuckGo Search',
+            func = search.run,
+            description = '''
+            A wrapper around DuckDuckGo Search. 
+            Useful for when you need to answer questions about current events. 
+            Input should be a search query.
+            '''
+        )
+        print("DuckDuckGo Search tool set up")
+
+        # Create an array that contains all the tools used by the agent
+        tools = [python_repl_tool, duckduckgo_tool]
+        print("The ReAct agent can access the following tools: Python REPL, DuckDuckGo Search")
+
+        # Create a ReAct agent
+        agent = create_react_agent(self.llm, tools, prompt)
+        print("ReAct agent created")
+
+        print("Setting up agent executor...")
+        agent_executor = AgentExecutor(
+            agent=agent, 
+            tools = tools,
+            verbose = True, # explain all reasoning steps
+            handle_parsing_errors=True, # continue on error 
+            max_iterations = 3 # try up to 10 times to find the best answer
+        )
+        print("ReAct agent executor set up")
+        # Format the input correctly based on the prompt type
+        output = agent_executor.invoke({'input': query})
+        # Return the output in the same format as other agents
+        answer = output['output']
         print("model returned")
         code = clean_up_llm_output_func(answer)
         return code
