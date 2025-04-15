@@ -456,6 +456,7 @@ def static_benchmark_run_modify(args):
     Assign a unique root directory for each instance.
     """
     try:
+        start_time_2 = datetime.now()
         # Get the unique process ID to distinguish between different instances
         unique_id = os.getpid()
         args.root_dir = os.path.join(args.root_dir)
@@ -475,7 +476,13 @@ def static_benchmark_run_modify(args):
 
         # Initialize the LLM model
         llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm, prompt_type=args.prompt_type)
-
+        print("agenttype", args.llm_agent_type)
+        if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
+            result_path = os.path.join(args.root_dir, args.prompt_type+"_Qwen")
+        elif args.llm_agent_type == "all-hands/openhands-lm-32b-v0.1":
+            result_path = os.path.join(args.root_dir, args.prompt_type+"Qwen_32B")
+        else:      
+            result_path = os.path.join(args.root_dir, args.prompt_type+"_GPT")
         for i, query in enumerate(queries):
             start_time_1 = datetime.now()
             print(f'Process {unique_id}: Injecting errors for query {i}')
@@ -503,9 +510,8 @@ def static_benchmark_run_modify(args):
             #     "method": 5,
             #     "to_ip": "192.168.1.1"
             # }
-            Mininet_log = MininetLogger()
-            log_dir = os.path.join(args.root_dir, 'logs')
-            os.makedirs(log_dir, exist_ok=True)
+
+
             print(f"Process {unique_id}: Initializing Mininet instance")
             start_time = datetime.now()
 
@@ -530,10 +536,7 @@ def static_benchmark_run_modify(args):
             if isinstance(errortype, list):
                 errortype = '+'.join(errortype)  
             # Create result directory and files
-            if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
-                result_dir = os.path.join(args.root_dir, args.prompt_type+"_Qwen", errortype)
-            else:      
-                result_dir = os.path.join(args.root_dir, args.prompt_type+"_GPT", errortype)
+            result_dir = os.path.join(result_path, errortype)
             os.makedirs(result_dir, exist_ok=True)
 
             result_file_path = os.path.join(result_dir, f'result_{i+1}.txt')
@@ -541,19 +544,17 @@ def static_benchmark_run_modify(args):
 
             prepare_file(result_file_path)
             initialize_json_file(json_path)
-            if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
-                log_path = args.prompt_type+"_Qwen"
-            else:      
-                log_path = args.prompt_type+"_GPT"
+
             # LLM interacts with Mininet
             iter = 0
             while iter < args.max_iteration:
-                # Set up logging
-                Mininet_log.setup_logger(log_path, log_dir)
+
 
                 # Execute LLM command
                 if iter != 0:
+
                     lg.output(f"Machine: {machine}")
+                    lg.output(f'{iter} iteration')
                     lg.output(f"Command: {commands}")
 
                     if safety_check(commands):
@@ -563,7 +564,7 @@ def static_benchmark_run_modify(args):
                             signal.alarm(100)
 
                             # Try executing the command
-                            lg.output(net[machine].cmd(commands))
+                            command_output = net[machine].cmd(commands)
                             print("LLM command executed successfully")
                             # Disable the timeout
                             signal.alarm(0)
@@ -576,7 +577,6 @@ def static_benchmark_run_modify(args):
                 # Ping all hosts in the network
                 start_time = datetime.now()
                 try:
-                    # net.pingAll(timeout=0.1)
                     pingall, loss_percent = parallelPing(net, timeout=0.1)
                 except Exception as e:
                     print(f"Process {unique_id}: Error during pingAll: {e}")
@@ -586,9 +586,11 @@ def static_benchmark_run_modify(args):
                 print(f"Time taken for pingAll: {end_time - start_time}")
                 
                 # Read log file content
-                
-                log_content = Mininet_log.get_log_content()+f"Pingall result: {pingall}\n"
-                print(log_content)
+                if iter != 0:
+                    log_content = f"Machine: {machine}\n" + f"Command: {commands}\n" + command_output + f"Pingall result: {pingall}\n"
+                else:
+                    log_content = f"Pingall result: {pingall}\n"
+                print("log_content: ", log_content)
 
                 # Get LLM response
                 attempt = 0
@@ -605,7 +607,7 @@ def static_benchmark_run_modify(args):
 
                 # Check log content, exit loop if successful
                 if loss_percent == 0:
-                    print(f"Query{i}: Success in {iter} iterations")
+                    print(f"Query {i}: Success in {iter} iterations")
                     break
                 end_time = datetime.now()
                 print(f"Time taken for LLM response: {end_time - start_time}")
@@ -622,7 +624,7 @@ def static_benchmark_run_modify(args):
 
     except Exception as e:
         print(f"Process {unique_id}: Error occurred: {e}")
-    result_path = os.path.join(args.root_dir, args.prompt_type)
+
     for subdir in os.listdir(result_path):
         subdir_path = os.path.join(result_path, subdir)
         if os.path.isdir(subdir_path):
@@ -630,7 +632,8 @@ def static_benchmark_run_modify(args):
             static_summarize_results(subdir_path, json_result_path)
 
     static_plot_metrics(result_path)
-
+    end_time_2 = datetime.now()
+    print(f"Process {unique_id}: Total time taken for all queries: {end_time_2 - start_time_2}")
 
 
 def run_benchmark_parallel(args):
@@ -666,7 +669,7 @@ def run_benchmark_parallel(args):
         static_benchmark_run_modify(args_copy)
 
     # Get the list of prompt types from args (comma-separated)
-    prompt_types = ["cot", "few_shot_basic", "few_shot_semantic"]
+    prompt_types = ["cot"]
     # prompt_types = ["cot"]
     # Create and start processes for each prompt type
     processes = []
@@ -675,9 +678,9 @@ def run_benchmark_parallel(args):
         processes.append(process)
         process.start()
 
-    process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
-    processes.append(process)
-    process.start()
+    # process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
+    # processes.append(process)
+    # process.start()
     # Wait for all processes to complete
     for process in processes:
         process.join()

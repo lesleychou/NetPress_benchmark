@@ -780,9 +780,6 @@ def plot_results(save_result_path, sample_num):
         # Plot points and error bars
         plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o', capsize=5, label=folder)
 
-        # Add annotations
-        plt.annotate(folder, (x, y), textcoords="offset points", xytext=(5, 5), ha='center', fontsize=10)
-
     # Set labels and title
     plt.xlabel("Safety Rate (0-1)", fontsize=14)
     plt.ylabel("Success Rate (0-1)", fontsize=14)
@@ -802,4 +799,16 @@ def plot_results(save_result_path, sample_num):
     plt.close()
 
     print(f"Plot saved to {output_image_path}")
+if __name__ == "__main__":
+    result_path = "/home/ubuntu/jiajun_benchmark/app-route/result/GPT-Agent/agenttest/20250410-210235/cot_Qwen"
+    # for subdir in os.listdir(result_path):
+    #     subdir_path = os.path.join(result_path, subdir)
+    #     if os.path.isdir(subdir_path):
+    #         json_result_path = os.path.join(subdir_path, f'{subdir}_result.json')
+    #         static_summarize_results(subdir_path, json_result_path)
 
+    # static_plot_metrics(result_path)
+    plot_results("/home/ubuntu/jiajun_benchmark/app-route/result/GPT-Agent/agenttest/20250410-210235",5)
+    plot_results("/home/ubuntu/jiajun_benchmark/app-route/result/GPT-Agent/agenttest/20250410-210235",10)
+    plot_results("/home/ubuntu/jiajun_benchmark/app-route/result/GPT-Agent/agenttest/20250410-210235",30)
+    plot_results("/home/ubuntu/jiajun_benchmark/app-route/result/GPT-Agent/agenttest/20250410-210235",50)
