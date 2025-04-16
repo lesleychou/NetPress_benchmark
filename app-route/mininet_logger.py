@@ -41,9 +41,20 @@ class MininetLogger:
             lg.removeHandler(lg.handlers[0])
 
     def get_log_content(self):
-        """Reads and returns the content of the log file."""
+        """
+        Reads and returns the content of the log file, then clears the log file.
+
+        Returns:
+            str: The content of the log file.
+        """
         with open(self.log_file, 'r') as f:
-            return f.read()
+            content = f.read()
+        
+        # Clear the log file after reading
+        with open(self.log_file, 'w') as f:
+            f.write("")
+        
+        return content
 
     def read_log_content(self, log_content, iter):
         """

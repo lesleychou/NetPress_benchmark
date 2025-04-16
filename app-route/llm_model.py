@@ -96,36 +96,6 @@ class LLMModel:
         if match:
             return int(match.group(1))
         return None
-
-    @staticmethod
-    def _generate_prompt(file_content, log_content):
-        """
-        Generates a JSON format prompt for fixing a Mininet network issue.
-
-        Args:
-            file_content (str): The content of the file containing previous actions and feedback.
-            log_content (str): The latest feedback from the Mininet.
-
-        Returns:
-            str: A JSON-formatted string with 'machine' and 'command' keys.
-        """
-        prompt = (
-            """There is a mininet network, but there are some kinds of problems in the router r0, 
-            so it cannot function well and PingAll() fails at some nodes. You need to fix it.
-            I highly recommend you to use some commands to know the information of the router and 
-            the network to know the cause of the problem. But if you think the information is enough 
-            and you know the reason causing the problem, you have to give commands to fix it.
-            You need to give the output in JSON format, which contains the machine and its command.
-            Then I will give you the latest PingAll() feedback from the network, and also your 
-            previous actions to the network and the actions' feedback to let you know more information.
-            """
-            + "Here are the previous actions and their feedbacks:\n"
-            + file_content
-            + "This is the latest feedback from the mininet:\n"
-            + log_content
-            + "Please only give me the JSON format output, with key 'machine' and 'command' and their value. You can only give one command at a time and don't include 'sudo', and you are not allowed to use vtysh command."
-        )
-        return prompt
     
     def _create_model(self):
         """Creates and returns the appropriate model based on the model name."""
@@ -143,6 +113,8 @@ class LLMModel:
             return self._initialize_gpt_agent()
         elif self.model_name == "Google/Gemini":
             return self._initialize_gemini()
+        elif self.model_name == "all-hands/openhands-lm-32b-v0.1":
+            return self._initialize_openhands()
         elif self.model_name == "YourModel":
             return self._initialize_YourModel()
         else:
@@ -156,7 +128,9 @@ class LLMModel:
             temperature=self.temperature,
             device=self.device
         )
-
+    def _initialize_openhands(self):
+        """Initialize the OpenHands model."""
+        return OpenHandsLLMModel(model_path=self.model_name, prompt_type=self.prompt_type)
     def _initialize_qwen(self):
         """Initialize the Qwen model."""
         if self.vllm:
@@ -218,6 +192,114 @@ class LLMModel:
         """Perform inference with the loaded model."""
         # Replace with actual inference logic
         return f"Generating response for: '{input_text}' using {self.model_name}"
+    
+class OpenHandsLLMModel:
+    def __init__(self, model_path="/home/ubuntu/openhands-lm-32b-v0.1", max_new_tokens=512, temperature=0.0, device="cuda", prompt_type="base"):
+        self.model_path = "/home/ubuntu/openhands-lm-32b-v0.1"
+        self.device = device
+        self.max_new_tokens = max_new_tokens
+        self.temperature = temperature
+        self.prompt_type = prompt_type
+        self._initialize_prompt_agent()
+        self._load_model()
+
+    def _initialize_prompt_agent(self):
+        if self.prompt_type == "base":
+            print("base")
+            self.prompt_agent = BasePromptAgent()
+        elif self.prompt_type == "cot":
+            print("cot")
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif self.prompt_type == "few_shot_basic":
+            print("few_shot_basic")
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif self.prompt_type == "few_shot_semantic":
+            print("few_shot_semantic")
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
+        else:
+            raise ValueError(f"Unsupported prompt_type: {self.prompt_type}")
+
+    def _load_model(self):
+        self.llm = LLM(
+            model=self.model_path,  
+            device=self.device,
+            max_model_len=35904
+        )
+        self.sampling_params = SamplingParams(
+            temperature=self.temperature,
+            max_tokens=self.max_new_tokens
+        )
+
+    def _generate_prompt(self, file_content, log_content):
+        connectivitity_status = file_content + log_content
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type == "few_shot_basic":
+            prompt = self.prompt_agent.get_few_shot_prompt()
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type == "cot":
+            prompt = self.prompt_agent.generate_prompt()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt + "Here is the connectivity status:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
+        else:  # base
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + "Here is the previous commands and the current pingall output:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
+        return prompt
+
+    def predict(self, log_content, file_path, json_path):
+        with open(file_path, 'r') as f:
+            file_content = f.read()
+
+        connectivitity_status = file_content + log_content
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type == "few_shot_basic":
+            prompt = self.prompt_agent.get_few_shot_prompt()
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type == "cot":
+            prompt = self.prompt_agent.generate_prompt()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt + "Here is the connectivity status:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
+        else:  # base
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + "Here is the previous commands and the current pingall output:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
+
+        start_time = time.time()
+        result = self.llm.generate([prompt], sampling_params=self.sampling_params)
+        content = result[0].outputs[0].text
+        print('LLM output:', content)
+        end_time = time.time()
+
+        machine = LLMModel.extract_value(content, "machine")
+        commands = LLMModel.extract_value(content, "command")
+        loss_rate = LLMModel.extract_number_before_percentage(log_content)
+
+        with open(json_path, "r") as f:
+            data = json.load(f)
+        data.append({"packet_loss": loss_rate, "elapsed_time": end_time - start_time})
+        with open(json_path, "w") as f:
+            json.dump(data, f, indent=4)
+
+        return machine, commands
+
+# a =OpenHandsLLMModel(model_path="/home/ubuntu/openhands-lm-32b-v0.1", max_new_tokens=512, temperature=0.0, device="cuda")
+# machine, commmands = a.predict("tenvist", "/home/ubuntu/jiajun_benchmark/app-route/result/GPT-Agent/agenttest/20250410-182938/cot_GPT/disable_routing/result_1.txt", "/home/ubuntu/jiajun_benchmark/app-route/result/GPT-Agent/agenttest/20250410-182938/cot_GPT/disable_routing/result_1.json")
+# print("machine:", machine)
+# print("commands:", commmands)
 
 class QwenModel:
     """
@@ -378,13 +460,33 @@ class Qwen_vllm_Model:
         )
 
     def predict(self, log_content, file_path, json_path, **kwargs):
-        """Generate a response based on the log content and file content."""
+        """根据日志内容和文件内容生成响应"""
         with open(file_path, 'r') as f:
             file_content = f.read()
 
-        # Generate prompt
-        prompt = LLMModel._generate_prompt(file_content, log_content)
+        # 根据 prompt_type 和文件内容、日志内容生成 prompt
+        connectivitity_status = file_content + log_content
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type == "few_shot_basic":
+            prompt = self.prompt_agent.get_few_shot_prompt()
+            prompt = prompt.format(input=connectivitity_status)
+        elif self.prompt_type == "cot":
+            prompt = self.prompt_agent.generate_prompt()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt + "Here is the connectivity status:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
+        else:  # base
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + "Here is the previous commands and the current pingall output:\n{input}"
+            )
+            prompt = prompt.format(input=connectivitity_status)
 
+        # 开始生成响应
         start_time = time.time()
 
         # Generate response using vllm
