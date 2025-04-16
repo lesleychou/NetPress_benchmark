@@ -261,3 +261,18 @@ class FewShot_Semantic_PromptAgent(ZeroShot_CoT_PromptAgent):
             input_variables=["input"]
         )
         return few_shot_prompt
+
+class ReAct_PromptAgent(BasePromptAgent):
+    def __init__(self):
+        self.base_prompt_prefix = BasePromptAgent.generate_prompt(self)
+        # Now set prompt_prefix manually instead of through super().__init__()
+        self.prompt_prefix = self.generate_prompt()
+
+    def generate_prompt(self):
+        react_prompt_prefix = """ 
+                                Answer the following question as best you can. Please use a tool if you need to.
+                                
+                                """
+        react_prompt = react_prompt_prefix + self.base_prompt_prefix
+
+        return react_prompt

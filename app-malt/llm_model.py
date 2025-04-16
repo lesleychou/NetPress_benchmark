@@ -23,7 +23,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from huggingface_hub import login
 from vllm import LLM, SamplingParams
-from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent
+from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent, ReAct_PromptAgent
 from modelscope import AutoModelForCausalLM, AutoTokenizer
 from modelscope import GenerationConfig
 
@@ -356,7 +356,7 @@ from langchain.agents import Tool, AgentExecutor, create_react_agent
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_experimental.tools.python.tool import PythonAstREPLTool
 class ReAct_Agent:
-    def __init__(self, prompt_type="base"):
+    def __init__(self, prompt_type="react"):
         self.llm = AzureChatOpenAI(
             openai_api_version="2024-08-01-preview",
             deployment_name='ztn-sweden-gpt-4o',
@@ -365,7 +365,7 @@ class ReAct_Agent:
             max_tokens=4000,
         )
         self.prompt_type = prompt_type
-        self.prompt_agent = BasePromptAgent()
+        self.prompt_agent = ReAct_PromptAgent()
         
 
     def call_agent(self, query):
@@ -424,7 +424,7 @@ class ReAct_Agent:
             tools = tools,
             verbose = True, # explain all reasoning steps
             handle_parsing_errors=True, # continue on error 
-            max_iterations = 3 # try up to 3 times to find the best answer
+            max_iterations = 10 # try up to 3 times to find the best answer
         )
         print("ReAct agent executor set up")
         # Format the input correctly based on the prompt type
@@ -433,6 +433,7 @@ class ReAct_Agent:
         output = agent_executor.invoke({'input': prompt_template.format(input=query)})
         # Return the output in the same format as other agents
         answer = output['output']
+        print("ReActanswer: ", answer)
         print("model returned")
         code = clean_up_llm_output_func(answer)
         return code
