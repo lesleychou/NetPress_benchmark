@@ -16,7 +16,7 @@ import re
 import time
 import sys
 import numpy as np
-from llm_model import AzureGPT4Agent, GoogleGeminiAgent, QwenModel, QwenModel_finetuned
+from llm_model import AzureGPT4Agent, GoogleGeminiAgent, QwenModel, QwenModel_finetuned, ReAct_Agent
 from error_check import SafetyChecker
 
 
@@ -37,6 +37,8 @@ class BenchmarkEvaluator:
             self.llm_agent = QwenModel(prompt_type)
         elif llm_model_type == "QwenModel_finetuned":
             self.llm_agent = QwenModel_finetuned(prompt_type)
+        elif llm_model_type == "ReAct_Agent":
+            self.llm_agent = ReAct_Agent(prompt_type='base')
 
     def userQuery(self, current_query, golden_answer):
         # for each prompt in the prompt_list, append it as the value of {'query': prompt}

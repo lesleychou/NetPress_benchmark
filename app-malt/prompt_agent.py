@@ -229,7 +229,6 @@ class FewShot_Basic_PromptAgent(ZeroShot_CoT_PromptAgent):
         return few_shot_prompt
 
 
-# TODO: add few shot examples for knn
 class FewShot_Semantic_PromptAgent(ZeroShot_CoT_PromptAgent):
     def __init__(self):
         self.examples = EXAMPLE_LIST
@@ -263,12 +262,17 @@ class FewShot_Semantic_PromptAgent(ZeroShot_CoT_PromptAgent):
         )
         return few_shot_prompt
 
+class ReAct_PromptAgent(BasePromptAgent):
+    def __init__(self):
+        self.base_prompt_prefix = BasePromptAgent.generate_prompt(self)
+        # Now set prompt_prefix manually instead of through super().__init__()
+        self.prompt_prefix = self.generate_prompt()
 
-# class FewShot_KNN_PromptAgent(ZeroShot_CoT_PromptAgent):
-#     def __init__(self):
-#         super().__init__()  # Initialize the parent class
-#         self.prompt_prefix = self.generate_prompt()
+    def generate_prompt(self):
+        react_prompt_prefix = """ 
+                                Answer the following question as best you can. Please use a tool if you need to.
+                                
+                                """
+        react_prompt = react_prompt_prefix + self.base_prompt_prefix
 
-#     def generate_prompt(self):
-#         few_shot_prompt_prefix = super().generate_prompt() + str(examples)
-#         return few_shot_prompt_prefix
+        return react_prompt

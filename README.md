@@ -1,5 +1,13 @@
 # Auto Benchmark
 
+## Installation
+
+Install conda environments
+```bash
+conda env create -f environment_mininet.yaml
+conda env create -f environment_ai_gym.yaml
+```
+
 ## Code structure 
 Each application has three parts
 1. Dynamic benchmark generation. 
