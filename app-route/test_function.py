@@ -455,175 +455,174 @@ def static_benchmark_run_modify(args):
     Run a separate Mininet instance for each benchmark test.
     Assign a unique root directory for each instance.
     """
-    try:
-        start_time_2 = datetime.now()
-        # Get the unique process ID to distinguish between different instances
-        unique_id = os.getpid()
-        args.root_dir = os.path.join(args.root_dir)
-        os.makedirs(args.root_dir, exist_ok=True)
 
-        # Generate or load the error configuration file
-        file_path = os.path.join(args.root_dir, 'error_config.json')
+    start_time_2 = datetime.now()
+    # Get the unique process ID to distinguish between different instances
+    unique_id = os.getpid()
+    args.root_dir = os.path.join(args.root_dir)
+    os.makedirs(args.root_dir, exist_ok=True)
 
-        print(f"Process {unique_id}: Running benchmark with prompt type {args.prompt_type}")
-        print(file_path)
-        # Load the error configuration
-        with open(file_path, 'r') as f:
-            config = json.load(f)
-        queries = config.get("queries", [])
+    # Generate or load the error configuration file
+    file_path = os.path.join(args.root_dir, 'error_config.json')
 
-        print(f"Number of queries: {len(queries)}")
+    print(f"Process {unique_id}: Running benchmark with prompt type {args.prompt_type}")
+    print(file_path)
+    # Load the error configuration
+    with open(file_path, 'r') as f:
+        config = json.load(f)
+    queries = config.get("queries", [])
 
-        # Initialize the LLM model
-        llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm, prompt_type=args.prompt_type)
-        print("agenttype", args.llm_agent_type)
-        if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
-            result_path = os.path.join(args.root_dir, args.prompt_type+"_Qwen")
-        elif args.llm_agent_type == "all-hands/openhands-lm-32b-v0.1":
-            result_path = os.path.join(args.root_dir, args.prompt_type+"Qwen_32B")
-        else:      
-            result_path = os.path.join(args.root_dir, args.prompt_type+"_GPT")
-        for i, query in enumerate(queries):
-            start_time_1 = datetime.now()
-            print(f'Process {unique_id}: Injecting errors for query {i}')
+    print(f"Number of queries: {len(queries)}")
 
-            # Extract parameters from the query
-            num_hosts_per_subnet = query.get("num_hosts_per_subnet", 1)
-            num_switches = query.get("num_switches")
-            errortype = query.get("errortype")
-            errordetail = query.get("errordetail")
-            errornumber = query.get("errornumber")
-            # print("error_type:",errortype)
-            # print("error_number:",errornumber)
-            # print("error_detail:",errordetail)
-            # print("num_hosts_per_subnet:",num_hosts_per_subnet)
-            # print("num_switches:",num_switches)
-            # errortype = "wrong_routing_table"
-            # errornumber = 1
-            # num_hosts_per_subnet = 2
-            # num_switches = 4
-            # errordetail = {
-            #     "from": "192.168.3.0/24",
-            #     "to": "192.168.1.0/24",
-            #     "del_interface": "r0-eth3",
-            #     "add_interface": "r0-eth1",
-            #     "method": 5,
-            #     "to_ip": "192.168.1.1"
-            # }
+    # Initialize the LLM model
+    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm, prompt_type=args.prompt_type)
+    print("agenttype", args.llm_agent_type)
+    if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
+        result_path = os.path.join(args.root_dir, args.prompt_type+"_Qwen")
+    elif args.llm_agent_type == "all-hands/openhands-lm-32b-v0.1":
+        result_path = os.path.join(args.root_dir, args.prompt_type+"Qwen_32B")
+    else:      
+        result_path = os.path.join(args.root_dir, args.prompt_type+"_GPT")
+    for i, query in enumerate(queries):
+        start_time_1 = datetime.now()
+        print(f'Process {unique_id}: Injecting errors for query {i}')
+
+        # Extract parameters from the query
+        num_hosts_per_subnet = query.get("num_hosts_per_subnet", 1)
+        num_switches = query.get("num_switches")
+        errortype = query.get("errortype")
+        errordetail = query.get("errordetail")
+        errornumber = query.get("errornumber")
+        # print("error_type:",errortype)
+        # print("error_number:",errornumber)
+        # print("error_detail:",errordetail)
+        # print("num_hosts_per_subnet:",num_hosts_per_subnet)
+        # print("num_switches:",num_switches)
+        # errortype = "wrong_routing_table"
+        # errornumber = 1
+        # num_hosts_per_subnet = 2
+        # num_switches = 4
+        # errordetail = {
+        #     "from": "192.168.3.0/24",
+        #     "to": "192.168.1.0/24",
+        #     "del_interface": "r0-eth3",
+        #     "add_interface": "r0-eth1",
+        #     "method": 5,
+        #     "to_ip": "192.168.1.1"
+        # }
 
 
-            print(f"Process {unique_id}: Initializing Mininet instance")
-            start_time = datetime.now()
+        print(f"Process {unique_id}: Initializing Mininet instance")
+        start_time = datetime.now()
 
-            # Initialize the network
-            subnets, topo, net, router = initialize_network(num_hosts_per_subnet, num_switches, unique_id)
+        # Initialize the network
+        subnets, topo, net, router = initialize_network(num_hosts_per_subnet, num_switches, unique_id)
 
-            end_time = datetime.now()
-            print(f"Process {unique_id}: Network initialization took {end_time - start_time}")
+        end_time = datetime.now()
+        print(f"Process {unique_id}: Network initialization took {end_time - start_time}")
 
-            # Inject errors into the network
-            if errornumber == 1:
-                print(f"Process {unique_id}: Injecting single error")
-                process_single_error(router, subnets, errortype, errordetail, unique_id)
+        # Inject errors into the network
+        if errornumber == 1:
+            print(f"Process {unique_id}: Injecting single error")
+            process_single_error(router, subnets, errortype, errordetail, unique_id)
+        else:
+            if isinstance(errortype, list) and isinstance(errordetail, list) and len(errortype) == errornumber and len(errordetail) == errornumber:
+                for et, ed in zip(errortype, errordetail):
+                    process_single_error(router, subnets, et, ed, unique_id)
             else:
-                if isinstance(errortype, list) and isinstance(errordetail, list) and len(errortype) == errornumber and len(errordetail) == errornumber:
-                    for et, ed in zip(errortype, errordetail):
-                        process_single_error(router, subnets, et, ed, unique_id)
-                else:
-                    print(f"Process {unique_id}: Error: For multiple error injection, errortype and errordetail must be lists of length equal to errornumber")
-                    continue
-            # CLI(net)   
-            if isinstance(errortype, list):
-                errortype = '+'.join(errortype)  
-            # Create result directory and files
-            result_dir = os.path.join(result_path, errortype)
-            os.makedirs(result_dir, exist_ok=True)
+                print(f"Process {unique_id}: Error: For multiple error injection, errortype and errordetail must be lists of length equal to errornumber")
+                continue
+        # CLI(net)   
+        if isinstance(errortype, list):
+            errortype = '+'.join(errortype)  
+        # Create result directory and files
+        result_dir = os.path.join(result_path, errortype)
+        os.makedirs(result_dir, exist_ok=True)
 
-            result_file_path = os.path.join(result_dir, f'result_{i+1}.txt')
-            json_path = os.path.join(result_dir, f'result_{i+1}.json')
+        result_file_path = os.path.join(result_dir, f'result_{i+1}.txt')
+        json_path = os.path.join(result_dir, f'result_{i+1}.json')
 
-            prepare_file(result_file_path)
-            initialize_json_file(json_path)
+        prepare_file(result_file_path)
+        initialize_json_file(json_path)
 
-            # LLM interacts with Mininet
-            iter = 0
-            while iter < args.max_iteration:
+        # LLM interacts with Mininet
+        iter = 0
+        while iter < args.max_iteration:
 
 
-                # Execute LLM command
-                if iter != 0:
+            # Execute LLM command
+            if iter != 0:
 
-                    lg.output(f"Machine: {machine}")
-                    lg.output(f'{iter} iteration')
-                    lg.output(f"Command: {commands}")
+                lg.output(f"Machine: {machine}")
+                lg.output(f'{iter} iteration')
+                lg.output(f"Command: {commands}")
 
-                    if safety_check(commands):
-                        try:
-                            # Set the signal handler and timeout
-                            signal.signal(signal.SIGALRM, handler)
-                            signal.alarm(100)
-
-                            # Try executing the command
-                            command_output = net[machine].cmd(commands)
-                            print("LLM command executed successfully")
-                            # Disable the timeout
-                            signal.alarm(0)
-                        except TimeoutError as te:
-                            lg.output(f"Timeout occurred while executing command on {machine}: {te}")
-                        except Exception as e:
-                            # Handle exceptions, log the error, and continue
-                            lg.output(f"Error occurred while executing command on {machine}: {e}")
-
-                # Ping all hosts in the network
-                start_time = datetime.now()
-                try:
-                    pingall, loss_percent = parallelPing(net, timeout=0.1)
-                except Exception as e:
-                    print(f"Process {unique_id}: Error during pingAll: {e}")
-                    if e == "Command execution timed out":
-                        break
-                end_time = datetime.now()
-                print(f"Time taken for pingAll: {end_time - start_time}")
-                
-                # Read log file content
-                if iter != 0:
-                    log_content = f"Machine: {machine}\n" + f"Command: {commands}\n" + command_output + f"Pingall result: {pingall}\n"
-                else:
-                    log_content = f"Pingall result: {pingall}\n"
-                print("log_content: ", log_content)
-
-                # Get LLM response
-                attempt = 0
-                while True:
-                    attempt += 1
-                    print(f"Attempt {attempt}: Calling LLM...")
+                if safety_check(commands):
                     try:
-                        machine, commands = llm_model.model.predict(log_content, result_file_path, json_path)
-                        print(f"Generated LLM command: {machine} {commands}")
-                        break
+                        # Set the signal handler and timeout
+                        signal.signal(signal.SIGALRM, handler)
+                        signal.alarm(100)
+
+                        # Try executing the command
+                        command_output = net[machine].cmd(commands)
+                        print("LLM command executed successfully")
+                        # Disable the timeout
+                        signal.alarm(0)
+                    except TimeoutError as te:
+                        lg.output(f"Timeout occurred while executing command on {machine}: {te}")
                     except Exception as e:
-                        print(f"Error while generating LLM command: {e}")
-                        time.sleep(3)
+                        # Handle exceptions, log the error, and continue
+                        lg.output(f"Error occurred while executing command on {machine}: {e}")
 
-                # Check log content, exit loop if successful
-                if loss_percent == 0:
-                    print(f"Query {i}: Success in {iter} iterations")
+            # Ping all hosts in the network
+            start_time = datetime.now()
+            try:
+                pingall, loss_percent = parallelPing(net, timeout=0.1)
+            except Exception as e:
+                print(f"Process {unique_id}: Error during pingAll: {e}")
+                if e == "Command execution timed out":
                     break
-                end_time = datetime.now()
-                print(f"Time taken for LLM response: {end_time - start_time}")
-                iter += 1
+            end_time = datetime.now()
+            print(f"Time taken for pingAll: {end_time - start_time}")
+            
+            # Read log file content
+            if iter != 0:
+                log_content = f"Machine: {machine}\n" + f"Command: {commands}\n" + command_output + f"Pingall result: {pingall}\n"
+            else:
+                log_content = f"Pingall result: {pingall}\n"
+            print("log_content: ", log_content)
 
-            # Stop the Mininet instance
-            print(f"Process {unique_id}: Stopping Mininet instance")
-            net.stop()
+            # Get LLM response
+            attempt = 0
+            while True:
+                attempt += 1
+                print(f"Attempt {attempt}: Calling LLM...")
+                try:
+                    machine, commands = llm_model.model.predict(log_content, result_file_path, json_path)
+                    print(f"Generated LLM command: {machine} {commands}")
+                    break
+                except Exception as e:
+                    print(f"Error while generating LLM command: {e}")
+                    time.sleep(3)
 
-            end_time_1 = datetime.now()
-            print(f"Process {unique_id}: Time taken for query {i}: {end_time_1 - start_time_1}")
+            # Check log content, exit loop if successful
+            if loss_percent == 0:
+                print(f"Query {i}: Success in {iter} iterations")
+                break
+            end_time = datetime.now()
+            print(f"Time taken for LLM response: {end_time - start_time}")
+            iter += 1
 
-        print(f"Process {unique_id}: Benchmark finished for {args.prompt_type}")
+        # Stop the Mininet instance
+        print(f"Process {unique_id}: Stopping Mininet instance")
+        net.stop()
 
-    except Exception as e:
-        print(f"Process {unique_id}: Error occurred: {e}")
+        end_time_1 = datetime.now()
+        print(f"Process {unique_id}: Time taken for query {i}: {end_time_1 - start_time_1}")
+
+    print(f"Process {unique_id}: Benchmark finished for {args.prompt_type}")
+
+
 
     for subdir in os.listdir(result_path):
         subdir_path = os.path.join(result_path, subdir)
@@ -678,9 +677,9 @@ def run_benchmark_parallel(args):
         processes.append(process)
         process.start()
 
-    # process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
-    # processes.append(process)
-    # process.start()
+    process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
+    processes.append(process)
+    process.start()
     # Wait for all processes to complete
     for process in processes:
         process.join()
