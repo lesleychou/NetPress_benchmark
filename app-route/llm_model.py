@@ -19,10 +19,10 @@ load_dotenv()
 # For Google Gemini
 import getpass
 from langchain_google_genai import ChatGoogleGenerativeAI
-os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_API_KEY")
+# os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_API_KEY")
 
-if "GOOGLE_API_KEY" not in os.environ:
-    os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
+# if "GOOGLE_API_KEY" not in os.environ:
+#     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
         
 # For Azure OpenAI GPT4
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
@@ -438,12 +438,25 @@ class Qwen_vllm_Model:
         The device for inference.
     """
 
-    def __init__(self, model_name, max_new_tokens, temperature, device="cuda"):
+    def __init__(self, model_name, max_new_tokens, temperature, device="cuda", prompt_type="base"):
         self.model_name = model_name
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
         self.device = device
         self._load_model()
+        self.prompt_type = prompt_type
+        if prompt_type == "base":
+            print("base")
+            self.prompt_agent = BasePromptAgent()
+        elif prompt_type == "cot":
+            print("cot")
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif prompt_type == "few_shot_basic":
+            print("few_shot_basic")
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif prompt_type == "few_shot_semantic":
+            print("few_shot_semantic")
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
 
     def _load_model(self):
         """Load the Qwen model using vllm with GPTQ 4-bit quantization."""

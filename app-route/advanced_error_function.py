@@ -280,7 +280,7 @@ def process_single_error(router, subnets, errortype, errordetail, unique_id):
             
         interface = errordetail["interface"]
         interface =f"p{unique_id % 100}_" + interface
-        method = errordetail.get("method", random.randint(1, 5))
+        method = errordetail.get("method", random.randint(1, 3))
         info(f'*** Injecting error: Interfering with interface {interface} using method {method}\n')
         
         if method == 1:

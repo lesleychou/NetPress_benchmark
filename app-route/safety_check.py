@@ -9,4 +9,13 @@ def safety_check(commands):
     if 'tcpdump' in commands:
         lg.output("Command containing 'tcpdump' is not allowed.")
         return False
+    if "systemctl" in commands:
+        lg.output("Command containing 'systemctl' is not allowed.")
+        return False
+    if "frr" in commands:
+        lg.output("Command containing 'frr' is not allowed.")
+        return False
+    if "ethtool" in commands:
+        lg.output("Command containing 'ethtool' is not allowed.")
+        return False
     return True
