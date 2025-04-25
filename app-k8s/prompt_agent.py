@@ -2,12 +2,12 @@ import json
 import traceback
 from dotenv import load_dotenv
 import openai
-import pandas as pd
+# import pandas as pd
 from collections import Counter
-from prototxt_parser.prototxt import parse
+# from prototxt_parser.prototxt import parse
 import os
 import networkx as nx
-import jsonlines
+# import jsonlines
 import json
 import re
 import time
@@ -17,7 +17,7 @@ from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
 import warnings
 from langchain._api import LangChainDeprecationWarning
-from langchain_chroma import Chroma
+# from langchain_chroma import Chroma
 from langchain_core.example_selectors import SemanticSimilarityExampleSelector
 from langchain_openai import AzureOpenAIEmbeddings
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
@@ -150,6 +150,7 @@ class BasePromptAgent:
         **Response format:**
         Put the command **directly** between triple backticks.
         You should use `kubectl patch` instead of `kubectl edit networkpolicy`.
+        You should not include bash in the command, and you should not use <namespace> you should use the namespace of the service.
 
         Important notes:
         - You are not allowed to see the logs of the pods and Kubernetes events.
@@ -184,6 +185,7 @@ class ZeroShot_CoT_PromptAgent:
         **Response format:**
         Put the command **directly** between triple backticks.
         You should use `kubectl patch` instead of `kubectl edit networkpolicy`.
+        You should not include bash in the command, and you should not use <namespace> you should use the namespace of the service.
 
         Important notes:
         - You are not allowed to see the logs of the pods and Kubernetes events.

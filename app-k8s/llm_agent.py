@@ -78,7 +78,7 @@ class LLMAgent:
 class AzureGPT4Agent:
     def __init__(self, prompt_type="base"):
         self.llm = AzureChatOpenAI(
-            openai_api_version="2024-08-01-preview",
+            openai_api_version="2024-12-01-preview",
             deployment_name='ztn-sweden-gpt-4o',
             model_name='ztn-sweden-gpt-4o',
             temperature=0.0,
