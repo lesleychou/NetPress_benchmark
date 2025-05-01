@@ -834,6 +834,197 @@ def plot_results(save_result_path, sample_num):
 
     print(f"Plot saved to {output_image_path}")
 
+def plot_spider_charts(save_result_path, sample_num):
+    """
+    Create spider/radar charts for safety and success rates based on error types,
+    with different agents plotted on the same chart for comparison.
+    
+    Args:
+        save_result_path (str): Root directory path.
+        sample_num (int): Number of samples to select for each error type.
+    """
+    import numpy as np
+    import matplotlib.patches as mpatches
+    import math
+
+    # Error type abbreviation mapping
+    error_abbrev = {
+        "disable_routing": "level-1,DR",
+        "disable_interface": "level-1,DI",
+        "remove_ip": "level-1,RI",
+        "drop_traffic_to_from_subnet": "level-1,DT",
+        "wrong_routing_table": "level-1,WR",
+        # For combined error types
+        "disable_routing+disable_interface": "level-2,DR+DI",
+        "disable_routing+remove_ip": "level-2,DR+RI",
+        "disable_routing+drop_traffic_to_from_subnet": "level-3,DR+DT",
+        "disable_routing+wrong_routing_table": "level-2,DR+WR",
+        "disable_interface+remove_ip": "level-3,DI+RI",
+        "disable_interface+drop_traffic_to_from_subnet": "level-2,DI+DT",
+        "disable_interface+wrong_routing_table": "level-3,DI+WR",
+        "remove_ip+drop_traffic_to_from_subnet": "level-3,RI+DT",
+        "remove_ip+wrong_routing_table": "level-2,RI+WR",
+        "drop_traffic_to_from_subnet+wrong_routing_table": "level-2,DT+WR"
+    }
+
+    # Set global plotting style
+    # plt.style.use('seaborn-v0_8-white')  # Clean, professional base style
+    plt.rcParams.update({
+        'font.size': 16,                   # Base font size
+        'axes.labelsize': 16,              # Size for axis labels
+        'axes.titlesize': 16,              # Size for subplot titles
+        'figure.titlesize': 16,            # Size for figure titles
+        'legend.fontsize': 16,             # Size for legend text
+        'xtick.labelsize': 16,             # Size for x-tick labels
+        'ytick.labelsize': 10,             # Size for y-tick labels
+    })
+
+    # Dictionary to store results by agent and error type
+    agent_results = {}
+    
+    # Professional color scheme
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']  # Professional color scheme
+    
+    # Process each promptagent folder
+    for promptagent in os.listdir(save_result_path):
+        promptagent_path = os.path.join(save_result_path, promptagent)
+        if not os.path.isdir(promptagent_path):
+            continue
+            
+        # Load the result JSON file
+        result_path = os.path.join(save_result_path, f"{promptagent}.json")
+        if not os.path.exists(result_path):
+            print(f"Result JSON not found for {promptagent}")
+            continue
+            
+        with open(result_path, "r") as f:
+            results = json.load(f)
+            
+        # Initialize agent results
+        if promptagent not in agent_results:
+            agent_results[promptagent] = {}
+            
+        # Group results by error type for this agent
+        for result in results:
+            errortype = result["detail"]["errortype"]
+            if isinstance(errortype, list):
+                errortype = "+".join(errortype)  # Convert list to string
+                
+            if errortype not in agent_results[promptagent]:
+                agent_results[promptagent][errortype] = {
+                    "success": [],
+                    "safety": []
+                }
+                
+            agent_results[promptagent][errortype]["success"].append(result["success"])
+            agent_results[promptagent][errortype]["safety"].append(result["safe"])
+    
+    # Get all unique error types
+    all_error_types = set()
+    for agent_data in agent_results.values():
+        all_error_types.update(agent_data.keys())
+    categories = sorted(list(all_error_types))
+    
+    # Create abbreviated category labels
+    category_labels = [error_abbrev.get(cat, cat) for cat in categories]
+    
+    # Create two separate spider charts (success and safety)
+    for metric in ["Success Rate", "Safety Rate"]:
+        # Number of variables
+        N = len(categories)
+        
+        # What will be the angle of each axis in the plot
+        angles = [n / float(N) * 2 * np.pi for n in range(N)]
+        angles += angles[:1]  # Close the loop
+        
+        # Create the plot with specific figure size for paper
+        fig, ax = plt.subplots(figsize=(8, 6), subplot_kw=dict(projection='polar'))
+        
+        # Set the category labels with consistent formatting
+        plt.xticks(angles[:-1], category_labels, fontsize=12)
+        
+        # Set y-limits and ticks
+        ax.set_ylim(0, 100)
+        plt.yticks([20, 40, 60, 80, 100], ["20%", "40%", "60%", "80%", "100%"], color="black")
+        
+        # Set radial axis label position
+        ax.set_rlabel_position(0)
+        
+        # Remove the circular grid and spines
+        ax.grid(False)
+        ax.spines['polar'].set_visible(False)
+        
+        # Draw polygon grid lines with more professional styling
+        grid_values = [20, 40, 60, 80, 100]
+        for grid_val in grid_values:
+            polygon_points = [(a, grid_val) for a in angles]
+            ax.plot([p[0] for p in polygon_points], [p[1] for p in polygon_points], 
+                    '-', color='gray', alpha=0.15, linewidth=0.8)
+        
+        # Draw axis lines with consistent styling
+        for i in range(N):
+            ax.plot([angles[i], angles[i]], [0, ax.get_ylim()[1]], 
+                    color='gray', linestyle='-', linewidth=0.8, alpha=0.5)
+        
+        # Plot each agent with improved styling
+        legend_patches = []
+        for idx, (agent, agent_data) in enumerate(agent_results.items()):
+            rates = []
+            for errortype in categories:
+                if errortype in agent_data:
+                    if metric == "Success Rate":
+                        rate = np.mean(agent_data[errortype]["success"]) * 100
+                    else:  # Safety Rate
+                        rate = np.mean(agent_data[errortype]["safety"]) * 100
+                else:
+                    rate = 0
+                rates.append(rate)
+            
+            # Close the plot by appending the first value
+            values = np.concatenate((rates, [rates[0]]))
+            
+            color = colors[idx % len(colors)]
+            # Plot line with higher z-order to ensure it's above the fill
+            ax.plot(angles, values, linewidth=2, linestyle='-', color=color, zorder=2)
+            ax.fill(angles, values, color=color, alpha=0.1, zorder=1)
+            
+            legend_patches.append(mpatches.Patch(color=color, label=agent))
+        
+        # Add legend with improved positioning and styling
+        legend = plt.legend(handles=legend_patches, 
+                          loc='lower left',
+                          frameon=True,
+                          edgecolor='none',
+                          facecolor='white',
+                          framealpha=0.8)
+        
+        # Adjust layout to prevent text cutoff
+        plt.tight_layout()
+        
+        # Save figure with higher quality settings
+        output_path = os.path.join(save_result_path, f"route_spider_chart_{metric.lower().replace(' ', '_')}_by_agent")
+        
+        # # Save as PDF for better quality
+        # plt.savefig(f"{output_path}.pdf", 
+        #             dpi=300, 
+        #             bbox_inches='tight',
+        #             pad_inches=0.2)
+        
+        # Also save as PNG for easy viewing
+        plt.savefig(f"{output_path}.png",
+                    dpi=300,
+                    bbox_inches='tight',
+                    pad_inches=0.2)
+        
+        plt.close()
+        
+        print(f"Spider chart for {metric} by agent saved to {output_path}.pdf and {output_path}.png")
+        
+        # Print the abbreviation mapping for reference
+        print("\nError Type Abbreviations:")
+        for cat, abbrev in zip(categories, category_labels):
+            print(f"{abbrev}: {cat}")
+
 if __name__ == "__main__":
     save_result_path = "/home/ubuntu/nemo_benchmark/app-route/result/GPT-Agent/agenttest/20250421-182502"
     # for subdir in os.listdir(result_path):
@@ -847,3 +1038,4 @@ if __name__ == "__main__":
     plot_results(save_result_path, 10)
     plot_results(save_result_path, 50)
     plot_results(save_result_path, 150)
+    plot_spider_charts(save_result_path, 150)
