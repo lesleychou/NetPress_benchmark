@@ -25,19 +25,16 @@ warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
 EXAMPLE_LIST = [
     {
-        "question": r'mismatch_summary": "Mismatch: frontend → currencyservice:7000 (Expected: True, Actual: False)\nMismatch: checkoutservice → currencyservice:7000 (Expected: True, Actual: False)',
+        "question": r'mismatch_summary": "Mismatch: frontend → currencyservice:7000 (Expected: True, Actual: False)',
         "answer": r"""kubectl get networkpolicy frontend -o yaml,
 kubectl get networkpolicy currencyservice -o yaml
-kubectl patch networkpolicy currencyservice -p $'
+kubectl patch networkpolicy currencyservice --type=merge -p $'
 spec:
   ingress:
   - from:
     - podSelector:
         matchLabels:
           app: frontend
-    - podSelector:
-        matchLabels:
-          app: checkoutservice
 '"""
     },
     {

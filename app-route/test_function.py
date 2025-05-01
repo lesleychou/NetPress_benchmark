@@ -483,7 +483,7 @@ def static_benchmark_run_modify(args):
         result_path = os.path.join(args.root_dir, args.prompt_type+"Qwen_32B")
     else:      
         result_path = os.path.join(args.root_dir, args.prompt_type+"_GPT")
-    for i, query in enumerate(queries[504:], start=505):
+    for i, query in enumerate(queries[:504], start=1):
         start_time_1 = datetime.now()
         print(f'Process {unique_id}: Injecting errors for query {i}')
 
@@ -667,14 +667,14 @@ def run_benchmark_parallel(args):
     # prompt_types = ["cot"]
     # Create and start processes for each prompt type
     processes = []
-    # for prompt_type in prompt_types:
-    #     process = Process(target=run_static_benchmark, args=(prompt_type, args.static_benchmark_generation, args.llm_agent_type))
-    #     processes.append(process)
-    #     process.start()
+    for prompt_type in prompt_types:
+        process = Process(target=run_static_benchmark, args=(prompt_type, args.static_benchmark_generation, args.llm_agent_type))
+        processes.append(process)
+        process.start()
 
-    process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
-    processes.append(process)
-    process.start()
+    # process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
+    # processes.append(process)
+    # process.start()
     # Wait for all processes to complete
     for process in processes:
         process.join()

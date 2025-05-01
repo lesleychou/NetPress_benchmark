@@ -2,7 +2,7 @@ import json
 import traceback
 from dotenv import load_dotenv
 import openai
-
+from vllm import LLM, SamplingParams
 from collections import Counter
 
 import os
@@ -137,19 +137,18 @@ class QwenModel:
     def __init__(self, prompt_type="base"):
         # 模型初始化...
         self.prompt_type = prompt_type
-        self.model_name = "Qwen/Qwen2.5-72B-Instruct"
+        self.model_name = "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
         self.quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name,
-            device_map=self.device,
-            cache_dir="/home/ubuntu"
+        self.llm = LLM(
+            model=self.model_name,
+            device=self.device,
+            quantization="gptq"  # Enable GPTQ 4-bit loading
         )
-        self.llm = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            device_map=self.device,
-            quantization_config=self.quantization_config,
-            cache_dir="/home/ubuntu"
+
+        self.sampling_params = SamplingParams(
+            temperature=0.0,
+            max_tokens=512
         )
 
         if prompt_type == "base":
@@ -190,20 +189,9 @@ class QwenModel:
             )
             prompt = prompt.format(input=connectivitity_status)
         print("prompt:", prompt)
-        prompt_tokens = self.tokenizer(prompt, return_tensors="pt").to(self.device)
-        prompt_input_ids = prompt_tokens["input_ids"]
-        start_index = prompt_input_ids.shape[-1]
-        
-        # Generate the output
-        generated_ids = self.llm.generate(
-            **prompt_tokens,
-            max_new_tokens=4000,
-            do_sample=True,
-            temperature=0.1
-        )
-        # Remove the prompt part from the generated output
-        generation_output = generated_ids[0][start_index:]
-        answer = self.tokenizer.decode(generation_output, skip_special_tokens=True)
+        result = self.llm.generate([prompt], sampling_params=self.sampling_params)
+        answer = result[0].outputs[0].text
+
         print("llm answer:", answer)
         print("model returned")
         answer = extract_command(answer)
