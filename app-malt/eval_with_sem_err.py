@@ -15,6 +15,9 @@ import math
 # Example usage:
 # python eval_with_sem_err.py --sampling_method random
 
+plt.rcParams['font.size'] = '20'
+plt.rcParams['axes.titleweight'] = 'bold'
+plt.rcParams['axes.labelweight'] = 'bold'
 def main():
     parser = argparse.ArgumentParser(description='Evaluate semantic error detection performance')
     parser.add_argument('--sampling_method', type=str, choices=['first', 'random'], default='first',
@@ -35,26 +38,26 @@ def main():
         "logs/AzureGPT4Agent_cot/new_gpt4o_cot.jsonl",
         "logs/AzureGPT4Agent_cot/extra_50_gpt4o_cot.jsonl"
     ]
-    cot_merge_name = "gpt4o_cot_combined"
+    cot_merge_name = "cot_GPT"
 
     few_shot_merge_files = [
         "logs/AzureGPT4Agent_few_shot_semantic/new_gpt4o_few_shot_semantic.jsonl",
         "logs/AzureGPT4Agent_few_shot_semantic/extra_50_gpt4o_few_shot_semantic.jsonl"
     ]
-    few_shot_merge_name = "gpt4o_few_shot_combined"
+    few_shot_merge_name = "few_shot_GPT"
     
     # Add Qwen merge file definitions
     qwen_cot_merge_files = [
         "logs/Qwen2.5-72B-Instruct_cot/new_qwen_cot_50.jsonl",
         "logs/Qwen2.5-72B-Instruct_cot/extra_50_qwen_cot.jsonl"
     ]
-    qwen_cot_merge_name = "qwen_cot_combined"
+    qwen_cot_merge_name = "cot_Qwen"
     
     qwen_few_shot_merge_files = [
         "logs/Qwen2.5-72B-Instruct_few_shot_semantic/new_qwen_few_shot_semantic_50.jsonl",
         "logs/Qwen2.5-72B-Instruct_few_shot_semantic/extra_50_qwen_few_shot_semantic.jsonl"
     ]
-    qwen_few_shot_merge_name = "qwen_few_shot_combined"
+    qwen_few_shot_merge_name = "few_shot_Qwen"
     
     # Load data from each file
     file_results = {}
@@ -173,13 +176,9 @@ def main():
                 'grouped_results': grouped_results
             })
 
-    sample_sizes = [5, 20, 100]
+    sample_sizes = [5, 100]
     
-    # Create a figure with 3 subplots
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-    
-    # Initialize lists to store data for plotting
-    for i, sample_size in enumerate(sample_sizes):
+    for sample_size in sample_sizes:
         print(f"\n=== STATISTICS FOR {args.sampling_method.upper()} {sample_size} SAMPLES PER LABEL ===")
         
         safety_data = []
@@ -260,38 +259,61 @@ def main():
                 'error_margin': correctness_error_margin
             })
         
-        # Plot the scatter points with error bars for this sample size
-        ax = axes[i]
+        # Create a new figure for each sample size with professional styling
+        plt.figure(figsize=(7, 6), dpi=300)
         
+        # Professional color palette - Scientific color scheme
+        colors = ['#0073C2', '#EFC000', '#868686', '#CD534C', '#7AA6DC', '#003C67']
+
+        # Plot the scatter points with error bars
         for j in range(len(safety_data)):
             s_data = safety_data[j]
             c_data = correctness_data[j]
             
-            ax.errorbar(
-                s_data['pass_rate'], 
-                c_data['pass_rate'],
-                xerr=s_data['error_margin'],
-                yerr=c_data['error_margin'],
+            plt.errorbar(
+                s_data['pass_rate'] / 100,  # Convert to decimal
+                c_data['pass_rate'] / 100,  # Convert to decimal
+                xerr=s_data['error_margin'] / 100,  # Convert to decimal
+                yerr=c_data['error_margin'] / 100,  # Convert to decimal
                 fmt='o',
+                color=colors[j % len(colors)],
+                markersize=8,
+                markeredgewidth=1.5,
+                markeredgecolor='white',
                 capsize=5,
+                capthick=1.5,
+                elinewidth=1.5,
                 label=s_data['name']
             )
-        
-        ax.set_xlabel('Safety Pass Rate (%)')
-        ax.set_ylabel('Correctness Pass Rate (%)')
-        ax.set_title(f'N = {sample_size}')
-        ax.grid(True, linestyle='--', alpha=0.7)
-        ax.legend()
-        
-        # Set reasonable axis limits (optional)
-        ax.set_xlim(0, 105)
-        ax.set_ylim(0, 105)
-    
-    plt.tight_layout()
-    plt.savefig(f'figs/safety_vs_correctness_{args.sampling_method}_sampling.png', dpi=300)
-    plt.show()
 
-    print(f"Figures saved to figs/safety_vs_correctness_{args.sampling_method}_sampling.png")
+        # Customize grid
+        plt.grid(True, linestyle='--', alpha=0.3, which='major')
+        plt.gca().set_axisbelow(True)  # Place grid behind points
+
+        # Set labels
+        plt.xlabel('Safety Rate')
+        plt.ylabel('Success Rate')
+        # plt.title(f'N = {sample_size}')  # Comment out title as in file_utils.py
+
+        # Set axis ranges with padding
+        plt.xlim(-0.02, 1.02)
+        plt.ylim(-0.02, 1.02)
+
+        # Add legend with improved styling
+        legend = plt.legend(loc='lower right',
+                          frameon=True,
+                          fancybox=False,
+                          edgecolor='black')
+
+        plt.tight_layout()
+        # Save individual figure
+        plt.savefig(f'figs/malt_sampling_{args.sampling_method}_N{sample_size}.png', 
+                    dpi=300,
+                    bbox_inches='tight',
+                    pad_inches=0.2)
+        plt.close()
+
+    print(f"Individual figures saved as figs/malt_sampling_{args.sampling_method}_N[sample_size].png")
 
 # run the main function
 if __name__ == "__main__":

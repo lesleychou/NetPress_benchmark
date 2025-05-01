@@ -2,12 +2,12 @@ import json
 import traceback
 from dotenv import load_dotenv
 import openai
-import pandas as pd
+# import pandas as pd
 from collections import Counter
-from prototxt_parser.prototxt import parse
+# from prototxt_parser.prototxt import parse
 import os
 import networkx as nx
-import jsonlines
+# import jsonlines
 import json
 import re
 import time
@@ -17,7 +17,7 @@ from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
 import warnings
 from langchain._api import LangChainDeprecationWarning
-from langchain_chroma import Chroma
+# from langchain_chroma import Chroma
 from langchain_core.example_selectors import SemanticSimilarityExampleSelector
 from langchain_openai import AzureOpenAIEmbeddings
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
@@ -25,19 +25,16 @@ warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
 EXAMPLE_LIST = [
     {
-        "question": r'mismatch_summary": "Mismatch: frontend → currencyservice:7000 (Expected: True, Actual: False)\nMismatch: checkoutservice → currencyservice:7000 (Expected: True, Actual: False)',
+        "question": r'mismatch_summary": "Mismatch: frontend → currencyservice:7000 (Expected: True, Actual: False)',
         "answer": r"""kubectl get networkpolicy frontend -o yaml,
 kubectl get networkpolicy currencyservice -o yaml
-kubectl patch networkpolicy currencyservice -p $'
+kubectl patch networkpolicy currencyservice --type=merge -p $'
 spec:
   ingress:
   - from:
     - podSelector:
         matchLabels:
           app: frontend
-    - podSelector:
-        matchLabels:
-          app: checkoutservice
 '"""
     },
     {
@@ -150,6 +147,7 @@ class BasePromptAgent:
         **Response format:**
         Put the command **directly** between triple backticks.
         You should use `kubectl patch` instead of `kubectl edit networkpolicy`.
+        You should not include bash in the command, and you should not use <namespace> you should use the namespace of the service.
 
         Important notes:
         - You are not allowed to see the logs of the pods and Kubernetes events.
@@ -184,6 +182,7 @@ class ZeroShot_CoT_PromptAgent:
         **Response format:**
         Put the command **directly** between triple backticks.
         You should use `kubectl patch` instead of `kubectl edit networkpolicy`.
+        You should not include bash in the command, and you should not use <namespace> you should use the namespace of the service.
 
         Important notes:
         - You are not allowed to see the logs of the pods and Kubernetes events.

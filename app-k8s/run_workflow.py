@@ -16,16 +16,16 @@ import asyncio
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default="GPT-4o", choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o"], help='Choose the LLM agent')
-    parser.add_argument('--num_queries', type=int, default=5, help='Number of queries to generate for each type')
+    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o"], help='Choose the LLM agent')
+    parser.add_argument('--num_queries', type=int, default=150, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
-    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/jiajun_benchmark/app-k8s", help='Directory to save output JSONL file')
+    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/nemo_benchmark/app-k8s", help='Directory to save output JSONL file')
     parser.add_argument('--microservice_dir', type=str, default="/home/ubuntu/microservices-demo", help='Directory to google microservice demo')
     parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
     parser.add_argument('--full_test', type=int, default=1, choices=[0, 1], help='Enable full test if set to 1')
     parser.add_argument('--error_config', type=int, default=1, choices=[0, 1], help='Choose whether to use the pregenerated config')
-    parser.add_argument('--config_gen', type=int, default=1, help='Choose whether to generate new config')
-    parser.add_argument('--prompt_type', type=str, default="few_shot_semantic", choices=["base", "cot", "few_shot_basic", "few_shot_semantic"], help='Choose the prompt type')
+    parser.add_argument('--config_gen', type=int, default=0, help='Choose whether to generate new config')
+    parser.add_argument('--prompt_type', type=str, default="few_shot_basic", choices=["base", "cot", "few_shot_basic", "few_shot_semantic"], help='Choose the prompt type')
     parser.add_argument('--agent_test', type=int, default=1, choices=[0, 1], help='Choose whether to run the agent test')
     return parser.parse_args()
 
@@ -75,14 +75,18 @@ async def run_config_error(args):
         result_dir = os.path.join(args.root_dir, "result", args.llm_agent_type, datetime.now().strftime("%Y%m%d_%H%M%S"))
     else:
         result_dir = os.path.join(args.root_dir, args.prompt_type)
-
+    if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
+        result_dir = os.path.join(result_dir, "Qwen")
+    elif args.llm_agent_type == "GPT-4o":
+        result_dir = os.path.join(result_dir, "GPT-4o")
+    result_dir = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818/cot_Qwen"
     os.makedirs(result_dir, exist_ok=True)
     if args.config_gen == 1:
         generate_config(args.root_dir, policy_names, args.num_queries)
 
     # Read the error configuration
     error_config_path = os.path.join(args.root_dir, "error_config.json")
-
+    error_config_path = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818/error_config.json"
     with open(error_config_path, 'r') as error_config_file:
         error_config = json.load(error_config_file)
 
@@ -187,44 +191,44 @@ async def run_config_error(args):
 # Run the agent test
 async def run_agent_test(args):
     args.root_dir = os.path.join(args.root_dir, "result", args.llm_agent_type, "agent_test", datetime.now().strftime("%Y%m%d_%H%M%S"))
-
+    args.root_dir = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818"
     for i in range(4):
         if i == 0:
-            deploy_k8s_cluster("/home/ubuntu/microservices-demo")
-            # args.prompt_type = "base"
+            # deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+            args.prompt_type = "base"
             # args.config_gen = 1
             # await run_config_error(args)
         elif i == 1:
             start_time = datetime.now()
-            # deploy_k8s_cluster("/home/ubuntu/microservices-demo")
-            args.config_gen = 1
+            deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+            args.config_gen = 0
             args.prompt_type = "cot"
             await run_config_error(args)
             end_time = datetime.now()
             print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
-        elif i == 2:
-            start_time = datetime.now()
-            deploy_k8s_cluster("/home/ubuntu/microservices-demo")
-            args.prompt_type = "few_shot_basic"
-            args.config_gen = 0
-            await run_config_error(args)
-            end_time = datetime.now()
-            print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
-        elif i == 3:
-            start_time = datetime.now()
-            deploy_k8s_cluster("/home/ubuntu/microservices-demo")
-            args.prompt_type = "few_shot_semantic"
-            args.config_gen = 0
-            await run_config_error(args)
-            end_time = datetime.now()
-            print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
+        # elif i == 2:
+        #     start_time = datetime.now()
+        #     deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+        #     args.prompt_type = "few_shot_basic"
+        #     args.config_gen = 0
+        #     await run_config_error(args)
+        #     end_time = datetime.now()
+        #     print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
+        # elif i == 3:
+        #     start_time = datetime.now()
+        #     deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+        #     args.prompt_type = "few_shot_semantic"
+        #     args.config_gen = 0
+        #     await run_config_error(args)
+        #     end_time = datetime.now()
+        #     print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
     policies_dir = os.path.join(args.root_dir, "policies")
     if os.path.exists(policies_dir):
         shutil.rmtree(policies_dir)
 
-    plot_summary_results(args.root_dir, 1)
-    plot_summary_results(args.root_dir, 5)
     plot_summary_results(args.root_dir, 10)
+    plot_summary_results(args.root_dir, 50)
+    plot_summary_results(args.root_dir, 150)
 
 # Main entry point
 if __name__ == "__main__":

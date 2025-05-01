@@ -559,7 +559,7 @@ class GPTAgentModel:
         """Initialize the GPT Agent client."""
 
         self.client = AzureChatOpenAI(
-            openai_api_version="2024-08-01-preview",
+            openai_api_version="2024-12-01-preview",
             deployment_name='ztn-sweden-gpt-4o',
             model_name='ztn-sweden-gpt-4o',
             temperature=0.0,

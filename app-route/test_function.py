@@ -483,7 +483,7 @@ def static_benchmark_run_modify(args):
         result_path = os.path.join(args.root_dir, args.prompt_type+"Qwen_32B")
     else:      
         result_path = os.path.join(args.root_dir, args.prompt_type+"_GPT")
-    for i, query in enumerate(queries):
+    for i, query in enumerate(queries[:504], start=1):
         start_time_1 = datetime.now()
         print(f'Process {unique_id}: Injecting errors for query {i}')
 
@@ -559,15 +559,10 @@ def static_benchmark_run_modify(args):
 
                 if safety_check(commands):
                     try:
-                        # Set the signal handler and timeout
-                        signal.signal(signal.SIGALRM, handler)
-                        signal.alarm(100)
-
                         # Try executing the command
                         command_output = net[machine].cmd(commands)
                         print("LLM command executed successfully")
-                        # Disable the timeout
-                        signal.alarm(0)
+
                     except TimeoutError as te:
                         lg.output(f"Timeout occurred while executing command on {machine}: {te}")
                     except Exception as e:
@@ -646,14 +641,14 @@ def run_benchmark_parallel(args):
     subprocess.run(["sudo", "mn", "-c"], check=True)
 
     # Create a directory to save results
-    save_result_path = os.path.join(args.root_dir, 'result', args.llm_agent_type, "agenttest", datetime.now().strftime("%Y%m%d-%H%M%S"))
-    os.makedirs(save_result_path, exist_ok=True)
-
+    # save_result_path = os.path.join(args.root_dir, 'result', args.llm_agent_type, "agenttest", datetime.now().strftime("%Y%m%d-%H%M%S"))
+    # os.makedirs(save_result_path, exist_ok=True)
+    save_result_path = "/home/ubuntu/nemo_benchmark/app-route/result/GPT-Agent/agenttest/20250421-182502"
     # Update the root directory in args
     args.root_dir = save_result_path
 
-    # Generate the error configuration file
-    generate_config(os.path.join(save_result_path, "error_config.json"), num_errors_per_type=args.num_queries)
+    # # Generate the error configuration file
+    # generate_config(os.path.join(save_result_path, "error_config.json"), num_errors_per_type=args.num_queries)
 
     # Define a wrapper function to run static benchmarks
     def run_static_benchmark(prompt_type, static_benchmark_generation,llm_agent_type):
@@ -668,7 +663,7 @@ def run_benchmark_parallel(args):
         static_benchmark_run_modify(args_copy)
 
     # Get the list of prompt types from args (comma-separated)
-    prompt_types = ["cot"]
+    prompt_types = ["cot", "few_shot_basic"]
     # prompt_types = ["cot"]
     # Create and start processes for each prompt type
     processes = []
@@ -677,9 +672,9 @@ def run_benchmark_parallel(args):
         processes.append(process)
         process.start()
 
-    process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
-    processes.append(process)
-    process.start()
+    # process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
+    # processes.append(process)
+    # process.start()
     # Wait for all processes to complete
     for process in processes:
         process.join()
