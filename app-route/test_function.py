@@ -646,14 +646,14 @@ def run_benchmark_parallel(args):
     subprocess.run(["sudo", "mn", "-c"], check=True)
 
     # Create a directory to save results
-    save_result_path = os.path.join(args.root_dir, 'result', args.llm_agent_type, "agenttest", datetime.now().strftime("%Y%m%d-%H%M%S"))
-    os.makedirs(save_result_path, exist_ok=True)
-
+    # save_result_path = os.path.join(args.root_dir, 'result', args.llm_agent_type, "agenttest", datetime.now().strftime("%Y%m%d-%H%M%S"))
+    # os.makedirs(save_result_path, exist_ok=True)
+    save_result_path = "/home/ubuntu/nemo_benchmark/app-route/result/GPT-Agent/agenttest/111"
     # Update the root directory in args
     args.root_dir = save_result_path
 
-    # Generate the error configuration file
-    generate_config(os.path.join(save_result_path, "error_config.json"), num_errors_per_type=args.num_queries)
+    # # Generate the error configuration file
+    # generate_config(os.path.join(save_result_path, "error_config.json"), num_errors_per_type=args.num_queries)
 
     # Define a wrapper function to run static benchmarks
     def run_static_benchmark(prompt_type, static_benchmark_generation,llm_agent_type):
@@ -668,16 +668,17 @@ def run_benchmark_parallel(args):
         static_benchmark_run_modify(args_copy)
 
     # Get the list of prompt types from args (comma-separated)
-    prompt_types = ["cot"]
+    # prompt_types = ["cot"]
     # prompt_types = ["cot"]
     # Create and start processes for each prompt type
     processes = []
-    for prompt_type in prompt_types:
-        process = Process(target=run_static_benchmark, args=(prompt_type, args.static_benchmark_generation, args.llm_agent_type))
-        processes.append(process)
-        process.start()
+    # for prompt_type in prompt_types:
+    #     process = Process(target=run_static_benchmark, args=(prompt_type, args.static_benchmark_generation, args.llm_agent_type))
+    #     processes.append(process)
+    #     process.start()
 
-    process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
+    # process = Process(target=run_static_benchmark, args=("few_shot_basic", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
+    process = Process(target=run_static_benchmark, args=("base", args.static_benchmark_generation,"ReAct_Agent"))
     processes.append(process)
     process.start()
     # Wait for all processes to complete
