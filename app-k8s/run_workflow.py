@@ -24,8 +24,9 @@ def parse_args():
     parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
     parser.add_argument('--full_test', type=int, default=1, choices=[0, 1], help='Enable full test if set to 1')
     parser.add_argument('--error_config', type=int, default=1, choices=[0, 1], help='Choose whether to use the pregenerated config')
-    parser.add_argument('--config_gen', type=int, default=0, help='Choose whether to generate new config')
-    parser.add_argument('--prompt_type', type=str, default="few_shot_basic", choices=["base", "cot", "few_shot_basic", "few_shot_semantic"], help='Choose the prompt type')
+    parser.add_argument('--config_gen', type=int, default=1, help='Choose whether to generate new config')
+    parser.add_argument('--prompt_type', type=str, default="cot", choices=["base", "cot", "few_shot_basic", "few_shot_semantic"], help='Choose the prompt type')
+
     parser.add_argument('--agent_test', type=int, default=1, choices=[0, 1], help='Choose whether to run the agent test')
     return parser.parse_args()
 
@@ -80,13 +81,16 @@ async def run_config_error(args):
     elif args.llm_agent_type == "GPT-4o":
         result_dir = os.path.join(result_dir, "GPT-4o")
     result_dir = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818/cot_Qwen"
+
     os.makedirs(result_dir, exist_ok=True)
-    if args.config_gen == 1:
-        generate_config(args.root_dir, policy_names, args.num_queries)
+    # if args.config_gen == 1:
+    #     generate_config(args.root_dir, policy_names, args.num_queries)
 
     # Read the error configuration
+
     error_config_path = os.path.join(args.root_dir, "error_config.json")
     error_config_path = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818/error_config.json"
+
     with open(error_config_path, 'r') as error_config_file:
         error_config = json.load(error_config_file)
 
@@ -104,7 +108,8 @@ async def run_config_error(args):
     print(f"Startup time: {endtime - starttime}")
 
     # Iterate through the error configurations and run tests
-    for i, error in enumerate(error_config["details"]):
+    for i, error in enumerate(error_config["details"][922:], start=923):
+
         starttime = datetime.now()
         policies_to_inject = error.get("policies_to_inject", [])
         inject_error_num = error.get("inject_error_num", [])
@@ -201,8 +206,10 @@ async def run_agent_test(args):
         elif i == 1:
             start_time = datetime.now()
             deploy_k8s_cluster("/home/ubuntu/microservices-demo")
-            args.config_gen = 0
-            args.prompt_type = "cot"
+
+            args.config_gen = 1
+            args.prompt_type = "few_shot_basic"
+
             await run_config_error(args)
             end_time = datetime.now()
             print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
@@ -226,9 +233,11 @@ async def run_agent_test(args):
     if os.path.exists(policies_dir):
         shutil.rmtree(policies_dir)
 
-    plot_summary_results(args.root_dir, 10)
-    plot_summary_results(args.root_dir, 50)
-    plot_summary_results(args.root_dir, 150)
+
+    # plot_summary_results(args.root_dir, 10)
+    # plot_summary_results(args.root_dir, 50)
+    # plot_summary_results(args.root_dir, 150)
+
 
 # Main entry point
 if __name__ == "__main__":

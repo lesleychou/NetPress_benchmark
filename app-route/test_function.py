@@ -643,7 +643,9 @@ def run_benchmark_parallel(args):
     # Create a directory to save results
     # save_result_path = os.path.join(args.root_dir, 'result', args.llm_agent_type, "agenttest", datetime.now().strftime("%Y%m%d-%H%M%S"))
     # os.makedirs(save_result_path, exist_ok=True)
+
     save_result_path = "/home/ubuntu/nemo_benchmark/app-route/result/GPT-Agent/agenttest/20250421-182502"
+
     # Update the root directory in args
     args.root_dir = save_result_path
 
@@ -663,18 +665,21 @@ def run_benchmark_parallel(args):
         static_benchmark_run_modify(args_copy)
 
     # Get the list of prompt types from args (comma-separated)
+
     prompt_types = ["cot", "few_shot_basic"]
+
     # prompt_types = ["cot"]
     # Create and start processes for each prompt type
     processes = []
-    for prompt_type in prompt_types:
-        process = Process(target=run_static_benchmark, args=(prompt_type, args.static_benchmark_generation, args.llm_agent_type))
-        processes.append(process)
-        process.start()
+    # for prompt_type in prompt_types:
+    #     process = Process(target=run_static_benchmark, args=(prompt_type, args.static_benchmark_generation, args.llm_agent_type))
+    #     processes.append(process)
+    #     process.start()
 
     # process = Process(target=run_static_benchmark, args=("cot", args.static_benchmark_generation,"Qwen/Qwen2.5-72B-Instruct"))
     # processes.append(process)
     # process.start()
+
     # Wait for all processes to complete
     for process in processes:
         process.join()

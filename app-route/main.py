@@ -12,8 +12,8 @@ from advanced_error_function import generate_config, process_single_error
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default="GPT-Agent", help='Choose the LLM agent')#"GPT-Agent"
-    parser.add_argument('--num_queries', type=int, default=150, help='Number of queries to generate for each type')
+    parser.add_argument('--llm_agent_type', type=str, default="ReAct_Agent", help='Choose the LLM agent')#"GPT-Agent"
+    parser.add_argument('--num_queries', type=int, default=1, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/nemo_benchmark/app-route", help='Directory to save output JSONL file')
     parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
@@ -69,13 +69,14 @@ if __name__ == "__main__":
     # else:
     #     run(args)
     args = parse_args()
-    if args.parallel == 1:
-        start_time = datetime.now()
-        run_benchmark_parallel(args)
-        end_time = datetime.now()
-        duration = end_time - start_time
-        print(f"Benchmark completed in {duration}")
-
+    # if args.parallel == 1:
+    #     start_time = datetime.now()
+    #     run_benchmark_parallel(args)
+    #     end_time = datetime.now()
+    #     duration = end_time - start_time
+    #     print(f"Benchmark completed in {duration}")
+    args.root_dir = "/home/ubuntu/nemo_benchmark/app-route/result/GPT-Agent/agenttest/111"    
+    static_benchmark_run_modify(args)
 
     # Create a directory to save results
     # save_result_path = os.path.join(args.root_dir, 'result', args.llm_agent_type, "agenttest", datetime.now().strftime("%Y%m%d-%H%M%S"))

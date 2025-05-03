@@ -4,10 +4,8 @@ from dotenv import load_dotenv
 import openai
 from vllm import LLM, SamplingParams
 from collections import Counter
-
 import os
 import networkx as nx
-
 import json
 import re
 import time
@@ -15,13 +13,14 @@ import sys
 import numpy as np
 from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
 import warnings
 from langchain._api import LangChainDeprecationWarning
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 import torch
 from huggingface_hub import login
-from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent
+from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent, ReAct_PromptAgent
 
 # Login huggingface
 login(token="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")
@@ -74,6 +73,8 @@ class LLMAgent:
             self.llm_agent = QwenModel(prompt_type=prompt_type)
         if llm_agent_type == "GPT-4o":
             self.llm_agent = AzureGPT4Agent(prompt_type=prompt_type)
+        if llm_agent_type == "ReAct_Agent":
+            self.llm_agent = ReAct_Agent(prompt_type=prompt_type)
 
 class AzureGPT4Agent:
     def __init__(self, prompt_type="base"):
@@ -101,32 +102,32 @@ class AzureGPT4Agent:
 
     def call_agent(self, txt_file_path):
         with open(txt_file_path, 'r') as txt_file:
-            connectivitity_status = txt_file.read()
+            connectivity_status = txt_file.read()
         
         max_length = 127000  
-        if len(connectivitity_status) > max_length:
-            connectivitity_status = connectivitity_status[:max_length]
+        if len(connectivity_status) > max_length:
+            connectivity_status = connectivity_status[:max_length]
 
         # Create prompt based on type
         if self.prompt_type == "few_shot_semantic":
-            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
-            input_data = {"input": connectivitity_status}
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivity_status)
+            input_data = {"input": connectivity_status}
         elif self.prompt_type in ["few_shot_basic"]:
             prompt = self.prompt_agent.get_few_shot_prompt()
-            input_data = {"input": connectivitity_status}
+            input_data = {"input": connectivity_status}
         elif self.prompt_type == "cot":
             prompt = self.prompt_agent.generate_prompt()
             prompt = PromptTemplate(
                 input_variables=["input"],
                 template=prompt + "Here is the connectivity status:\n{input}"
             )
-            input_data = {"input": connectivitity_status}
+            input_data = {"input": connectivity_status}
         else:
             prompt = PromptTemplate(
                 input_variables=["input"],
                 template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
             )
-            input_data = {"input": connectivitity_status}
+            input_data = {"input": connectivity_status}
         print("prompt:", prompt)
         chain = LLMChain(llm=self.llm, prompt=prompt)
         response = chain.run(input_data)
@@ -135,7 +136,6 @@ class AzureGPT4Agent:
 
 class QwenModel:
     def __init__(self, prompt_type="base"):
-        # 模型初始化...
         self.prompt_type = prompt_type
         self.model_name = "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
         self.quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
@@ -162,32 +162,31 @@ class QwenModel:
 
     def call_agent(self, txt_file_path):
         with open(txt_file_path, 'r') as txt_file:
-            connectivitity_status = txt_file.read()
+            connectivity_status = txt_file.read()
         
         max_length = 127000  
-        if len(connectivitity_status) > max_length:
-            connectivitity_status = connectivitity_status[:max_length]
+        if len(connectivity_status) > max_length:
+            connectivity_status = connectivity_status[:max_length]
 
-        # 生成提示（根据类型调整）
         if self.prompt_type == "few_shot_semantic":
-            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
-            prompt = prompt.format(input=connectivitity_status)
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivity_status)
+            prompt = prompt.format(input=connectivity_status)
         elif self.prompt_type in ["few_shot_basic"]:
             prompt = self.prompt_agent.get_few_shot_prompt()
-            prompt = prompt.format(input=connectivitity_status)
+            prompt = prompt.format(input=connectivity_status)
         elif self.prompt_type == "cot":
             prompt = self.prompt_agent.generate_prompt()
             prompt = PromptTemplate(
                 input_variables=["input"],
                 template=prompt + "Here is the connectivity status:\n{input}"
             )
-            prompt = prompt.format(input=connectivitity_status)
+            prompt = prompt.format(input=connectivity_status)
         else:
             prompt = PromptTemplate(
                 input_variables=["input"],
                 template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
             )
-            prompt = prompt.format(input=connectivitity_status)
+            prompt = prompt.format(input=connectivity_status)
         print("prompt:", prompt)
         result = self.llm.generate([prompt], sampling_params=self.sampling_params)
         answer = result[0].outputs[0].text
@@ -199,6 +198,106 @@ class QwenModel:
         print("model returned")
         return answer
     
+# ReAct agent
+from langchain import hub
+from langchain.agents import Tool, AgentExecutor, create_react_agent
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_experimental.tools.python.tool import PythonAstREPLTool
+class ReAct_Agent:
+    def __init__(self, prompt_type="react"):
+        self.llm = AzureChatOpenAI(
+            openai_api_version="2024-08-01-preview",
+            deployment_name='ztn-sweden-gpt-4o',
+            model_name='ztn-sweden-gpt-4o',
+            temperature=0.0,
+            max_tokens=4000,
+        )
+        self.prompt_type = prompt_type
+        self.prompt_agent = ReAct_PromptAgent()
+        
+
+    def call_agent(self, txt_file_path):
+        with open(txt_file_path, 'r') as txt_file:
+            connectivity_status = txt_file.read()
+        print("Calling ReAct agent withGPT-4o with prompt type:", self.prompt_type)
+        
+        prompt_template = PromptTemplate(
+            input_variables=["input"],
+            template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
+            )
+
+        # Print prompt template
+        print("\nPrompt Template:")
+        print("-" * 80)
+        print(prompt_template.template.strip())
+        print("-" * 80 + "\n")
+
+        # Set up the Python REPL tool
+        python_repl = PythonAstREPLTool()
+        python_repl_tool = Tool(
+            name = 'Python REPL',
+            func = python_repl.run,
+            description = '''
+            A Python shell. Use this to execute python commands. 
+            Input should be a valid python command. 
+            When using this tool, sometimes output is abbreviated - make sure 
+            it does not look abbreviated before using it in your answer.
+            '''
+        )
+        print("Python REPL tool set up")
+
+        # Set up the DuckDuckGo Search tool
+        search = DuckDuckGoSearchRun()
+        duckduckgo_tool = Tool(
+            name = 'DuckDuckGo Search',
+            func = search.run,
+            description = '''
+            A wrapper around DuckDuckGo Search. 
+            Useful for when you need to answer questions about current events. 
+            Input should be a search query.
+            '''
+        )
+        print("DuckDuckGo Search tool set up")
+
+        # Create an array that contains all the tools used by the agent
+        tools = [python_repl_tool, duckduckgo_tool]
+        print("The ReAct agent can access the following tools: Python REPL, DuckDuckGo Search")
+
+        # Create a ReAct agent
+        react_format_prompt = hub.pull('hwchase17/react')
+        agent = create_react_agent(self.llm, tools, react_format_prompt)
+        print("ReAct agent created")
+
+        print("Setting up agent executor...")
+        agent_executor = AgentExecutor(
+            agent=agent, 
+            tools = tools,
+            verbose = True, # explain all reasoning steps
+            handle_parsing_errors=True, # continue on error 
+            max_iterations = 2, # try up to 3 times to find the best answer
+            return_intermediate_steps=True
+        )
+        
+        print("ReAct agent executor set up")
+        # Format the input correctly based on the prompt type
+
+        start_time = time.time()
+        output = agent_executor.invoke({'input': prompt_template.format(input=connectivity_status)})
+
+        # Access the first tuple in the list
+        intermediate_steps=output["intermediate_steps"]
+        first_step = intermediate_steps[0]
+        
+        # Extract the AgentAction object from the tuple
+        agent_action = first_step[0]
+        
+        # Retrieve the tool_input value
+        tool_input = agent_action.tool_input
+        print("ReAct agent output:", tool_input)
+        
+        end_time = time.time()
+        print(f"ReAct agent execution time: {end_time - start_time:.2f} seconds")
+        return tool_input
 if __name__ == "__main__":
     text = """```json
                  {
