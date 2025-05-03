@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument('--full_test', type=int, default=1, choices=[0, 1], help='Enable full test if set to 1')
     parser.add_argument('--vllm', type=int, default=1, choices=[0, 1], help='Enable vllm if set to 1')
     parser.add_argument('--static', type=int, default=1, choices=[0, 1], help='If set to 1, use static benchmark')
-    parser.add_argument('--static_benchmark_generation', type=int, default=1, choices=[0, 1], help='If set to 1, generate static benchmark')
+    parser.add_argument('--static_benchmark_generation', type=int, default=0, choices=[0, 1], help='If set to 1, generate static benchmark')
     parser.add_argument('--agent_test', type=int, default=1, choices=[0, 1], help='If set to 1, run agent test')
     parser.add_argument('--prompt_type', type=str, default="base", help='Path to the error configuration file')
     parser.add_argument('--parallel', type=int, default=1, choices=[0, 1], help='If set to 1, run in parallel')

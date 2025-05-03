@@ -103,3 +103,8 @@ To test your own model, follow these steps:
 
 Once these modifications are complete, your model will be ready to be integrated into the benchmark environment. You can then proceed with testing by following the instructions in the `Running Benchmark Tests` section.
 
+In React agent.
+```
+pip install -U duckduckgo-search
+pip install langchain_experimental
+```

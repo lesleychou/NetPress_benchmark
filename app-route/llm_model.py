@@ -760,6 +760,13 @@ class ReAct_Agent:
         commands = LLMModel.extract_value(tool_input, "command")
         loss_rate = LLMModel.extract_number_before_percentage(log_content)
 
+        with open(file_path, "a") as f:
+            f.write("Log Content:\n")
+            f.write(log_content + "\n\n")
+            f.write(f"Machine: {machine}\n")
+            f.write(f"Commands: {commands}\n")
+            f.write("=" * 50 + "\n")
+            
         with open(json_path, "r") as f:
             data = json.load(f)
         data.append({"packet_loss": loss_rate, "elapsed_time": end_time - start_time})
