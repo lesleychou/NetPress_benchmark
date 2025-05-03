@@ -483,7 +483,7 @@ def static_benchmark_run_modify(args):
         result_path = os.path.join(args.root_dir, args.prompt_type+"Qwen_32B")
     else:      
         result_path = os.path.join(args.root_dir, args.prompt_type+"_GPT")
-    for i, query in enumerate(queries[:504], start=1):
+    for i, query in enumerate(queries):
         start_time_1 = datetime.now()
         print(f'Process {unique_id}: Injecting errors for query {i}')
 

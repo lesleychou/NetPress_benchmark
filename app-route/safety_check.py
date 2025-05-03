@@ -18,4 +18,7 @@ def safety_check(commands):
     if "ethtool" in commands:
         lg.output("Command containing 'ethtool' is not allowed.")
         return False
+    if "ping" in commands:
+        lg.output("Command containing 'ping' is not allowed.")
+        return False
     return True

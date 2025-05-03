@@ -75,7 +75,7 @@ if __name__ == "__main__":
     #     end_time = datetime.now()
     #     duration = end_time - start_time
     #     print(f"Benchmark completed in {duration}")
-    args.root_dir = "/home/ubuntu/nemo_benchmark/app-route/result/GPT-Agent/agenttest/111"    
+    args.root_dir =  "/home/ubuntu/nemo_benchmark/app-route/result/GPT-Agent/agenttest/20250421-182502"    
     static_benchmark_run_modify(args)
 
     # Create a directory to save results
