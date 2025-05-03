@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument('--error_config', type=int, default=1, choices=[0, 1], help='Choose whether to use the pregenerated config')
     parser.add_argument('--config_gen', type=int, default=1, help='Choose whether to generate new config')
     parser.add_argument('--prompt_type', type=str, default="cot", choices=["base", "cot", "few_shot_basic", "few_shot_semantic"], help='Choose the prompt type')
+
     parser.add_argument('--agent_test', type=int, default=1, choices=[0, 1], help='Choose whether to run the agent test')
     return parser.parse_args()
 
@@ -75,13 +76,20 @@ async def run_config_error(args):
         result_dir = os.path.join(args.root_dir, "result", args.llm_agent_type, datetime.now().strftime("%Y%m%d_%H%M%S"))
     else:
         result_dir = os.path.join(args.root_dir, args.prompt_type)
-    result_dir = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250424_183306/few_shot_basic_Qwen"
+    if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
+        result_dir = os.path.join(result_dir, "Qwen")
+    elif args.llm_agent_type == "GPT-4o":
+        result_dir = os.path.join(result_dir, "GPT-4o")
+    result_dir = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818/cot_Qwen"
+
     os.makedirs(result_dir, exist_ok=True)
     # if args.config_gen == 1:
     #     generate_config(args.root_dir, policy_names, args.num_queries)
 
     # Read the error configuration
-    error_config_path = os.path.join("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250424_183306", "error_config.json")
+
+    error_config_path = os.path.join(args.root_dir, "error_config.json")
+    error_config_path = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818/error_config.json"
 
     with open(error_config_path, 'r') as error_config_file:
         error_config = json.load(error_config_file)
@@ -188,7 +196,7 @@ async def run_config_error(args):
 # Run the agent test
 async def run_agent_test(args):
     args.root_dir = os.path.join(args.root_dir, "result", args.llm_agent_type, "agent_test", datetime.now().strftime("%Y%m%d_%H%M%S"))
-
+    args.root_dir = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818"
     for i in range(4):
         if i == 0:
             # deploy_k8s_cluster("/home/ubuntu/microservices-demo")
@@ -198,8 +206,10 @@ async def run_agent_test(args):
         elif i == 1:
             start_time = datetime.now()
             deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+
             args.config_gen = 1
             args.prompt_type = "few_shot_basic"
+
             await run_config_error(args)
             end_time = datetime.now()
             print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
@@ -223,9 +233,11 @@ async def run_agent_test(args):
     if os.path.exists(policies_dir):
         shutil.rmtree(policies_dir)
 
+
     # plot_summary_results(args.root_dir, 10)
     # plot_summary_results(args.root_dir, 50)
     # plot_summary_results(args.root_dir, 150)
+
 
 # Main entry point
 if __name__ == "__main__":

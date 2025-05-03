@@ -147,6 +147,7 @@ class BasePromptAgent:
         **Response format:**
         Put the command **directly** between triple backticks.
         You should use `kubectl patch` instead of `kubectl edit networkpolicy`.
+        You should not include bash in the command, and you should not use <namespace> you should use the namespace of the service.
 
         Important notes:
         - You are not allowed to see the logs of the pods and Kubernetes events.

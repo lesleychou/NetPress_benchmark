@@ -567,16 +567,18 @@ def check_json_mismatches(folder_path):
 # # 使用示例
 # folder_path = "/home/ubuntu/jiajun_benchmark/app-k8s/result/GPT-4o/agent_test/20250322_025008/base"  # 替换为实际路径
 # check_json_mismatches(folder_path)
+# folder_path = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818"
 
+# plot_summary_results(folder_path, 10)
+# plot_summary_results(folder_path, 50)
+# plot_summary_results(folder_path, 150)
 
 # if "__name__" == "__main__":
-#     folder_path = "/home/ubuntu/jiajun_benchmark/app-k8s/result/GPT-4o/20250314_032427"
-#     print("1")
-#     stat = analyze_and_save_results(folder_path)
+#     folder_path = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818"
 
-    # summary_tests(folder_path)
-    # plot_metrics(folder_path)
-    # plot_correctness(folder_path)
+#     plot_summary_results(folder_path, 10)
+#     plot_summary_results(folder_path, 50)
+#     plot_summary_results(folder_path, 150)
 
 
 
