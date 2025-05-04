@@ -247,7 +247,7 @@ def process_json_file(input_file, output_file):
 
 if __name__ == "__main__":    
     if len(sys.argv) < 3:
-        print("Usage: python convert_solid_step_examples.py <input_file> <output_file>")
+        print(f"Usage: python {sys.argv[0]} <input_file> <output_file>")
         sys.exit(1)
     
     input_file = sys.argv[1]
@@ -278,5 +278,5 @@ if __name__ == "__main__":
     print("Items per subcategory:")
     for subcategory, count in subcategory_stats.items():
         print(f"  - {subcategory}: {count} items")
-        
+
     print(f"Final processed examples in Qwen finetune format saved to {output_file}")
