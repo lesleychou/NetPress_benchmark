@@ -21,6 +21,8 @@ os.environ["LANGCHAIN_TRACING_V2"] = "false"
 import getpass
 from langchain_google_genai import ChatGoogleGenerativeAI
 # os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_API_KEY")
+import io
+from contextlib import redirect_stdout
 
 # if "GOOGLE_API_KEY" not in os.environ:
 #     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
@@ -665,7 +667,7 @@ from langchain_experimental.tools.python.tool import PythonAstREPLTool
 class ReAct_Agent:
     def __init__(self, prompt_type="react"):
         self.llm = AzureChatOpenAI(
-            openai_api_version="2024-08-01-preview",
+            openai_api_version="2024-12-01-preview",
             deployment_name='ztn-sweden-gpt-4o',
             model_name='ztn-sweden-gpt-4o',
             temperature=0.0,
@@ -742,23 +744,42 @@ class ReAct_Agent:
         # Format the input correctly based on the prompt type
 
         start_time = time.time()
+
+        # Invoke the agent executor with the input query
         output = agent_executor.invoke({'input': prompt_template.format(input=query)})
+        end_time = time.time()
+
+        intermediate_steps = output['intermediate_steps']  # Get the intermediate steps
 
         # Access the first tuple in the list
-        intermediate_steps=output["intermediate_steps"]
-        first_step = intermediate_steps[0]
-        
-        # Extract the AgentAction object from the tuple
-        agent_action = first_step[0]
-        
-        # Retrieve the tool_input value
-        tool_input = agent_action.tool_input
-        print("ReAct agent output:", tool_input)
-        
-        end_time = time.time()
-        machine = LLMModel.extract_value(tool_input, "machine")
-        commands = LLMModel.extract_value(tool_input, "command")
+        if intermediate_steps:  
+            print("Intermediate steps are not empty.")
+            print("Intermediate steps:", intermediate_steps)
+            print("end of intermediate steps")
+            first_step = intermediate_steps[0]
+            print("First step:", first_step)
+            
+            # Extract the AgentAction object from the tuple
+            agent_action = first_step[0]
+            
+            # Retrieve the tool_input value
+            tool_input = agent_action.tool_input
+            print("ReAct agent output:", tool_input)
+            
+            machine = LLMModel.extract_value(tool_input, "machine")
+            commands = LLMModel.extract_value(tool_input, "command")
+        else:
+            print("Intermediate steps is empty.")
+            machine = ""
+            commands = ""
+
+        # Extract loss rate
         loss_rate = LLMModel.extract_number_before_percentage(log_content)
+
+        # Print results
+        print(f"Machine: {machine}")
+        print(f"Commands: {commands}")
+        print(f"Loss Rate: {loss_rate}")
 
         with open(file_path, "a") as f:
             f.write("Log Content:\n")
