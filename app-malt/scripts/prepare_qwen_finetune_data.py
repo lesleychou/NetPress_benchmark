@@ -184,6 +184,9 @@ def process_example(example):
         
         # Add necessary function definitions to the answer.
         new_answer = strip_comments(prepend_function_defintions(answer))
+
+        # Change answer to match the expected format of the MALT evaluation.
+        new_answer = new_answer.replace("def ground_truth_process_graph", "def process_graph")
         
         # Create a new example with the converted answer
         new_example = copy.deepcopy(example)
