@@ -35,10 +35,6 @@ load_dotenv()
 # For Google Gemini
 import getpass
 from langchain_google_genai import ChatGoogleGenerativeAI
-os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_API_KEY")
-
-if "GOOGLE_API_KEY" not in os.environ:
-    os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
 
 # For Azure OpenAI GPT4
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
@@ -66,6 +62,10 @@ prompt_suffix = """Begin! Remember to ensure that you generate valid Python code
 
 class GoogleGeminiAgent:
     def __init__(self, prompt_type="base"):
+        # Only ask for API key when choosing Gemini.
+        if "GOOGLE_API_KEY" not in os.environ:
+            os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
+
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-pro",
             temperature=0,
@@ -255,9 +255,9 @@ class QwenModel:
         return code
 
 class QwenModel_finetuned:
-    def __init__(self, prompt_type="base"):
+    def __init__(self, prompt_type="base", model_path=None):
         self.model_name = "Fine-tuned-Qwen-7B"
-        self.model_path = "/home/ubuntu/fine-tune_qwen/Qwen/output_qwen"
+        self.model_path = model_path
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model_path, 
             trust_remote_code=True

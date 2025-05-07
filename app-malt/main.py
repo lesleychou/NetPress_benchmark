@@ -22,6 +22,7 @@ def parse_args():
                                                                                                                       'Qwen2.5-72B-Instruct', 
                                                                                                                       'QwenModel_finetuned', 
                                                                                                                       'ReAct_Agent'])
+    parser.add_argument('--model_path', type=str, default=None, help='Path to the model (for local models/finetunes).')
     parser.add_argument('--prompt_type', type=str, default='base', help='Choose the prompt type', choices=['base', 'cot', 'few_shot_basic', 'few_shot_semantic', 'few_shot_knn'])
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', nargs='+', default=['level1', 'level2'], help='Complexity level of queries to generate')
@@ -39,6 +40,7 @@ def main(args):
 
     benchmark_config = {
         'llm_model_type': args.llm_model_type,
+        'model_path': args.model_path,
         'prompt_type': args.prompt_type,
         'num_queries': args.num_queries,
         'complexity_level': args.complexity_level,
@@ -76,7 +78,8 @@ def main(args):
             query_generator.load_queries_from_file(benchmark_path)
 
     # Load the evaluator
-    evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
+    evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], 
+                                   prompt_type=benchmark_config['prompt_type'], model_path=benchmark_config['model_path'])
 
     # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
     benchmark_data = []
