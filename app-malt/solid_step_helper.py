@@ -3,6 +3,7 @@ import networkx as nx
 from networkx.readwrite import json_graph
 from prototxt_parser.prototxt import parse
 from collections import Counter
+import re
 
 
 def getGraphData():
@@ -272,6 +273,9 @@ def clean_up_llm_output_func(answer):
     :param answer: output of LLM
     :return: cleaned function
     '''
+    # If the function has "process_graph" in it, assume that this is the answer code.
+    regex = re.compile(r'def\s+([a-zA-Z_0-9]*process_graph[a-zA-Z_0-9]*)')
+    answer = regex.sub('def process_graph', answer)
     start = answer.find("def process_graph")
     if start == -1:
         return ""  # Return empty string if process_graph function not found
@@ -293,11 +297,35 @@ def clean_up_llm_output_func(answer):
 
 def check_list_equal(lst1, lst2):
     # check list type. if list1 is a [['ju1.a1.m1.s2c2', 0], ['ju1.a1.m1.s2c3', 0]], then convert to [('ju1.a1.m1.s2c2', 0), ('ju1.a1.m1.s2c3', 0)]
+    if not isinstance(lst1, list) or not isinstance(lst2, list):
+        return False
     if lst1 and isinstance(lst1[0], list):
         lst1 = [tuple(i) for i in lst1]
     if lst2 and isinstance(lst2[0], list):
         lst2 = [tuple(i) for i in lst2]
     return Counter(lst1) == Counter(lst2)
+
+
+def validate_llm_output(ret):
+    """
+    Verify the output of the LLM by checking if it is in the valid format.
+    :param ret: The output of the LLM's answer code.
+    :return: True if the output is valid, False otherwise.
+
+    The criteria for a valid output is as follows:
+        ret = {
+            'data': answer,
+            'type': str,
+            'updated_graph': dict,
+        }
+    """
+    if not isinstance(ret, dict):
+        return False
+    
+    if 'data' not in ret or 'type' not in ret or 'updated_graph' not in ret:
+        return False
+
+    return True
 
 
 def clean_up_output_graph_data(ret):

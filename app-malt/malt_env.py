@@ -7,8 +7,10 @@ import pandas as pd
 from prototxt_parser.prototxt import parse
 from collections import Counter
 import os
-from solid_step_helper import getGraphData, clean_up_llm_output_func, check_list_equal, node_attributes_are_equal, clean_up_output_graph_data, clean_up_updated_graph_data, \
-    solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, solid_step_list_child_nodes, solid_step_update_node_value, solid_step_rank_child_nodes
+from solid_step_helper import getGraphData, clean_up_llm_output_func, check_list_equal, \
+    node_attributes_are_equal, clean_up_output_graph_data, clean_up_updated_graph_data, \
+    solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, \
+    solid_step_list_child_nodes, solid_step_update_node_value, solid_step_rank_child_nodes, validate_llm_output
 import networkx as nx
 import jsonlines
 import json
@@ -26,7 +28,7 @@ OUTPUT_JSONL_FILE = 'gpt4.jsonl'
 
 
 class BenchmarkEvaluator:
-    def __init__(self, graph_data, llm_model_type, prompt_type):
+    def __init__(self, graph_data, llm_model_type, prompt_type, model_path=None):
         self.graph_data = graph_data
         # Call the output code from LLM agents file
         if llm_model_type == "AzureGPT4Agent":
@@ -36,7 +38,7 @@ class BenchmarkEvaluator:
         elif llm_model_type == "Qwen2.5-72B-Instruct":
             self.llm_agent = QwenModel(prompt_type)
         elif llm_model_type == "QwenModel_finetuned":
-            self.llm_agent = QwenModel_finetuned(prompt_type)
+            self.llm_agent = QwenModel_finetuned(prompt_type, model_path=model_path)
         elif llm_model_type == "ReAct_Agent":
             self.llm_agent = ReAct_Agent(prompt_type='base')
 
@@ -53,7 +55,7 @@ class BenchmarkEvaluator:
 
         try:
             exec(llm_answer)
-            ret = eval("process_graph(G)")
+            ret = eval("process_graph(copy.deepcopy(G))")
         except Exception:
             ret = {'type': "error", 'data': traceback.format_exc()}
         
@@ -61,12 +63,23 @@ class BenchmarkEvaluator:
 
         # if the type of ret is string, turn it into a json object
         if isinstance(ret, str):
-            ret = json.loads(ret)
+            try:
+                ret = json.loads(ret)
+            except:
+                ret = {'type': "error", 'data': 'LLM output is not a valid JSON string.'}
         
+        # Ensure LLM output is formatted correctly, and produces a valid graph.
         ret_graph_copy = None
+        if validate_llm_output(ret) and ret['type'] != 'error':
+            try:
+                ret_graph_copy = clean_up_updated_graph_data(ret)
+            except Exception as e:
+                ret = {'type': "error", 'data': ret['data']}
+        else:
+            ret = {'type': "error", 'data': 'LLM output invalid'}
+     
         # if ret is not error, then clean up the updated graph
         if ret['type'] != 'error':
-            ret_graph_copy = clean_up_updated_graph_data(ret)
             verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
             verifier_results, verifier_error = verifier.evaluate_all()
         else:
