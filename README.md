@@ -4,8 +4,8 @@
 
 Install conda environments
 ```bash
-conda env create -f environment_mininet.yaml
-conda env create -f environment_ai_gym.yaml
+conda env create -f environment_mininet.yml
+conda env create -f environment_ai_gym.yml
 ```
 
 ## Code structure 

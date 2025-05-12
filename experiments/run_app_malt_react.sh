@@ -3,8 +3,8 @@ cd ..
 cd app-malt
 
 # Define common parameters
-NUM_QUERIES=50
-BENCHMARK_PATH="data/sampled_50_benchmark_malt_qwen.jsonl"
+NUM_QUERIES=500
+BENCHMARK_PATH="data/malt_benchmark_500.jsonl"
 PROMPT_TYPE="base"  # Define prompt_type
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
 # PROMPT_TYPE="zero_shot_cot"  # Define prompt_type
@@ -31,12 +31,13 @@ run_experiment() {
         --complexity_level $complexity \
         --output_dir "$agent_output_dir" \
         --output_file "$output_file" \
-        --dynamic_benchmark_path "$BENCHMARK_PATH" 
+        --dynamic_benchmark_path "$BENCHMARK_PATH" \
+        --start_index 605
     }
 
 # Define models and their configurations
 declare -A model_configs=(
-    ["ReAct_Agent"]="level1 level2 level3:react_base_50.jsonl"
+    ["ReAct_Agent"]="level1 level2 level3:react_base_500.jsonl"
 )
 
 # Define the desired order of execution
