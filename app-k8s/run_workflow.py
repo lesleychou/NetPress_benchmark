@@ -16,7 +16,7 @@ import asyncio
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o"], help='Choose the LLM agent')
+    parser.add_argument('--llm_agent_type', type=str, default="ReAct_Agent", choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o", "ReAct_Agent"], help='Choose the LLM agent')
     parser.add_argument('--num_queries', type=int, default=150, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/nemo_benchmark/app-k8s", help='Directory to save output JSONL file')
@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument('--full_test', type=int, default=1, choices=[0, 1], help='Enable full test if set to 1')
     parser.add_argument('--error_config', type=int, default=1, choices=[0, 1], help='Choose whether to use the pregenerated config')
     parser.add_argument('--config_gen', type=int, default=1, help='Choose whether to generate new config')
-    parser.add_argument('--prompt_type', type=str, default="cot", choices=["base", "cot", "few_shot_basic", "few_shot_semantic"], help='Choose the prompt type')
+    parser.add_argument('--prompt_type', type=str, default="base", choices=["base", "cot", "few_shot_basic", "few_shot_semantic"], help='Choose the prompt type')
 
     parser.add_argument('--agent_test', type=int, default=1, choices=[0, 1], help='Choose whether to run the agent test')
     return parser.parse_args()
@@ -80,7 +80,7 @@ async def run_config_error(args):
         result_dir = os.path.join(result_dir, "Qwen")
     elif args.llm_agent_type == "GPT-4o":
         result_dir = os.path.join(result_dir, "GPT-4o")
-    result_dir = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818/cot_Qwen"
+    result_dir = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818/React_GPT"
 
     os.makedirs(result_dir, exist_ok=True)
     # if args.config_gen == 1:
@@ -108,7 +108,7 @@ async def run_config_error(args):
     print(f"Startup time: {endtime - starttime}")
 
     # Iterate through the error configurations and run tests
-    for i, error in enumerate(error_config["details"][922:], start=923):
+    for i, error in enumerate(error_config["details"][1473:], start=1474):
 
         starttime = datetime.now()
         policies_to_inject = error.get("policies_to_inject", [])
@@ -167,7 +167,12 @@ async def run_config_error(args):
             if llm_command is None:
                 print("Error: llm_command is None")
                 continue
-
+            if "kubectl apply" in llm_command:
+                print("Error: LLM command contains 'kubectl apply -f'")
+                continue
+            if "kubectl create" in llm_command:
+                print("Error: LLM command contains 'kubectl create -f'")
+                continue                
             starttime = datetime.now()
             try:
                 output = subprocess.run(llm_command, shell=True, executable='/bin/bash', check=True, text=True, capture_output=True, timeout=10).stdout
@@ -199,16 +204,16 @@ async def run_agent_test(args):
     args.root_dir = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818"
     for i in range(4):
         if i == 0:
-            # deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+            deploy_k8s_cluster("/home/ubuntu/microservices-demo")
             args.prompt_type = "base"
             # args.config_gen = 1
             # await run_config_error(args)
         elif i == 1:
             start_time = datetime.now()
-            deploy_k8s_cluster("/home/ubuntu/microservices-demo")
+            # deploy_k8s_cluster("/home/ubuntu/microservices-demo")
 
-            args.config_gen = 1
-            args.prompt_type = "few_shot_basic"
+            args.config_gen = 0
+            args.prompt_type = "base"
 
             await run_config_error(args)
             end_time = datetime.now()

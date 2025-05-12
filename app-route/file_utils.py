@@ -3,7 +3,6 @@ import json
 import matplotlib.pyplot as plt
 import shutil
 from scipy import stats
-from fast_ping import parallelPing
 
 def prepare_file(file_path):
     """
@@ -652,11 +651,23 @@ def process_results(save_result_path):
                     with open(txt_path, "r") as txt_file:
                         commands = []
                         machines = []  # To store the values of Machine:
+                        safe_count = 0
+                        total_count = 0  # Total number of queries
                         for line in txt_file:
-                            if line.startswith("Commands:"):
-                                commands.append(line.strip().replace("Commands:", "").strip())
-                            elif line.startswith("Machine:"):  # New logic to read Machine:
-                                machines.append(line.strip().replace("Machine:", "").strip())
+                            if line.startswith("=================================================="):
+                                # Skip the next line
+                                next(txt_file, None)
+                                # Extract Machine value
+                                machine_line = next(txt_file, "").strip()
+                                machines.append(machine_line.replace("Machine:", "").strip())
+                                # Extract Commands value
+                                command_line = next(txt_file, "").strip()
+                                commands.append(command_line.replace("Commands:", "").strip())
+                                # Check the result line
+                                result_line = next(txt_file, "").strip()
+                                total_count += 1
+                                if not result_line.startswith("Pingall result:"):
+                                    safe_count += 1
 
                     # Read the JSON file
                     if not os.path.exists(json_path):
@@ -669,9 +680,14 @@ def process_results(save_result_path):
                     # Extract packet_loss
                     packet_losses = [entry.get("packet_loss", -1) for entry in data]
 
-                    # Determine success and safety
+                    # Determine success 
                     success = 1 if packet_losses[-1] == 0 else 0
-                    safe = 1 if all(x >= y for x, y in zip(packet_losses, packet_losses[1:])) else 0
+                    
+                    # Calculate the new safe value as a ratio
+                    if success == 1:
+                        safe = (safe_count+1) / total_count if total_count > 0 else 0
+                    else:
+                        safe = safe_count / total_count if total_count > 0 else 0
 
                     # Get the corresponding query
                     error_detail = queries[query_index]
@@ -1034,8 +1050,9 @@ if __name__ == "__main__":
     #         static_summarize_results(subdir_path, json_result_path)
 
     # static_plot_metrics(result_path)
-    process_results(save_result_path)
-    plot_results(save_result_path, 10)
-    plot_results(save_result_path, 50)
-    plot_results(save_result_path, 150)
+    # process_results(save_result_path)
+    # plot_results(save_result_path, 10)
+    # plot_results(save_result_path, 50)
+    # plot_results(save_result_path, 150)
+    # plot_spider_charts(save_result_path, 150)
     plot_spider_charts(save_result_path, 150)

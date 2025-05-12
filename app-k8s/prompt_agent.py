@@ -259,7 +259,9 @@ class ReAct_PromptAgent(BasePromptAgent):
     def generate_prompt(self):
         react_prompt_prefix = """ 
                                 Answer the following question as best you can. Please use a tool if you need to.
-                                In the last iteration, please output the action you want to execute.
+                                Please always remember that the answer in the intermediate steps like tool_inputs and log should always be wrapped in triple backticks.
+                                Also, remember that all of commands in your answer will be execueted by me and I will return the results to you in the next iteration, so you must not issue the same commands again. 
+                                **You are not allowed to create any new network policies, you must find current existing network policies and modify them.**
                                 """
         react_prompt = react_prompt_prefix + self.base_prompt_prefix
 

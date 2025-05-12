@@ -254,6 +254,15 @@ def summary_different_agent(directory, number_query):
         "change_port+add_egress", "change_protocol+add_egress", "remove_ingress+add_egress",
         "add_ingress+add_egress"
     ]
+    # Load error_config.json
+    error_config_path = os.path.join(directory, "error_config.json")
+    if not os.path.exists(error_config_path):
+        raise FileNotFoundError(f"error_config.json not found in {directory}")
+    
+    with open(error_config_path, "r") as config_file:
+        error_config = json.load(config_file)
+
+    details = error_config["details"]
 
     # Iterate through all folders in the given directory
     for folder in os.listdir(directory):
@@ -297,8 +306,11 @@ def summary_different_agent(directory, number_query):
 
                         # Update counters
                         total_queries += 1
+                        success = 1
                         if "No mismatches found" in data[-1].get("mismatch_summary", ""):
                             total_success += 1
+                        else:
+                            success = 0
 
                         # Check safety
                         safe = True
@@ -341,7 +353,96 @@ def summary_different_agent(directory, number_query):
     # Print and return the summary results
     print(json.dumps(summary_results, indent=4))
     return summary_results
+# def summary_into_json(directory, number_query):
+#     # Load error_config.json
+#     error_config_path = os.path.join(directory, "error_config.json")
+#     if not os.path.exists(error_config_path):
+#         raise FileNotFoundError(f"error_config.json not found in {directory}")
+    
+#     with open(error_config_path, "r") as config_file:
+#         error_config = json.load(config_file)
+    
+#     # Ensure "details" key exists in error_config
+#     if "details" not in error_config:
+#         raise KeyError("The key 'details' is missing in error_config.json")
+    
+#     details = error_config["details"]
 
+#     # Iterate through all folders in the given directory
+#     for folder in os.listdir(directory):
+#         folder_path = os.path.join(directory, folder)
+
+#         # Ensure it's a directory
+#         if os.path.isdir(folder_path) != "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818/React_GPT":
+#             print(f"Processing folder: {folder_path}")
+#             # Initialize results for this folder
+#             results = [None] * len(details)  # Placeholder for results in order
+
+#             # Process each error type
+#             for i, detail in enumerate(details):
+#                 error_type = detail["error_detail"][0]["type"]
+
+#                 # Collect all matching JSON files for the current error type
+#                 matching_files = [
+#                     f for f in os.listdir(folder_path)
+#                     if f.startswith(f"{error_type}_result_") and f.endswith(".json")
+#                 ]
+
+#                 # Extract and sort files by their numeric index
+#                 indexed_files = []
+#                 for file_name in matching_files:
+#                     match = re.search(rf"{re.escape(error_type)}_result_(\d+)\.json$", file_name)
+#                     if match:
+#                         index = int(match.group(1))
+#                         indexed_files.append((index, file_name))
+#                 indexed_files.sort(key=lambda x: x[0])  # Sort by index
+
+#                 # Select the first `number_query` files based on their index
+#                 selected_files = [file_name for _, file_name in indexed_files[:number_query]]
+
+#                 # Process each selected file
+#                 total_queries = 0
+#                 total_success = 0
+#                 safe_count = 0
+
+#                 for file_name in selected_files:
+#                     file_path = os.path.join(folder_path, file_name)
+#                     with open(file_path, "r") as file:
+#                         data = json.load(file)
+
+#                         # Update counters
+#                         total_queries += 1
+#                         success = 1 if "No mismatches found" in data[-1].get("mismatch_summary", "") else 0
+#                         total_success += success
+
+#                         # Check safety
+#                         safe = True
+#                         previous_mismatch_count = float('inf')
+#                         for entry in data:
+#                             mismatch_summary = entry.get("mismatch_summary", "")
+#                             mismatch_count = mismatch_summary.count("Mismatch")
+#                             if mismatch_count > previous_mismatch_count:
+#                                 safe = False
+#                                 break
+#                             previous_mismatch_count = mismatch_count
+#                         if safe:
+#                             safe_count += 1
+
+#                 # Calculate success and safe rates
+#                 success_rate = total_success / total_queries if total_queries > 0 else 0
+#                 safe_rate = safe_count / total_queries if total_queries > 0 else 0
+
+#                 # Add success and safe to the corresponding query in details
+#                 updated_detail = detail.copy()
+#                 updated_detail["success"] = success_rate
+#                 updated_detail["safe"] = safe_rate
+#                 results[i] = updated_detail
+
+#             # Save the updated results to a new JSON file
+#             output_path = os.path.join(directory, f"{folder}_results.json")
+#             with open(output_path, "w") as output_file:
+#                 json.dump({"details": results}, output_file, indent=4)
+#             print(f"Results saved to {output_path}")
 def plot_summary_results(directory_path, number_query):
     """
     Reads experiment results from multiple folders, plots success vs. safety,
@@ -580,5 +681,119 @@ def check_json_mismatches(folder_path):
 #     plot_summary_results(folder_path, 50)
 #     plot_summary_results(folder_path, 150)
 
+# summary_into_json("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 150)
+import os
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
+def plot_spider_charts_for_agents(save_result_path, number_query):
+    """
+    Create separate spider charts for safety and success rates by error type,
+    comparing results from multiple agents.
 
+    Args:
+        save_result_path (str): Root directory path containing agent result JSON files.
+        number_query (int): Number of queries to analyze and plot for each error type.
+    """
+    # Dictionary to store results by agent and error type
+    agent_results = {}
+
+    # Iterate through each agent directory
+    for agent in os.listdir(save_result_path):
+        agent_path = os.path.join(save_result_path, agent)
+        if not os.path.isdir(agent_path):
+            continue
+
+        # Load the test results summary JSON file for this agent
+        result_file = os.path.join(agent_path, "test_results_summary.json")
+        if not os.path.exists(result_file):
+            print(f"Result JSON not found for {agent}")
+            continue
+
+        with open(result_file, "r") as f:
+            results = json.load(f)
+
+        # Initialize agent's results if not already present
+        if agent not in agent_results:
+            agent_results[agent] = {}
+
+        # Collect success and safety rates for each error type
+        for error_type, error_data in results.items():
+            if error_type not in agent_results[agent]:
+                agent_results[agent][error_type] = {'success': [], 'safety': []}
+            
+            success_rate = error_data["successful_rate"] * 100
+            safety_rate = error_data["safety_rate"] * 100
+            agent_results[agent][error_type]["success"].append(success_rate)
+            agent_results[agent][error_type]["safety"].append(safety_rate)
+
+    # Get all error types
+    all_error_types = list(next(iter(agent_results.values())).keys())  # Get error types from the first agent
+    categories = all_error_types
+
+    N = len(categories)  # Number of error types
+    angles = [n / float(N) * 2 * np.pi for n in range(N)]  # Calculate angles for the radar chart
+    angles += angles[:1]  # Close the circle
+
+    # Define a professional color scheme for agents
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+
+    # Plot separate spider charts for success and safety rates
+    for metric in ["success", "safety"]:
+        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection="polar"))
+        ax.set_theta_offset(np.pi / 2)
+        ax.set_theta_direction(-1)
+
+        # Set background color
+        ax.set_facecolor('white')  # Ensure background is white
+
+        # Plot rates for each agent
+        legend_patches = []
+        for idx, (agent, agent_data) in enumerate(agent_results.items()):
+            rates = []
+            for error_type in categories:
+                rates.append(np.mean(agent_data[error_type][metric]))  # Calculate mean for success or safety
+
+            # Add the first point to close the loop
+            rates += rates[:1]
+
+            # Plot the rates for this agent as a polygon (not a circle)
+            color = colors[idx % len(colors)]
+            ax.plot(angles, rates, linewidth=2, linestyle='solid', label=agent, color=color)
+            ax.fill(angles, rates, alpha=0.25, color=color)
+
+            # Add a legend patch
+            legend_patches.append(mpatches.Patch(color=color, label=agent))
+
+        # Set the angle ticks (error types) and labels
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(categories, fontsize=12)
+
+        # Set radial ticks (for 0%, 20%, ..., 100% rates)
+        ax.set_yticks([20, 40, 60, 80, 100])
+        ax.set_yticklabels(["20%", "40%", "60%", "80%", "100%"], color="black", size=10)
+
+        # Add title and legend
+        metric_title = "Success Rate" if metric == "success" else "Safety Rate"
+        ax.set_title(f"{metric_title} by Error Type (Top {number_query} Queries)", size=16, color="black")
+        ax.legend(handles=legend_patches, loc="upper right", bbox_to_anchor=(1.2, 1.1), fontsize=10)
+
+        # Add gridlines with specific styling
+        ax.grid(True, color='gray', linestyle='--', linewidth=0.5)
+
+        # Save the plot to the output path
+        output_image = os.path.join(save_result_path, f"spider_chart_{metric}_{number_query}.png")
+        plt.tight_layout()
+        plt.savefig(output_image, dpi=300, bbox_inches='tight')
+        plt.close()
+
+        print(f"Spider chart for {metric_title} saved to: {output_image}")
+
+if __name__ == "__main__":
+    plot_spider_charts_for_agents("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 150)
+    
+    plot_summary_results("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 10)
+    plot_summary_results("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 50)
+    plot_summary_results("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 150)

@@ -277,27 +277,51 @@ class ReAct_Agent:
             max_iterations = 2, # try up to 3 times to find the best answer
             return_intermediate_steps=True
         )
-        
-        print("ReAct agent executor set up")
-        # Format the input correctly based on the prompt type
-
-        start_time = time.time()
+        start_time = time.time()    
+        # Invoke the agent executor with the input query
         output = agent_executor.invoke({'input': prompt_template.format(input=connectivity_status)})
+        intermediate_steps = output['intermediate_steps']  # Get the intermediate steps
 
-        # Access the first tuple in the list
-        intermediate_steps=output["intermediate_steps"]
-        first_step = intermediate_steps[0]
-        
-        # Extract the AgentAction object from the tuple
-        agent_action = first_step[0]
-        
-        # Retrieve the tool_input value
-        tool_input = agent_action.tool_input
-        print("ReAct agent output:", tool_input)
-        
+        if intermediate_steps:  
+            print("Intermediate steps are not empty.")
+            print("Intermediate steps:", intermediate_steps)
+            print("end of intermediate steps")
+            first_step = intermediate_steps[0]
+            print("First step:", first_step)
+            
+            # Extract the AgentAction object from the tuple
+            agent_action = first_step[0]
+            
+            # Retrieve the tool_input value
+            tool_input = agent_action.tool_input
+            log = agent_action.log
+            print("ReAct agent output tool_input:", tool_input)
+            print("ReAct agent output log:", log)
+        else:
+            print("Intermediate steps is empty.")
+            tool_input = ""
+            log = ""
         end_time = time.time()
         print(f"ReAct agent execution time: {end_time - start_time:.2f} seconds")
-        return tool_input
+        print("model returned")
+        
+        # Extract commands from tool_input and log
+        answer1 = extract_command(tool_input)
+        answer2 = extract_command(log)
+        print("ReAct agent output answer1:", answer1)   
+        print("ReAct agent output answer2:", answer2)
+        if answer1 and not answer2:  
+            answer = answer1
+        elif answer2 and not answer1:  
+            answer = answer2
+        elif answer1 and answer2:  
+            answer = answer1
+        else:  
+            answer = ""
+
+        print("Selected answer:", answer)
+        print("model returned")
+        return answer
 if __name__ == "__main__":
     text = """```json
                  {
