@@ -29,6 +29,7 @@ def parse_args():
     parser.add_argument('--output_file', type=str, default='gpt4o.jsonl', help='Name of the output JSONL file')
     parser.add_argument('--dynamic_benchmark_path', type=str, default='data/benchmark_malt.jsonl', help='Path to save dynamic dataset')
     parser.add_argument('--regenerate_query', action='store_true', help='Whether to regenerate benchmark queries or load existing ones')
+    parser.add_argument('--start_index', type=int, default=0, help='Start index of the queries to run')
     return parser.parse_args()
 
 # anexample of how to use main.py with input args
@@ -45,7 +46,8 @@ def main(args):
         'output_dir': args.output_dir,
         'output_file': args.output_file,
         'dynamic_benchmark_path': args.dynamic_benchmark_path,
-        'regenerate_query': args.regenerate_query
+        'regenerate_query': args.regenerate_query,
+        'start_index': args.start_index
     }
 
     # create the output directory if it does not exist
@@ -84,8 +86,21 @@ def main(args):
         for obj in reader:
             benchmark_data.append(obj['messages'])
     
+    # Skip to start_index if specified
+    start_idx = benchmark_config['start_index']
+    if start_idx > 0:
+        print(f"Starting from query index {start_idx} (skipping {start_idx} queries)")
+        if start_idx >= len(benchmark_data):
+            print(f"Warning: start_index {start_idx} is greater than or equal to the number of queries ({len(benchmark_data)})")
+            return
+        benchmark_data = benchmark_data[start_idx:]
+    
     # for each object in the benchmark list, get the question and answer
-    for obj in benchmark_data:
+    for i, obj in enumerate(benchmark_data):
+        # Calculate actual index (for logging)
+        actual_idx = i + start_idx
+        print(f"Processing query {actual_idx} of {len(benchmark_data) + start_idx - 1}")
+        
         # obj is a list of dictionaries, load question, answer, task_label from it
         for item in obj:
             if 'question' in item:

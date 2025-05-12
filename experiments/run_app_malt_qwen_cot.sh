@@ -3,8 +3,8 @@ cd ..
 cd app-malt
 
 # Define common parameters
-NUM_QUERIES=50
-BENCHMARK_PATH="data/sampled_30_benchmark_malt_qwen_cot.jsonl"
+NUM_QUERIES=500
+BENCHMARK_PATH="data/malt_benchmark_500.jsonl"
 PROMPT_TYPE="cot"  # Define prompt_type
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
 # PROMPT_TYPE="zero_shot_cot"  # Define prompt_type
@@ -31,16 +31,17 @@ run_experiment() {
         --complexity_level $complexity \
         --output_dir "$agent_output_dir" \
         --output_file "$output_file" \
-        --dynamic_benchmark_path "$BENCHMARK_PATH" 
+        --dynamic_benchmark_path "$BENCHMARK_PATH" \
+        --start_index 360
     }
 
 # Define models and their configurations
 declare -A model_configs=(
-    ["QwenModel_finetuned"]="level1 level2 level3:qwen_cot_30.jsonl"
+    ["Qwen2.5-72B-Instruct"]="level1 level2 level3:qwen_cot_500.jsonl"
 )
 
 # Define the desired order of execution
-model_order=("QwenModel_finetuned")
+model_order=("Qwen2.5-72B-Instruct")
 
 # Run experiments in specified order
 for model in "${model_order[@]}"; do
