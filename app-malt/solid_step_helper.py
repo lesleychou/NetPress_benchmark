@@ -318,11 +318,12 @@ def validate_llm_output(ret):
             'type': str,
             'updated_graph': dict,
         }
+    Note that the function treats updated_graph as optional. 
     """
     if not isinstance(ret, dict):
         return False
     
-    if 'data' not in ret or 'type' not in ret or 'updated_graph' not in ret:
+    if 'data' not in ret or 'type' not in ret:
         return False
 
     return True
@@ -352,7 +353,12 @@ def clean_up_updated_graph_data(ret):
         ret['updated_graph'] = jsonGraph
 
     else:  # Convert the jsonGraph back to nx.graph, to check if they are identical later
-        ret_graph_copy = json_graph.node_link_graph(ret['updated_graph'])
+        jsonGraph = ret['updated_graph']
+        ret_graph_copy = json_graph.node_link_graph(jsonGraph)
+
+    # If the data does not contain a graph, fall back to the updated_graph.
+    if ret['type'] == 'graph' and not isinstance(ret['data'], nx.Graph):
+        ret['data'] = json_graph.node_link_graph(jsonGraph)
 
     return ret_graph_copy
 

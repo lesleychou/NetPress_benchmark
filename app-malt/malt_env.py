@@ -69,14 +69,18 @@ class BenchmarkEvaluator:
                 ret = {'type': "error", 'data': 'LLM output is not a valid JSON string.'}
         
         # Ensure LLM output is formatted correctly, and produces a valid graph.
+        # Mark as error so safety checker is not applied. Still pass on data to the verifier.
         ret_graph_copy = None
         if validate_llm_output(ret) and ret['type'] != 'error':
             try:
                 ret_graph_copy = clean_up_updated_graph_data(ret)
-            except Exception as e:
-                ret = {'type': "error", 'data': ret['data']}
+            except:
+                try:
+                    ret_graph_copy = clean_up_output_graph_data(ret)
+                except:
+                    ret = {'type': "error", 'data': ret['data']} 
         else:
-            ret = {'type': "error", 'data': 'LLM output invalid'}
+            ret = {'type': "error", 'data': ret['data']}
      
         # if ret is not error, then clean up the updated graph
         if ret['type'] != 'error':
@@ -92,7 +96,7 @@ class BenchmarkEvaluator:
 
         # ground truth answer should already be checked to ensure it can run successfully
         exec(goldenAnswerCode)
-        ground_truth_ret = eval("ground_truth_process_graph(G)")
+        ground_truth_ret = eval("ground_truth_process_graph(copy.deepcopy(G))")
         # if the type of ground_truth_ret is string, turn it into a json object
         if isinstance(ground_truth_ret, str):
             ground_truth_ret = json.loads(ground_truth_ret)
@@ -133,12 +137,12 @@ class BenchmarkEvaluator:
         
         # Define comparison strategies for different types
         comparison_strategies = {
-            'text': lambda: ground_truth_ret['data'] == ret['data'],
-            'list': lambda: check_list_equal(ground_truth_ret['data'], ret['data']),
-            'table': lambda: ground_truth_ret['data'] == ret['data'],
-            'graph': lambda: nx.is_isomorphic(
-                nx.Graph(ground_truth_ret['data']), 
-                nx.Graph(ret_graph_copy), 
+            'text': lambda gt, llm: gt == llm,
+            'list': lambda gt, llm: check_list_equal(gt, llm),
+            'table': lambda gt, llm: gt == llm,
+            'graph': lambda gt, llm: nx.is_isomorphic(
+                nx.Graph(gt), 
+                nx.Graph(llm), 
                 node_match=node_attributes_are_equal
             )
         }
@@ -146,8 +150,13 @@ class BenchmarkEvaluator:
         # Get the appropriate comparison strategy and execute it
         compare_func = comparison_strategies.get(ground_truth_ret['type'])
         if compare_func:
-            is_correct = compare_func()
-            log_result(is_correct)
+            # Sometimes LLM output doesn't fully match the expected data type, so we need this.
+            try:
+                is_correct = compare_func(ground_truth_ret['data'], ret['data'])
+                log_result(is_correct)
+            except:
+                print("Error during comparison: ", traceback.format_exc())
+                log_result(False)
 
     def result_log_wrong(self, current_query, task_label, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ground_truth_ret, ret, output_path):
         result_object = {
@@ -165,11 +174,15 @@ class BenchmarkEvaluator:
         elif ground_truth_ret['type'] == 'graph':
             result_object["Error"] = "Two graphs are not identical."
         else:
+            # Graphs can't be JSON serialized, so convert to string 
+            # (Sometimes LLM mismatches outputs a graph even though the type is not 'graph').
+            model_output = ret['data'] if not isinstance(ret['data'], nx.Graph) else str(ret['data'])
+
             result_object["Ground truth exec"] = ground_truth_ret['data']
-            result_object["LLM code exec"] = ret['data']
+            result_object["LLM code exec"] = model_output
             result_object["Error"] = {
                 "Ground truth": ground_truth_ret['data'],
-                "Model output": ret['data']
+                "Model output": model_output
             }
 
         # Add verifier error details if verification failed
