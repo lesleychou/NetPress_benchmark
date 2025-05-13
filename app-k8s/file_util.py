@@ -133,7 +133,6 @@ def plot_metrics(folder_path):
     bars = plt.bar(labels, success_rates, color='skyblue', yerr=success_error_margins, capsize=5)
     plt.xlabel('Error Combinations')
     plt.ylabel('Success Rate (%)')
-    plt.title('Success Rate by Error Combinations')
     plt.xticks(rotation=45, ha='right')
     plt.ylim(0, max(success_rates) * 1.1)  # Adjust y-axis limit
     # Add error values on top of each bar
@@ -151,7 +150,6 @@ def plot_metrics(folder_path):
     bars = plt.bar(labels, safety_rates, color='green', yerr=safety_error_margins, capsize=5)
     plt.xlabel('Error Combinations')
     plt.ylabel('Safety Rate (%)')
-    plt.title('Safety Rate by Error Combinations')
     plt.xticks(rotation=45, ha='right')
     plt.ylim(0, max(safety_rates) * 1.1)  # Adjust y-axis limit
     # Add error values on top of each bar
@@ -169,7 +167,6 @@ def plot_metrics(folder_path):
     bars = plt.bar(labels, average_iterations, color='orange')
     plt.xlabel('Error Combinations')
     plt.ylabel('Average Iterations')
-    plt.title('Average Iterations by Error Combinations')
     plt.xticks(rotation=45, ha='right')
     plt.ylim(0, max(average_iterations) * 1.1)  # Adjust y-axis limit
     plt.tight_layout()
@@ -182,20 +179,17 @@ def plot_metrics(folder_path):
     # Success rates
     axs[0].bar(labels, success_rates, color='skyblue', yerr=success_error_margins, capsize=5)
     axs[0].set_ylabel('Success Rate (%)')
-    axs[0].set_title('Success Rate by Error Combinations')
     axs[0].set_ylim(0, min(max(success_rates) * 1.5, 100))  # Adjust y-axis limit
 
     # Safety rates
     axs[1].bar(labels, safety_rates, color='green', yerr=safety_error_margins, capsize=5)
     axs[1].set_ylabel('Safety Rate (%)')
-    axs[1].set_title('Safety Rate by Error Combinations')
     axs[1].set_ylim(0, min(max(safety_rates) * 1.5, 100))  # Adjust y-axis limit
 
     # Average iterations
     axs[2].bar(labels, average_iterations, color='orange')
     axs[2].set_xlabel('Error Combinations')
     axs[2].set_ylabel('Average Iterations')
-    axs[2].set_title('Average Iterations by Error Combinations')
     axs[2].set_ylim(0, min(max(average_iterations) * 1.5, 15))  # Adjust y-axis limit
 
     plt.xticks(rotation=45, ha='right')
@@ -231,7 +225,6 @@ def plot_correctness(folder_path):
     bars = plt.bar(labels, correctness_pass_rates, color='green', yerr=error_margins, capsize=5)
     plt.xlabel('Error Combinations')
     plt.ylabel('Correctness Pass Rate (%)')
-    plt.title('Correctness Pass Rate by Error Combinations')
     # Add error values on top of each bar
     for i, bar in enumerate(bars):
         height = bar.get_height()
@@ -254,6 +247,15 @@ def summary_different_agent(directory, number_query):
         "change_port+add_egress", "change_protocol+add_egress", "remove_ingress+add_egress",
         "add_ingress+add_egress"
     ]
+    # Load error_config.json
+    error_config_path = os.path.join(directory, "error_config.json")
+    if not os.path.exists(error_config_path):
+        raise FileNotFoundError(f"error_config.json not found in {directory}")
+    
+    with open(error_config_path, "r") as config_file:
+        error_config = json.load(config_file)
+
+    details = error_config["details"]
 
     # Iterate through all folders in the given directory
     for folder in os.listdir(directory):
@@ -297,8 +299,11 @@ def summary_different_agent(directory, number_query):
 
                         # Update counters
                         total_queries += 1
+                        success = 1
                         if "No mismatches found" in data[-1].get("mismatch_summary", ""):
                             total_success += 1
+                        else:
+                            success = 0
 
                         # Check safety
                         safe = True
@@ -357,228 +362,271 @@ def plot_summary_results(directory_path, number_query):
     # Get summary results
     summary_results = summary_different_agent(directory_path, number_query)
 
-    # Create figure
-    plt.figure(figsize=(10, 7))
+    # Create figure with higher DPI and specific size
+    fig, ax = plt.subplots(figsize=(7, 6), dpi=300)
+    
+    # Professional color palette - Scientific color scheme
+    colors = ['#0073C2', '#EFC000', '#868686', '#CD534C', '#7AA6DC', '#003C67']
 
     # Iterate through each folder's summary and plot points
-    for folder, stats in summary_results.items():
+    for i, (folder, stats) in enumerate(summary_results.items()):
         x = stats["safety_rate"] / 100  # X-axis: Safety rate (converted to 0-1 scale)
         y = stats["success_rate"] / 100  # Y-axis: Success rate (converted to 0-1 scale)
         x_err = stats["safety_margin"] / 100  # Error bar for safety rate (converted to 0-1 scale)
         y_err = stats["success_margin"] / 100  # Error bar for success rate (converted to 0-1 scale)
 
-        # Plot the point with error bars (cross-like bars)
-        plt.errorbar(x, y, xerr=x_err, yerr=y_err, fmt='o', capsize=5, label=folder)
+        # Plot points and error bars with improved styling
+        ax.errorbar(x, y, 
+                   xerr=x_err, 
+                   yerr=y_err,
+                   fmt='o',
+                   color=colors[i % len(colors)],
+                   markersize=8,
+                   markeredgewidth=1.5,
+                   markeredgecolor='white',
+                   capsize=5,
+                   capthick=1.5,
+                   elinewidth=1.5,
+                   label=folder)
 
-        # Annotate folder names (adjust position for better readability)
-        plt.annotate(folder, (x, y), textcoords="offset points", xytext=(5, 5), ha='center', fontsize=10)
+    # Customize grid
+    ax.grid(True, linestyle='--', alpha=0.3, which='major')
+    ax.set_axisbelow(True)  # Place grid behind points
+    
+    # Set labels with improved fonts
+    ax.set_xlabel("Safety Rate", fontsize=20, fontweight='bold')
+    ax.set_ylabel("Success Rate", fontsize=20, fontweight='bold')
 
-    # Labels and Title
-    plt.xlabel("Safety Rate (0-1)", fontsize=14)
-    plt.ylabel("Success Rate (0-1)", fontsize=14)
-    plt.title(f"Success vs. Safety with Confidence Margins (Top {number_query} Queries)", fontsize=16)
-
-    # Set axis limits to 0-1
-    plt.xlim(0, 1)
-    plt.ylim(0, 1)
-
-    # Grid and Legend
-    plt.grid(True, linestyle="--", alpha=0.6)
-    plt.legend(loc="upper left", fontsize=10)
-
-    # Save plot inside the directory with number_query in the filename
+    # Set axis ranges with padding
+    ax.set_xlim(-0.02, 1.02)
+    ax.set_ylim(-0.02, 1.02)
+    
+    # Customize ticks
+    ax.tick_params(axis='both', which='major', labelsize=20)
+    
+    # Add legend with improved styling
+    legend = ax.legend(loc='upper left',
+                      fontsize=20,
+                      frameon=True,
+                      fancybox=False,
+                      edgecolor='black')
+    
+    # Adjust layout to prevent label cutoff
+    plt.tight_layout()
+    
+    # Save the chart with high quality
     save_path = os.path.join(directory_path, f"summary_plot_{number_query}.png")
-    plt.savefig(save_path, dpi=300)
+    plt.savefig(save_path, 
+                dpi=300,
+                bbox_inches='tight',
+                pad_inches=0.2)
     plt.close()
 
     print(f"Plot saved at: {save_path}")
 
-import os
-import json
-import re
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy import stats
+import matplotlib.patches as mpatches
 
-def analyze_and_plot(folder_path, output_image="result_plot.png"):
-    # 定义所有错误类别
-    all_errors = [
-        "remove_ingress", "change_port", "add_egress", 
-        "remove_ingress+add_ingress", "remove_ingress+change_port",
-        "remove_ingress+change_protocol", "add_ingress+change_port",
-        "add_ingress+change_protocol", "change_port+change_protocol",
-        "change_port+add_egress", "change_protocol+add_egress"
-    ]
+def plot_spider_charts_for_agents(save_result_path, number_query):
+    """
+    Create separate spider charts for safety, success, and iteration rates by error type,
+    comparing results from multiple agents.
 
-    # 初始化数据结构
-    stages = [5, 20, 30]
-    results = {stage: {'success': [], 'safety': []} for stage in stages}
-
-    # 数据收集阶段
-    for error in all_errors:
-        # 收集当前类别的文件
-        files = []
-        pattern = re.compile(rf"^{re.escape(error)}_result_(\d+)\.json$")
-        for file_name in os.listdir(folder_path):
-            if match := pattern.match(file_name):
-                files.append((int(match.group(1)), file_name))
-        
-        # 按编号排序
-        files.sort()
-        sorted_files = [f[1] for f in files]
-
-        # 分阶段处理
-        for stage in stages:
-            if len(sorted_files) < stage:
-                continue
-
-            stage_files = sorted_files[:stage]
-            stage_success = []
-            stage_safety = []
-
-            # 处理每个文件
-            for file_name in stage_files:
-                file_path = os.path.join(folder_path, file_name)
-                try:
-                    with open(file_path, 'r') as f:
-                        data = json.load(f)
-                        if not data:
-                            continue
-                        
-                        # 记录二元结果
-                        last_entry = data[-1]
-                        success = 1 if "No mismatches found" in last_entry.get("mismatch_summary", "") else 0
-                        
-                        # 安全检查
-                        safe = 1
-                        prev_mismatch = float('inf')
-                        for entry in data:
-                            mismatch_count = entry.get("mismatch_summary", "").count("Mismatch")
-                            if mismatch_count > prev_mismatch:
-                                safe = 0
-                                break
-                            prev_mismatch = mismatch_count
-                        
-                        stage_success.append(success)
-                        stage_safety.append(safe)
-                except Exception as e:
-                    print(f"Error processing {file_name}: {str(e)}")
-                    continue
-
-            # 保存原始二元数据
-            results[stage]['success'].extend(stage_success)
-            results[stage]['safety'].extend(stage_safety)
-
-    # 统计分析阶段
-    plot_data = []
-    for stage in stages:
-        # 获取二元数据
-        success_data = np.array(results[stage]['success'])
-        safety_data = np.array(results[stage]['safety'])
-        
-        # 计算均值和置信区间
-        success_mean = np.mean(success_data) * 100  # 转换为百分比
-        safety_mean = np.mean(safety_data) * 100
-        
-        # 使用指定方法计算SEM
-        success_sem = stats.sem(success_data, ddof=0) * 100
-        safety_sem = stats.sem(safety_data, ddof=0) * 100
-        
-        success_ci = 1.96 * success_sem
-        safety_ci = 1.96 * safety_sem
-        
-        plot_data.append({
-            'stage': stage,
-            'x': safety_mean,  # 横轴改为Safety
-            'y': success_mean,  # 纵轴改为Success
-            'xerr': safety_ci,
-            'yerr': success_ci,
-            'safety_ci': (safety_mean - safety_ci, safety_mean + safety_ci),
-            'success_ci': (success_mean - success_ci, success_mean + success_ci)
-        })
-
-    # 可视化阶段
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-    plt.rcParams.update({'font.size': 12, 'font.family': 'DejaVu Sans'})
+    Args:
+        save_result_path (str): Root directory path containing agent result JSON files.
+        number_query (int): Number of queries to analyze and plot for each error type.
+    """
+    # Error type abbreviation mapping - you can customize this for the k8s context
+    # Example mapping based on common error types in k8s
+    error_abbrev = {
+        "remove_ingress": "RI",
+        "add_ingress": "AI",
+        "change_port": "CP",
+        "change_protocol": "CPR",
+        "add_egress": "AE",
+        "remove_ingress+add_ingress": "RI+AI",
+        "remove_ingress+change_port": "RI+CP",
+        "remove_ingress+change_protocol": "RI+CPR",
+        "add_ingress+change_port": "AI+CP",
+        "add_ingress+change_protocol": "AI+CPR",
+        "change_port+change_protocol": "CP+CPR",
+        "change_port+add_egress": "CP+AE",
+        "change_protocol+add_egress": "CPR+AE",
+        "remove_ingress+add_egress": "RI+AE",
+        "add_ingress+add_egress": "AI+AE"
+    }
     
-    # 设置统一坐标范围
-    for ax in axes:
-        ax.set_xlim(0, 100)  # Safety百分比范围
-        ax.set_ylim(0, 100)  # Success百分比范围
-        ax.grid(True, linestyle=':', alpha=0.5)
+    # Set global plotting style
+    plt.rcParams.update({
+        'font.size': 16,                   # Base font size
+        'axes.labelsize': 16,              # Size for axis labels
+        'axes.titlesize': 16,              # Size for subplot titles
+        'figure.titlesize': 16,            # Size for figure titles
+        'legend.fontsize': 16,             # Size for legend text
+        'xtick.labelsize': 16,             # Size for x-tick labels
+        'ytick.labelsize': 10,             # Size for y-tick labels
+    })
+    
+    # Dictionary to store results by agent and error type
+    agent_results = {}
+    
+    # Professional color scheme
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']  # Professional color scheme
 
-    for ax, data in zip(axes, plot_data):
-        # 绘制误差条（交换坐标轴）
-        ax.errorbar(
-            x=data['x'], y=data['y'],
-            xerr=data['xerr'], yerr=data['yerr'],
-            fmt='o', markersize=10, capsize=8,
-            color='#2c7bb6', ecolor='#d7191c', 
-            markeredgewidth=2, elinewidth=2
-        )
+    # Iterate through each agent directory
+    for agent in os.listdir(save_result_path):
+        agent_path = os.path.join(save_result_path, agent)
+        if not os.path.isdir(agent_path):
+            continue
+
+        # Load the test results summary JSON file for this agent
+        result_file = os.path.join(agent_path, "test_results_summary.json")
+        if not os.path.exists(result_file):
+            print(f"Result JSON not found for {agent}")
+            continue
+
+        with open(result_file, "r") as f:
+            results = json.load(f)
+            
+        # Initialize agent results
+        if agent not in agent_results:
+            agent_results[agent] = {}
+
+        # Collect success, safety, and iteration metrics for each error type
+        for error_type, error_data in results.items():
+            if error_type not in agent_results[agent]:
+                agent_results[agent][error_type] = {
+                    "success": [],
+                    "safety": [],
+                    "iteration": []
+                }
+            
+            # Extract metrics
+            success_rate = error_data["successful_rate"]
+            safety_rate = error_data["safety_rate"]
+            # Assuming there's an average_iteration field, else use a default
+            avg_iteration = error_data.get("average_iteration", 0)
+            
+            # Normalize iteration to 0-100 scale (assuming max of 10 iterations would be 100%)
+            # You may need to adjust this scaling based on your actual iteration ranges
+            normalized_iteration = min(avg_iteration * 10, 100)
+            
+            # Store the metrics
+            agent_results[agent][error_type]["success"].append(success_rate * 100)      # Convert to percentage 
+            agent_results[agent][error_type]["safety"].append(safety_rate * 100)        # Convert to percentage
+            agent_results[agent][error_type]["iteration"].append(normalized_iteration)  # Already normalized
+
+    # Get all unique error types
+    all_error_types = set()
+    for agent_data in agent_results.values():
+        all_error_types.update(agent_data.keys())
+    categories = sorted(list(all_error_types))
+    
+    # Create abbreviated category labels
+    category_labels = [error_abbrev.get(cat, cat) for cat in categories]
+    
+    # Create three separate spider charts (success, safety, and iteration)
+    for metric in ["Success Rate", "Safety Rate", "Iteration"]:
+        # Number of variables
+        N = len(categories)
         
-        # 添加坐标标注
-        ax.text(
-            data['x'] + 1, data['y'] - 3,
-            f"({data['x']:.1f}%, {data['y']:.1f}%)",
-            fontsize=10, ha='left', va='top',
-            bbox=dict(facecolor='white', alpha=0.8)
-        )
+        # What will be the angle of each axis in the plot
+        angles = [n / float(N) * 2 * np.pi for n in range(N)]
+        angles += angles[:1]  # Close the loop
         
-        # 添加置信区间标注
-        ax.text(0.05, 0.15,
-               f"Safety CI: [{data['safety_ci'][0]:.1f}%, {data['safety_ci'][1]:.1f}%]\n"
-               f"Success CI: [{data['success_ci'][0]:.1f}%, {data['success_ci'][1]:.1f}%]",
-               transform=ax.transAxes, fontsize=8,
-               bbox=dict(facecolor='white', alpha=0.7))
+        # Create the plot with specific figure size for paper
+        fig, ax = plt.subplots(figsize=(8, 6), subplot_kw=dict(projection='polar'))
         
-        # 标注样本量和模型
-        ax.text(0.05, 0.95, f'N={data["stage"]}', 
-                transform=ax.transAxes, va='top', fontweight='bold')
-        ax.text(0.95, 0.05, 'gpt-4o-base', 
-                transform=ax.transAxes, ha='right', fontstyle='italic')
+        # Set the category labels with consistent formatting
+        plt.xticks(angles[:-1], category_labels, fontsize=12)
         
-        # 设置坐标轴标签
-        ax.set_xlabel('Safety Rate (%)', fontweight='bold')
-        if ax == axes[0]:
-            ax.set_ylabel('Success Rate (%)', fontweight='bold')
+        # Set y-limits and ticks
+        ax.set_ylim(0, 100)
+        
+        # Set appropriate y-tick labels based on the metric
+        if metric == "Iteration":
+            plt.yticks([20, 40, 60, 80, 100], ["2", "4", "6", "8", "10"], color="black")
+        else:
+            plt.yticks([20, 40, 60, 80, 100], ["20%", "40%", "60%", "80%", "100%"], color="black")
+        
+        # Set radial axis label position
+        ax.set_rlabel_position(0)
+        
+        # Remove the circular grid and spines
+        ax.grid(False)
+        ax.spines['polar'].set_visible(False)
+        
+        # Draw polygon grid lines with more professional styling
+        grid_values = [20, 40, 60, 80, 100]
+        for grid_val in grid_values:
+            polygon_points = [(a, grid_val) for a in angles]
+            ax.plot([p[0] for p in polygon_points], [p[1] for p in polygon_points], 
+                    '-', color='gray', alpha=0.15, linewidth=0.8)
+        
+        # Draw axis lines with consistent styling
+        for i in range(N):
+            ax.plot([angles[i], angles[i]], [0, ax.get_ylim()[1]], 
+                    color='gray', linestyle='-', linewidth=0.8, alpha=0.5)
+        
+        # Plot each agent with improved styling
+        legend_patches = []
+        for idx, (agent, agent_data) in enumerate(agent_results.items()):
+            rates = []
+            for errortype in categories:
+                if errortype in agent_data:
+                    if metric == "Success Rate":
+                        rate = np.mean(agent_data[errortype]["success"])
+                    elif metric == "Safety Rate":
+                        rate = np.mean(agent_data[errortype]["safety"])
+                    else:  # Iteration
+                        rate = np.mean(agent_data[errortype]["iteration"])
+                else:
+                    rate = 0
+                rates.append(rate)
+            
+            # Close the plot by appending the first value
+            values = np.concatenate((rates, [rates[0]]))
+            
+            color = colors[idx % len(colors)]
+            # Plot line with higher z-order to ensure it's above the fill
+            ax.plot(angles, values, linewidth=2, linestyle='-', color=color, zorder=2)
+            ax.fill(angles, values, color=color, alpha=0.1, zorder=1)
+            
+            legend_patches.append(mpatches.Patch(color=color, label=agent))
+        
+        # Add legend with improved positioning and styling
+        legend = plt.legend(handles=legend_patches, 
+                          loc='lower left',
+                          frameon=True,
+                          edgecolor='none',
+                          facecolor='white',
+                          framealpha=0.8)
+        
+        # Adjust layout to prevent text cutoff
+        plt.tight_layout()
+        
+        
+        # Save figure with higher quality settings
+        metric_name = metric.lower().replace(' ', '_')
+        output_path = os.path.join(save_result_path, f"k8s_spider_chart_{metric_name}_by_agent")
+        
+        # Save as PNG with high quality
+        plt.savefig(f"{output_path}.png",
+                    dpi=300,
+                    bbox_inches='tight',
+                    pad_inches=0.2)
+        
+        plt.close()
+        
+        print(f"Spider chart for {metric} by agent saved to {output_path}.png")
+        
+    # Print the abbreviation mapping for reference once at the end
+    print("\nError Type Abbreviations:")
+    for cat, abbrev in zip(categories, category_labels):
+        print(f"{abbrev}: {cat}")
 
-    # 全局设置
-    plt.suptitle('Performance Metrics with 95% Confidence Intervals', 
-                 fontsize=14, fontweight='bold')
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig(output_image, dpi=300, bbox_inches='tight')
-    print(f"结果已保存至: {os.path.abspath(output_image)}")
-
-def check_json_mismatches(folder_path):
-    for filename in os.listdir(folder_path):
-        if filename.endswith(".json"):  # 仅处理 JSON 文件
-            file_path = os.path.join(folder_path, filename)
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, list) and data:
-                        first_mismatch = data[0].get("mismatch_summary", "")
-                        if "No mismatches found." in first_mismatch:
-                            print(f"Mismatch found in: {filename}")
-            except (json.JSONDecodeError, KeyError) as e:
-                print(f"Error reading {filename}: {e}")
-
-# # 使用示例
-# folder_path = "/home/ubuntu/jiajun_benchmark/app-k8s/result/GPT-4o/agent_test/20250322_025008/base"  # 替换为实际路径
-# check_json_mismatches(folder_path)
-# folder_path = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818"
-
-# plot_summary_results(folder_path, 10)
-# plot_summary_results(folder_path, 50)
-# plot_summary_results(folder_path, 150)
-
-# if "__name__" == "__main__":
-#     folder_path = "/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818"
-
-#     plot_summary_results(folder_path, 10)
-#     plot_summary_results(folder_path, 50)
-#     plot_summary_results(folder_path, 150)
-
-
-
+if __name__ == "__main__":
+    plot_spider_charts_for_agents("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 150)
+    
+    plot_summary_results("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 10)
+    plot_summary_results("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 50)
+    plot_summary_results("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 150)

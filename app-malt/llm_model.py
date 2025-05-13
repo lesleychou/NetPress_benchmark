@@ -26,15 +26,12 @@ from vllm import LLM, SamplingParams
 from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent, ReAct_PromptAgent
 from modelscope import AutoModelForCausalLM, AutoTokenizer
 from modelscope import GenerationConfig
+import torch.multiprocessing as mp
 
 # Login huggingface
 login(token="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")
 # Load environ variables from .env, will not override existing environ variables
 load_dotenv()
-
-# For Google Gemini
-import getpass
-from langchain_google_genai import ChatGoogleGenerativeAI
 
 # For Azure OpenAI GPT4
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
@@ -50,6 +47,7 @@ os.environ["OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.a
 # Set the ENDPOINT
 os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-sweden.openai.azure.com/"
 
+mp.set_start_method('spawn', force=True)
 
 prompt_suffix = """Begin! Remember to ensure that you generate valid Python code in the following format:
 
@@ -128,7 +126,7 @@ class GoogleGeminiAgent:
 class AzureGPT4Agent:
     def __init__(self, prompt_type="base"):
         self.llm = AzureChatOpenAI(
-            openai_api_version="2024-08-01-preview",
+            openai_api_version="2024-12-01-preview",
             deployment_name='ztn-sweden-gpt-4o',
             model_name='ztn-sweden-gpt-4o',
             temperature=0.0,
@@ -358,7 +356,7 @@ from langchain_experimental.tools.python.tool import PythonAstREPLTool
 class ReAct_Agent:
     def __init__(self, prompt_type="react"):
         self.llm = AzureChatOpenAI(
-            openai_api_version="2024-08-01-preview",
+            openai_api_version="2024-12-01-preview",
             deployment_name='ztn-sweden-gpt-4o',
             model_name='ztn-sweden-gpt-4o',
             temperature=0.0,
@@ -424,11 +422,10 @@ class ReAct_Agent:
             tools = tools,
             verbose = True, # explain all reasoning steps
             handle_parsing_errors=True, # continue on error 
-            max_iterations = 10 # try up to 3 times to find the best answer
+            max_iterations = 2 # try up to 3 times to find the best answer
         )
         print("ReAct agent executor set up")
         # Format the input correctly based on the prompt type
-        import pdb; pdb.set_trace()
 
         output = agent_executor.invoke({'input': prompt_template.format(input=query)})
         # Return the output in the same format as other agents
