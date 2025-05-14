@@ -332,17 +332,20 @@ def validate_llm_output(ret):
 def clean_up_output_graph_data(ret):
     if isinstance(ret['data'], nx.Graph):
         # Create a nx.graph copy, so I can compare two nx.graph later directly
-        ret_graph_copy = ret['data']
         jsonGraph = nx.node_link_data(ret['data'])
-        ret['data'] = jsonGraph
+        ret_graph_copy = json_graph.node_link_graph(jsonGraph)
 
     else:  # Convert the jsonGraph back to nx.graph, to check if they are identical later
         ret_graph_copy = json_graph.node_link_graph(ret['data'])
+        ret['data'] = json_graph.node_link_graph(ret['data'])
 
     return ret_graph_copy
 
 def clean_up_updated_graph_data(ret):
-    # check if ret['updated_graph'] exists 
+    """
+    Makes a copy of the updated_graph from JSON format to nx.Graph and stores the JSON graph in the 'updated_graph' key.
+    If the 'data' key doesn't contain a nx.Graph (when applicable), it will use the updated_graph instead.
+    """
     if 'updated_graph' not in ret:
         raise ValueError("updated_graph not found in ret")
 
@@ -351,7 +354,6 @@ def clean_up_updated_graph_data(ret):
         ret_graph_copy = ret['updated_graph']
         jsonGraph = nx.node_link_data(ret['updated_graph'])
         ret['updated_graph'] = jsonGraph
-
     else:  # Convert the jsonGraph back to nx.graph, to check if they are identical later
         jsonGraph = ret['updated_graph']
         ret_graph_copy = json_graph.node_link_graph(jsonGraph)

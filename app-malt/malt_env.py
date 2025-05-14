@@ -72,15 +72,17 @@ class BenchmarkEvaluator:
         # Mark as error so safety checker is not applied. Still pass on data to the verifier.
         ret_graph_copy = None
         if validate_llm_output(ret) and ret['type'] != 'error':
+            # First try getting the graph from 'updated_graph', then try 'data' if that fails.
+            # If ret['type'] is 'graph', and 'data' is not a graph, then use 'updated_graph'.
             try:
                 ret_graph_copy = clean_up_updated_graph_data(ret)
             except:
                 try:
                     ret_graph_copy = clean_up_output_graph_data(ret)
                 except:
-                    ret = {'type': "error", 'data': ret['data']} 
+                    ret = {'type': 'error', 'data': ret['data']} 
         else:
-            ret = {'type': "error", 'data': ret['data']}
+            ret = {'type': 'error', 'data': ret}
      
         # if ret is not error, then clean up the updated graph
         if ret['type'] != 'error':
@@ -169,6 +171,14 @@ class BenchmarkEvaluator:
             "Ground truth code": ground_truth_ret['reply'],
             "LLM code": ret['reply']
         }
+
+        # Model output not always JSON serializable (nx.Graph, generator objects, etc).
+        try:
+            model_output = json.dumps(ret['data'])
+        except:
+            model_output = str(ret['data'])
+        ret['data'] = model_output
+
         if ret['type'] == 'error':
             result_object["Error"] = ret['data']  # Execution error details
         elif ground_truth_ret['type'] == 'graph':
@@ -176,10 +186,9 @@ class BenchmarkEvaluator:
         else:
             # Graphs can't be JSON serialized, so convert to string 
             # (Sometimes LLM mismatches outputs a graph even though the type is not 'graph').
-            model_output = ret['data'] if not isinstance(ret['data'], nx.Graph) else str(ret['data'])
 
             result_object["Ground truth exec"] = ground_truth_ret['data']
-            result_object["LLM code exec"] = model_output
+            result_object["LLM code exec"] = ret['data']
             result_object["Error"] = {
                 "Ground truth": ground_truth_ret['data'],
                 "Model output": model_output
