@@ -80,7 +80,6 @@ async def create_debug_container(pod_name_prefix, timeout=3):
         "--attach=false",  # Run in detached mode
         "--", "sleep", "infinity"  # Keep container alive
     ]
-    # print(f"Creating debug container: {' '.join(debug_command)}")
     try:
         # Execute debug container creation
         process = await asyncio.create_subprocess_exec(
@@ -332,6 +331,3 @@ async def main():
     end_time = time.time()
     print(f"Time taken: {end_time - start_time:.2f} seconds")
     exit(0 if all_match else 1)
-
-if __name__ == "__main__":
-    asyncio.run(main())

@@ -27,11 +27,3 @@ def copy_yaml_to_new_folder(source_dir: str, target_dir: str):
 
 
 
-if __name__ == "__main__":
-    # Example usage
-    source = "/home/ubuntu/microservices-demo/kustomize/components/network-policies"
-    target = "/home/ubuntu/jiajun_benchmark/app-k8s/policies"
-    try:
-        copy_yaml_to_new_folder(source, target)
-    except Exception as e:
-        print(f"Error: {e}")

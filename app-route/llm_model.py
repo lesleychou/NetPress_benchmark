@@ -1,32 +1,23 @@
 import time
 import json
 import os
-import re
 import warnings
+import re
 from langchain._api import LangChainDeprecationWarning
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain 
 from dotenv import load_dotenv
-from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent, ReAct_PromptAgent
-from datetime import datetime
+import os
 from huggingface_hub import login
-# Login huggingface
-login(token="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")
-from vllm import LLM, SamplingParams
-# Load environ variables from .env, will not override existing environ variables
 load_dotenv()
+huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
+# Login Hugging Face
+login(token=huggingface_token)
+from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, ReAct_PromptAgent
+from datetime import datetime
+from vllm import LLM, SamplingParams
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
-# For Google Gemini
-import getpass
-from langchain_google_genai import ChatGoogleGenerativeAI
-# os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_API_KEY")
-import io
-from contextlib import redirect_stdout
-
-# if "GOOGLE_API_KEY" not in os.environ:
-#     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
-        
 # For Azure OpenAI GPT4
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain.chat_models import AzureChatOpenAI
@@ -40,6 +31,11 @@ os.environ["OPENAI_API_TYPE"] = "azure_ad"
 os.environ["OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
 # Set the ENDPOINT
 os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-sweden.openai.azure.com/"
+# ReAct agent
+from langchain import hub
+from langchain.agents import Tool, AgentExecutor, create_react_agent
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_experimental.tools.python.tool import PythonAstREPLTool
 
 class LLMModel:
     """
@@ -62,12 +58,9 @@ class LLMModel:
     @staticmethod
     def model_list():
         return [
-            "meta-llama/Meta-Llama-3.1-70B-Instruct",
             "Qwen/Qwen2.5-72B-Instruct",
-            "Microsoft/Phi4",
-            "google/gemma-7b",
-            "Qwen/QwQ-32B-Preview",
-            "GPT-Agent"
+            "GPT-Agent",
+            "ReAct_Agent"
         ]
 
     def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None,vllm: bool = True, prompt_type: str = "cot"):
@@ -83,7 +76,6 @@ class LLMModel:
     @staticmethod
     def extract_value(text, keyword):
         """Extract a specific value from the text based on a keyword."""
-        import re
         pattern = rf'"{keyword}"\s*:\s*"([^"]+)"'
         match = re.search(pattern, text)
         if match:
@@ -106,20 +98,16 @@ class LLMModel:
             return self._initialize_qwen()
         elif self.model_name == "GPT-Agent":
             return self._initialize_gpt_agent()
-        elif self.model_name == "all-hands/openhands-lm-32b-v0.1":
-            return self._initialize_openhands()
         elif self.model_name == "ReAct_Agent":
             return self._initialize_react()
         elif self.model_name == "YourModel":
             return self._initialize_YourModel()
         else:
             raise ValueError(f"Model '{self.model_name}' is not supported!")
+        
     def _initialize_react(self):
         return ReAct_Agent(prompt_type=self.prompt_type)
-    
-    def _initialize_openhands(self):
-        """Initialize the OpenHands model."""
-        return OpenHandsLLMModel(model_path=self.model_name, prompt_type=self.prompt_type)
+
     def _initialize_qwen(self):
         """Initialize the Qwen model."""
         if self.vllm:
@@ -150,114 +138,6 @@ class LLMModel:
         """Perform inference with the loaded model."""
         # Replace with actual inference logic
         return f"Generating response for: '{input_text}' using {self.model_name}"
-    
-class OpenHandsLLMModel:
-    def __init__(self, model_path="/home/ubuntu/openhands-lm-32b-v0.1", max_new_tokens=512, temperature=0.0, device="cuda", prompt_type="base"):
-        self.model_path = "/home/ubuntu/openhands-lm-32b-v0.1"
-        self.device = device
-        self.max_new_tokens = max_new_tokens
-        self.temperature = temperature
-        self.prompt_type = prompt_type
-        self._initialize_prompt_agent()
-        self._load_model()
-
-    def _initialize_prompt_agent(self):
-        if self.prompt_type == "base":
-            print("base")
-            self.prompt_agent = BasePromptAgent()
-        elif self.prompt_type == "cot":
-            print("cot")
-            self.prompt_agent = ZeroShot_CoT_PromptAgent()
-        elif self.prompt_type == "few_shot_basic":
-            print("few_shot_basic")
-            self.prompt_agent = FewShot_Basic_PromptAgent()
-        elif self.prompt_type == "few_shot_semantic":
-            print("few_shot_semantic")
-            self.prompt_agent = FewShot_Semantic_PromptAgent()
-        else:
-            raise ValueError(f"Unsupported prompt_type: {self.prompt_type}")
-
-    def _load_model(self):
-        self.llm = LLM(
-            model=self.model_path,  
-            device=self.device,
-            max_model_len=35904
-        )
-        self.sampling_params = SamplingParams(
-            temperature=self.temperature,
-            max_tokens=self.max_new_tokens
-        )
-
-    def _generate_prompt(self, file_content, log_content):
-        connectivitity_status = file_content + log_content
-        if self.prompt_type == "few_shot_semantic":
-            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
-            prompt = prompt.format(input=connectivitity_status)
-        elif self.prompt_type == "few_shot_basic":
-            prompt = self.prompt_agent.get_few_shot_prompt()
-            prompt = prompt.format(input=connectivitity_status)
-        elif self.prompt_type == "cot":
-            prompt = self.prompt_agent.generate_prompt()
-            prompt = PromptTemplate(
-                input_variables=["input"],
-                template=prompt + "Here is the connectivity status:\n{input}"
-            )
-            prompt = prompt.format(input=connectivitity_status)
-        else:  # base
-            prompt = PromptTemplate(
-                input_variables=["input"],
-                template=self.prompt_agent.prompt_prefix + "Here is the previous commands and the current pingall output:\n{input}"
-            )
-            prompt = prompt.format(input=connectivitity_status)
-        return prompt
-
-    def predict(self, log_content, file_path, json_path):
-        with open(file_path, 'r') as f:
-            file_content = f.read()
-
-        connectivitity_status = file_content + log_content
-        if self.prompt_type == "few_shot_semantic":
-            prompt = self.prompt_agent.get_few_shot_prompt(connectivitity_status)
-            prompt = prompt.format(input=connectivitity_status)
-        elif self.prompt_type == "few_shot_basic":
-            prompt = self.prompt_agent.get_few_shot_prompt()
-            prompt = prompt.format(input=connectivitity_status)
-        elif self.prompt_type == "cot":
-            prompt = self.prompt_agent.generate_prompt()
-            prompt = PromptTemplate(
-                input_variables=["input"],
-                template=prompt + "Here is the connectivity status:\n{input}"
-            )
-            prompt = prompt.format(input=connectivitity_status)
-        else:  # base
-            prompt = PromptTemplate(
-                input_variables=["input"],
-                template=self.prompt_agent.prompt_prefix + "Here is the previous commands and the current pingall output:\n{input}"
-            )
-            prompt = prompt.format(input=connectivitity_status)
-
-        start_time = time.time()
-        result = self.llm.generate([prompt], sampling_params=self.sampling_params)
-        content = result[0].outputs[0].text
-        print('LLM output:', content)
-        end_time = time.time()
-
-        machine = LLMModel.extract_value(content, "machine")
-        commands = LLMModel.extract_value(content, "command")
-        loss_rate = LLMModel.extract_number_before_percentage(log_content)
-
-        with open(json_path, "r") as f:
-            data = json.load(f)
-        data.append({"packet_loss": loss_rate, "elapsed_time": end_time - start_time})
-        with open(json_path, "w") as f:
-            json.dump(data, f, indent=4)
-
-        return machine, commands
-
-# a =OpenHandsLLMModel(model_path="/home/ubuntu/openhands-lm-32b-v0.1", max_new_tokens=512, temperature=0.0, device="cuda")
-# machine, commmands = a.predict("tenvist", "/home/ubuntu/jiajun_benchmark/app-route/result/GPT-Agent/agenttest/20250410-182938/cot_GPT/disable_routing/result_1.txt", "/home/ubuntu/jiajun_benchmark/app-route/result/GPT-Agent/agenttest/20250410-182938/cot_GPT/disable_routing/result_1.json")
-# print("machine:", machine)
-# print("commands:", commmands)
 
 class QwenModel:
     """
@@ -342,7 +222,6 @@ class QwenModel:
                 template=self.prompt_agent.prompt_prefix + "Here is the previous commands and the current pingall output:\n{input}"
             )
             prompt = prompt.format(input=connectivity_status)
-        # print("prompt:", prompt)
         start_time = time.time()
 
         model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
@@ -592,78 +471,6 @@ class GPTAgentModel:
         
         return machine, commands
 
-
-    
-class YourModel:
-    """
-    A specialized class for handling YourModel.
-
-    Parameters:
-    -----------
-    model_name : str
-        The name of the model.
-    max_new_tokens : int
-        The maximum number of new tokens to be generated.
-    temperature : float
-        The temperature for text generation.
-    device : str
-        The device for inference.
-    """
-
-    def __init__(self, model_name, max_new_tokens, temperature, device):
-        self.model_name = model_name
-        self.max_new_tokens = max_new_tokens
-        self.temperature = temperature
-        self.device = device
-        self._load_model()
-
-    def _load_model(self):
-        """Load the your model and tokenizer."""
-
-
-    def predict(self, log_content, file_path, json_path, **kwargs):
-        """Generate a response based on the log content and file content."""
-
-        with open(file_path, 'r') as f:
-            file_content = f.read()
-
-        prompt = LLMModel._generate_prompt(file_content, log_content)
-
-        start_time = time.time()
-
-        """Use your model to generate your reposnse here, results should be a str."""
-        content = "..."
-
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-
-        # Read LLM output
-        machine = LLMModel.extract_value(content, "machine")
-        commands = LLMModel.extract_value(content, "command")
-        loss_rate = LLMModel.extract_number_before_percentage(log_content)
-
-        with open(file_path, "a") as f:
-            f.write("Log Content:\n")
-            f.write(log_content + "\n\n")
-            f.write(f"Machine: {machine}\n")
-            f.write(f"Commands: {commands}\n")
-            f.write("=" * 50 + "\n")
-
-        with open(json_path, "r") as json_file:
-            data = json.load(json_file)
-
-        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
-
-        with open(json_path, "w") as json_file:
-            json.dump(data, json_file, indent=4)
-        
-        return machine, commands
-
-# ReAct agent
-from langchain import hub
-from langchain.agents import Tool, AgentExecutor, create_react_agent
-from langchain_community.tools import DuckDuckGoSearchRun
-from langchain_experimental.tools.python.tool import PythonAstREPLTool
 class ReAct_Agent:
     def __init__(self, prompt_type="react"):
         self.llm = AzureChatOpenAI(
@@ -794,4 +601,100 @@ class ReAct_Agent:
         with open(json_path, "w") as f:
             json.dump(data, f, indent=4)
 
+        return machine, commands
+
+class YourModel:
+    """
+    A specialized class for handling YourModel.
+
+    Parameters:
+    -----------
+    model_name : str
+        The name of the model.
+    max_new_tokens : int
+        The maximum number of new tokens to be generated.
+    temperature : float
+        The temperature for text generation.
+    device : str
+        The device for inference.
+    """
+
+    def __init__(self, prompt_type="base"):
+        self.prompt_type = prompt_type
+        self._load_model()
+
+    def _load_model(self):
+        """Load the your model and tokenizer."""
+
+
+        # Choose prompt agent based on the prompt type
+        if self.prompt_type == "base":
+            print("base")
+            self.prompt_agent = BasePromptAgent()
+        elif self.prompt_type == "cot":
+            print("cot")
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+        elif self.prompt_type == "few_shot_basic":
+            print("few_shot_basic")
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        elif self.prompt_type == "few_shot_semantic":
+            print("few_shot_semantic")
+            self.prompt_agent = FewShot_Semantic_PromptAgent()
+
+    def predict(self, log_content, file_path, json_path, **kwargs):
+        """Generate a response based on the log content and file content."""
+        with open(file_path, 'r') as f:
+            file_content = f.read()
+
+        connectivity_status = file_content + log_content
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivity_status)
+            prompt = prompt.format(input=connectivity_status)
+        elif self.prompt_type in ["few_shot_basic"]:
+            prompt = self.prompt_agent.get_few_shot_prompt()
+            prompt = prompt.format(input=connectivity_status)
+        elif self.prompt_type == "cot":
+            prompt = self.prompt_agent.generate_prompt()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt + "Here is the connectivity status:\n{input}"
+            )
+            prompt = prompt.format(input=connectivity_status)
+        else:
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + "Here is the previous commands and the current pingall output:\n{input}"
+            )
+            prompt = prompt.format(input=connectivity_status)
+
+        start_time = time.time()
+
+        """Generate a response, using the YourModel. Replace with actual inference logic"""
+        content = ""
+
+        print('LLM output:', content)
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        # Read LLM output
+        machine = LLMModel.extract_value(content, "machine")
+        commands = LLMModel.extract_value(content, "command")
+        loss_rate = LLMModel.extract_number_before_percentage(log_content)
+
+        with open(file_path, "a") as f:
+            f.write("Log Content:\n")
+            f.write(log_content + "\n\n")
+            f.write(f"Machine: {machine}\n")
+            f.write(f"Commands: {commands}\n")
+            f.write("=" * 50 + "\n")
+
+        with open(json_path, "r") as json_file:
+            data = json.load(json_file)
+
+        data.append({"packet_loss": loss_rate, "elapsed_time": elapsed_time})
+
+        with open(json_path, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+        
         return machine, commands

@@ -1,41 +1,21 @@
-import json
-import traceback
 from dotenv import load_dotenv
-import openai
 from vllm import LLM, SamplingParams
-from collections import Counter
 import os
-import networkx as nx
-import json
 import re
 import time
-import sys
-import numpy as np
-from langchain.prompts import PromptTemplate, FewShotPromptTemplate
+from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain 
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
 import warnings
 from langchain._api import LangChainDeprecationWarning
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import BitsAndBytesConfig
 import torch
 from huggingface_hub import login
-from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent, ReAct_PromptAgent
-
-# Login huggingface
-login(token="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")
-# Load environ variables from .env, will not override existing environ variables
+from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, ReAct_PromptAgent
 load_dotenv()
-
-# # For Google Gemini
-# import getpass
-# from langchain_google_genai import ChatGoogleGenerativeAI
-# os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_GEMINI_API_KEY")
-
-# if "GOOGLE_API_KEY" not in os.environ:
-#     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
-
-# For Azure OpenAI GPT4
+huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
+login(token=huggingface_token)
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain.chat_models import AzureChatOpenAI
 credential = DefaultAzureCredential()
@@ -48,8 +28,11 @@ os.environ["OPENAI_API_TYPE"] = "azure_ad"
 os.environ["OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
 # Set the ENDPOINT
 os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-sweden.openai.azure.com/"
-
-import re
+# ReAct agent
+from langchain import hub
+from langchain.agents import Tool, AgentExecutor, create_react_agent
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_experimental.tools.python.tool import PythonAstREPLTool
 
 def extract_command(text: str) -> str:
     """
@@ -96,9 +79,7 @@ class AzureGPT4Agent:
         elif prompt_type == "few_shot_basic":
             print("few_shot_basic")
             self.prompt_agent = FewShot_Basic_PromptAgent()
-        elif prompt_type == "few_shot_semantic":
-            print("few_shot_semantic")
-            self.prompt_agent = FewShot_Semantic_PromptAgent()
+
 
     def call_agent(self, txt_file_path):
         with open(txt_file_path, 'r') as txt_file:
@@ -155,8 +136,6 @@ class QwenModel:
             self.prompt_agent = BasePromptAgent()
         elif prompt_type == "few_shot_basic":
             self.prompt_agent = FewShot_Basic_PromptAgent()
-        elif prompt_type == "few_shot_semantic":
-            self.prompt_agent = FewShot_Semantic_PromptAgent()
         else:
             self.prompt_agent = ZeroShot_CoT_PromptAgent()
 
@@ -198,11 +177,6 @@ class QwenModel:
         print("model returned")
         return answer
     
-# ReAct agent
-from langchain import hub
-from langchain.agents import Tool, AgentExecutor, create_react_agent
-from langchain_community.tools import DuckDuckGoSearchRun
-from langchain_experimental.tools.python.tool import PythonAstREPLTool
 class ReAct_Agent:
     def __init__(self, prompt_type="react"):
         self.llm = AzureChatOpenAI(
@@ -322,11 +296,3 @@ class ReAct_Agent:
         print("Selected answer:", answer)
         print("model returned")
         return answer
-if __name__ == "__main__":
-    text = """```json
-                 {
-                      "command": "kubectl patch networkpolicy shippingservice -p '{\"spec\":{\"ingress\":[{\"from\":[{\"podSelector\":{\"matchLabels\":{\"app\":\"frontend\"}}}],\"ports\":[{\"port\":50051,\"protocol\":\"TCP\"}]}]}}'"
-      }
-       ```"""
-    output = extract_command(text)
-    print(output)

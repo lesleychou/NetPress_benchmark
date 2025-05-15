@@ -1,25 +1,7 @@
-import json
-import traceback
-from dotenv import load_dotenv
-import openai
-# import pandas as pd
-from collections import Counter
-# from prototxt_parser.prototxt import parse
-import os
-import networkx as nx
-# import jsonlines
-import json
-import re
-import time
-import sys
-import numpy as np
 from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
 import warnings
 from langchain._api import LangChainDeprecationWarning
-# from langchain_chroma import Chroma
-from langchain_core.example_selectors import SemanticSimilarityExampleSelector
-from langchain_openai import AzureOpenAIEmbeddings
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
 
@@ -105,28 +87,6 @@ class BasePromptAgent:
         self.prompt_prefix = self.generate_prompt()
 
     def generate_prompt(self):
-        # old_prompt = """
-        # We have a Google microservices architecture, the services and the desired communication relationships are as follows:
-        # - **User** and **loadgenerator** can access the **frontend** service via HTTP.
-        # - **frontend** communicates with the following services: **checkout**, **ad**, **recommendation**, **productcatalog**, **cart**, **shipping**, **currency**, **payment**, and **email**.
-        # - **checkout** further communicates with **payment**, **shipping**, **email**, and **currency**.
-        # - **recommendation** communicates with **productcatalog**.
-        # - **cart** communicates with the **Redis cache** for storing cart data.
-
-        # Your task is to inspect the current network policies and verify if they meet the described communication patterns.  
-        # Provide **one command at a time** to check connectivity or node accessibility.  
-        # Each time, I will give you the pevious commands and their corresponding outputs. Also the current connectivity status will be provided., I will give you the mismacthes between the expected and actual connectivity status.
-        # You should use this information to identify and fix misconfigurations step-by-step.  
-
-        # **Response format:**  
-        # Put the command **directly** between triple backticks.  
-        # You should use `kubectl patch` instead of `kubectl edit networkpolicy`.  
-
-        # You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' and .
-        # Restriction: You are not allowed to see the logs of the pods and Kubernetes events, and you are not allowed to use 'kubectl exec' or to see the logs of the pods and Kubernetes events.
-        # Also you should not change the existing correct network policies, you should maintain the originally correct connectivity status.
-        # """   
-
         prompt = """
         You need to behave like a network engineer who can find the root cause of network policy deployment issues and fix them in the microservices architecture.
         Our microservices architecture contains following services and desired communication relationships:
@@ -155,7 +115,6 @@ class BasePromptAgent:
         - Your new command should not change the existing correct network policies if not necessary; Please maintain the originally correct connectivity status.
         """
         return prompt
-
 
 class ZeroShot_CoT_PromptAgent:
     def __init__(self):
@@ -215,41 +174,6 @@ class FewShot_Basic_PromptAgent(ZeroShot_CoT_PromptAgent):
         )
         return few_shot_prompt
 
-
-# TODO: add few shot examples for knn
-class FewShot_Semantic_PromptAgent(ZeroShot_CoT_PromptAgent):
-    def __init__(self):
-        self.examples = EXAMPLE_LIST
-        self.cot_prompt_prefix = super().generate_prompt()
-
-    def get_few_shot_prompt(self, query):
-        embeddings = AzureOpenAIEmbeddings(
-            model="text-embedding-3-large"
-        )
-        example_selector = SemanticSimilarityExampleSelector.from_examples(
-            # This is the list of examples available to select from.
-            self.examples,
-            # This is the embedding class used to produce embeddings which are used to measure semantic similarity.
-            embeddings,
-            # This is the VectorStore class that is used to store the embeddings and do a similarity search over.
-            Chroma,
-            # This is the number of examples to produce.
-            k=1)
-
-        example_prompt = PromptTemplate(
-            input_variables=["question", "answer"],
-            template="Question: {question}\nAnswer: {answer}"
-        )
-        
-        few_shot_prompt = FewShotPromptTemplate(
-            examples=example_selector.select_examples({"question": query}),
-            example_prompt=example_prompt,
-            prefix=self.cot_prompt_prefix + "Here are some example question-answer pairs:\n",
-            suffix="prompt_suffix",
-            input_variables=["input"]
-        )
-        return few_shot_prompt
-
 class ReAct_PromptAgent(BasePromptAgent):
     def __init__(self):
         self.base_prompt_prefix = BasePromptAgent.generate_prompt(self)
@@ -267,11 +191,3 @@ class ReAct_PromptAgent(BasePromptAgent):
 
         return react_prompt
 
-# class FewShot_KNN_PromptAgent(ZeroShot_CoT_PromptAgent):
-#     def __init__(self):
-#         super().__init__()  # Initialize the parent class
-#         self.prompt_prefix = self.generate_prompt()
-
-#     def generate_prompt(self):
-#         few_shot_prompt_prefix = super().generate_prompt() + str(examples)
-#         return few_shot_prompt_prefix
