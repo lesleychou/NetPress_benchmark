@@ -3,9 +3,9 @@ cd ..
 cd app-malt
 
 # Define common parameters
-NUM_QUERIES=50
+NUM_QUERIES=500
 BENCHMARK_PATH="data/extra_50_benchmark_malt.jsonl"
-PROMPT_TYPE="cot"  # Define prompt_type
+PROMPT_TYPE="few_shot_semantic"  # Define prompt_type
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
 # PROMPT_TYPE="zero_shot_cot"  # Define prompt_type
 

@@ -55,7 +55,6 @@ def generate_config(root_dir, policy_names, num_queries):
         },
     }
 
-    # ------------------------------
     # Process single error: remove_ingress (target: min(num_queries, 14))
     target_remove = num_queries if num_queries < 14 else 14
     remove_ingress_entries = []
@@ -72,7 +71,6 @@ def generate_config(root_dir, policy_names, num_queries):
             "error_detail": [detail]
         })
 
-    # ------------------------------
     # Process single error: change_protocol (target: min(num_queries, 18))
     count = 0
     for policy in policy_names:
@@ -88,9 +86,7 @@ def generate_config(root_dir, policy_names, num_queries):
                         "error_detail": [detail]
                     })
 
-
-    # ------------------------------
-    # Process other single errors (change_port, add_egress)
+    # Process other single errors 
     for error in basic_errors:
         if error == "remove_ingress" or error == "change_protocol":
             continue  # already processed
@@ -120,7 +116,6 @@ def generate_config(root_dir, policy_names, num_queries):
                 "error_detail": [detail]
             })
 
-    # ------------------------------
     # Process combination errors: generate num_queries records for each combination
     for combo in error_combinations:
         for _ in range(num_queries):
@@ -163,25 +158,18 @@ def generate_config(root_dir, policy_names, num_queries):
                     policies.append(policy)
                 details.append(detail)
             
-
-            
             error_config.append({
                 "policies_to_inject": policies,
                 "inject_error_num": [len(combo)],
                 "error_detail": details
             })
 
-
-    # ------------------------------
     # Save result to file
     output_path = os.path.join(root_dir, "error_config.json")
     with open(output_path, "w") as f:
         json.dump({"details": error_config}, f, indent=2)
 
     return error_config
-
-
-
 
 def inject_config_errors_into_policies(
     policy_names: List[str],
@@ -326,7 +314,6 @@ def _inject_errors_with_detail(
         }
     }
 
-
 def _validate_required_fields(detail: Dict, required_fields: List[str]):
     """Validate required fields are present"""
     missing = [field for field in required_fields if field not in detail]
@@ -334,7 +321,3 @@ def _validate_required_fields(detail: Dict, required_fields: List[str]):
         raise ValueError(
             f"Error type {detail['type']} is missing required fields: {missing}"
         )
-
-# Example usage
-if __name__ == "__main__":
-    generate_config("/home/ubuntu/jiajun_benchmark/app-k8s", [ "network-policy-adservice", "network-policy-cartservice", "network-policy-checkoutservice", "network-policy-currencyservice", "network-policy-emailservice", "network-policy-frontend", "network-policy-loadgenerator", "network-policy-paymentservice", "network-policy-productcatalogservice", "network-policy-recommendationservice", "network-policy-redis", "network-policy-shippingservice" ], 30)

@@ -1,25 +1,7 @@
-import json
-import traceback
-from dotenv import load_dotenv
-import openai
-
-from collections import Counter
-
-import os
-import networkx as nx
-
-import json
-import re
-import time
-import sys
-import numpy as np
 from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 from langchain.chains import LLMChain 
 import warnings
 from langchain._api import LangChainDeprecationWarning
-from langchain_core.example_selectors import SemanticSimilarityExampleSelector
-from langchain_openai import AzureOpenAIEmbeddings
-from langchain.vectorstores import Chroma
 warnings.simplefilter("ignore", category=LangChainDeprecationWarning)
 
 EXAMPLE_LIST = [
@@ -117,7 +99,6 @@ EXAMPLE_LIST = [
 
 ]
 
-
 class BasePromptAgent:
     def __init__(self):
         self.prompt_prefix = self.generate_prompt()
@@ -175,7 +156,6 @@ class BasePromptAgent:
         """
         return prompt
 
-
 class ZeroShot_CoT_PromptAgent:
     def __init__(self):
         self.prompt_prefix = self.generate_prompt()
@@ -228,41 +208,6 @@ class FewShot_Basic_PromptAgent(ZeroShot_CoT_PromptAgent):
         )
         return few_shot_prompt
 
-
-# TODO: add few shot examples for knn
-class FewShot_Semantic_PromptAgent(ZeroShot_CoT_PromptAgent):
-    def __init__(self):
-        self.examples = EXAMPLE_LIST
-        self.cot_prompt_prefix = super().generate_prompt()
-
-    def get_few_shot_prompt(self, query):
-        embeddings = AzureOpenAIEmbeddings(
-            model="text-embedding-3-large"
-        )
-        example_selector = SemanticSimilarityExampleSelector.from_examples(
-            # This is the list of examples available to select from.
-            self.examples,
-            # This is the embedding class used to produce embeddings which are used to measure semantic similarity.
-            embeddings,
-            # This is the VectorStore class that is used to store the embeddings and do a similarity search over.
-            Chroma,
-            # This is the number of examples to produce.
-            k=1)
-
-        example_prompt = PromptTemplate(
-            input_variables=["question", "answer"],
-            template="Question: {question}\nAnswer: {answer}"
-        )
-        
-        few_shot_prompt = FewShotPromptTemplate(
-            examples=example_selector.select_examples({"question": query}),
-            example_prompt=example_prompt,
-            prefix=self.cot_prompt_prefix + "Here are some example question-answer pairs:\n",
-            suffix="prompt_suffix",
-            input_variables=["input"]
-        )
-        return few_shot_prompt
-
 class ReAct_PromptAgent(BasePromptAgent):
     def __init__(self):
         self.base_prompt_prefix = BasePromptAgent.generate_prompt(self)
@@ -278,11 +223,3 @@ class ReAct_PromptAgent(BasePromptAgent):
 
         return react_prompt
 
-# class FewShot_KNN_PromptAgent(ZeroShot_CoT_PromptAgent):
-#     def __init__(self):
-#         super().__init__()  # Initialize the parent class
-#         self.prompt_prefix = self.generate_prompt()
-
-#     def generate_prompt(self):
-#         few_shot_prompt_prefix = super().generate_prompt() + str(examples)
-#         return few_shot_prompt_prefix

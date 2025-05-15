@@ -1,7 +1,4 @@
-from mininet.log import setLogLevel, info, lg
-# Define a handler for the timeout
-def handler(signum, frame):
-    raise TimeoutError("Command execution timed out")
+from mininet.log import lg
 
 def safety_check(commands):
     if commands is None:
