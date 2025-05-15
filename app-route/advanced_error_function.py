@@ -289,9 +289,6 @@ def process_single_error(router, subnets, errortype, errordetail, unique_id):
             router.cmd(f'ip link set {interface} down')
         elif method == 3:
             router.cmd(f'ip link set {interface} mtu 68')
-        # elif method == 4:
-        #     loss_pct = errordetail.get("loss_pct", random.randint(50, 95))
-        #     router.cmd(f'tc qdisc add dev {interface} root netem loss {loss_pct}%')
         return
         
     elif errortype == "remove_ip":

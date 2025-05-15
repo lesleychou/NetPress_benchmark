@@ -5,8 +5,6 @@ import itertools
 import json
 from typing import List, Dict
 
-
-
 def generate_config(root_dir, policy_names, num_queries):
     # Define error types and combinations
     basic_errors = ["remove_ingress", "add_ingress", "change_port", "change_protocol", "add_egress"]
