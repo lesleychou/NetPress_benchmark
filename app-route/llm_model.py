@@ -14,7 +14,7 @@ load_dotenv()
 huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
 # Login Hugging Face
 login(token=huggingface_token)
-from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, FewShot_Semantic_PromptAgent, ReAct_PromptAgent
+from prompt_agent import BasePromptAgent, ZeroShot_CoT_PromptAgent, FewShot_Basic_PromptAgent, ReAct_PromptAgent
 from datetime import datetime
 from vllm import LLM, SamplingParams
 os.environ["LANGCHAIN_TRACING_V2"] = "false"

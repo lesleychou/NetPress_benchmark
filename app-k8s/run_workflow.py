@@ -18,13 +18,12 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
     parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o", "ReAct_Agent"], help='Choose the LLM agent')
     parser.add_argument('--num_queries', type=int, default=1, help='Number of queries to generate for each type')
-    parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/nemo_benchmark/app-k8s", help='Directory to save output JSONL file')
     parser.add_argument('--microservice_dir', type=str, default="/home/ubuntu/microservices-demo", help='Directory to google microservice demo')
     parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
     parser.add_argument('--config_gen', type=int, default=1, help='Choose whether to generate new config')
-    parser.add_argument('--prompt_type', type=str, default="base", choices=["few_shot_basic", "basic", "cot"], help='Choose the prompt type')
-    parser.add_argument('--agent_test', type=int, default=1, choices=[0, 1], help='Choose whether to run the agent test')
+    parser.add_argument('--prompt_type', type=str, default="base", choices=["few_shot_basic", "base", "cot"], help='Choose the prompt type')
+    parser.add_argument('--agent_test', type=int, default=0, choices=[0, 1], help='Choose whether to run the agent test')
     return parser.parse_args()
 
 # Deploy a Kubernetes cluster using Skaffold
@@ -192,15 +191,15 @@ async def run_config_error(args):
 # Run the agent test
 async def run_agent_test(args):
     args.root_dir = os.path.join(args.root_dir, "result", args.llm_agent_type, "agent_test", datetime.now().strftime("%Y%m%d_%H%M%S"))
-    for i in range(4):
+    for i in range(5):
         if i == 0:
-            # deploy_k8s_cluster(args.microservice_dir)
+            deploy_k8s_cluster(args.microservice_dir)
             args.prompt_type = "cot"
             args.config_gen = 1
             await run_config_error(args)
         elif i == 1:
             start_time = datetime.now()
-            # deploy_k8s_cluster(args.microservice_dir)
+            deploy_k8s_cluster(args.microservice_dir)
             args.config_gen = 0
             args.prompt_type = "few_shot_basic"
             await run_config_error(args)
@@ -208,7 +207,7 @@ async def run_agent_test(args):
             print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
         elif i == 2:
             start_time = datetime.now()
-            # deploy_k8s_cluster(args.microservice_dir)
+            deploy_k8s_cluster(args.microservice_dir)
             args.config_gen = 0
             args.prompt_type = "few_shot_basic"
             args.llm_agent_type = "GPT-4o"
@@ -217,7 +216,7 @@ async def run_agent_test(args):
             print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
         elif i == 3:
             start_time = datetime.now()
-            # deploy_k8s_cluster(args.microservice_dir)
+            deploy_k8s_cluster(args.microservice_dir)
             args.config_gen = 0
             args.prompt_type = "few_shot_basic"
             await run_config_error(args)
@@ -225,7 +224,7 @@ async def run_agent_test(args):
             print(f"Time taken for prompt_type {args.prompt_type}: {end_time - start_time}")
         elif i == 4:
             start_time = datetime.now()
-            # deploy_k8s_cluster(args.microservice_dir)
+            deploy_k8s_cluster(args.microservice_dir)
             args.config_gen = 0
             args.prompt_type = "base"
             args.llm_agent_type = "ReAct_Agent"
@@ -363,4 +362,5 @@ if __name__ == "__main__":
     if args.agent_test == 1:
         asyncio.run(run_agent_test(args))
     else:
+        args.llm_agent_type = "GPT-4o"
         asyncio.run(run_config_error(args))

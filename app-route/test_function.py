@@ -38,7 +38,9 @@ def static_benchmark_run_modify(args):
 
     # Generate or load the error configuration file
     file_path = os.path.join(args.root_dir, 'error_config.json')
-
+    if args.static_benchmark_generation == 1 and args.parallel == 0:
+        generate_config(file_path, num_errors_per_type=args.num_queries)
+        print(f"Process {unique_id}: Using error configuration file: {file_path}")
     print(f"Process {unique_id}: Running benchmark with prompt type {args.prompt_type}")
     print(file_path)
     # Load the error configuration
@@ -200,9 +202,9 @@ def run_benchmark_parallel(args):
 
     # Update the root directory in args
     args.root_dir = save_result_path
-
-    # # Generate the error configuration file
-    # generate_config(os.path.join(save_result_path, "error_config.json"), num_errors_per_type=args.num_queries)
+    args.llm_agent_type = "GPT-Agent"
+    # Generate the error configuration file
+    generate_config(os.path.join(save_result_path, "error_config.json"), num_errors_per_type=args.num_queries)
 
     # Define a wrapper function to run static benchmarks
     def run_static_benchmark(prompt_type, static_benchmark_generation,llm_agent_type):

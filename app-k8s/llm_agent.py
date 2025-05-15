@@ -79,9 +79,7 @@ class AzureGPT4Agent:
         elif prompt_type == "few_shot_basic":
             print("few_shot_basic")
             self.prompt_agent = FewShot_Basic_PromptAgent()
-        elif prompt_type == "few_shot_semantic":
-            print("few_shot_semantic")
-            self.prompt_agent = FewShot_Semantic_PromptAgent()
+
 
     def call_agent(self, txt_file_path):
         with open(txt_file_path, 'r') as txt_file:
@@ -138,8 +136,6 @@ class QwenModel:
             self.prompt_agent = BasePromptAgent()
         elif prompt_type == "few_shot_basic":
             self.prompt_agent = FewShot_Basic_PromptAgent()
-        elif prompt_type == "few_shot_semantic":
-            self.prompt_agent = FewShot_Semantic_PromptAgent()
         else:
             self.prompt_agent = ZeroShot_CoT_PromptAgent()
 

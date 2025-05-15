@@ -1,0 +1,96 @@
+LLM Command: 
+Output: 
+Mismatch Summary: Mismatch: frontend → adservice:9555 (Expected: True, Actual: False)
+
+LLM Command: kubectl patch networkpolicy frontend-network-policy -n frontend --type='json' -p='[{"op": "add", "path": "/spec/ingress/0/from/-", "value": {"podSelector": {"matchLabels": {"app": "adservice"}}}}, {"op": "add", "path": "/spec/ingress/0/ports/-", "value": {"port": 9555, "protocol": "TCP"}}]'
+Output: Error from server (NotFound): namespaces "frontend" not found
+
+Mismatch Summary: Mismatch: frontend → adservice:9555 (Expected: True, Actual: False)
+
+LLM Command: kubectl patch networkpolicy frontend-network-policy -n adservice --type='json' -p='[{"op": "add", "path": "/spec/ingress/0/from/-", "value": {"podSelector": {"matchLabels": {"app": "frontend"}}}}, {"op": "add", "path": "/spec/ingress/0/ports/-", "value": {"port": 9555, "protocol": "TCP"}}]'
+Output: Error from server (NotFound): namespaces "adservice" not found
+
+Mismatch Summary: Mismatch: frontend → adservice:9555 (Expected: True, Actual: False)
+
+LLM Command: kubectl get namespaces
+Output: NAME                 STATUS   AGE
+default              Active   13d
+kube-node-lease      Active   13d
+kube-public          Active   13d
+kube-system          Active   13d
+local-path-storage   Active   13d
+
+Mismatch Summary: Mismatch: frontend → adservice:9555 (Expected: True, Actual: False)
+
+LLM Command: kubectl get pods -n default -o wide
+Output: NAME                                     READY   STATUS    RESTARTS        AGE   IP            NODE                 NOMINATED NODE   READINESS GATES
+adservice-ffbbc6448-qkq9j                1/1     Running   2 (16h ago)     13d   10.244.0.11   kind-control-plane   <none>           <none>
+cartservice-7b84cc87bb-f2dn4             1/1     Running   2 (16h ago)     13d   10.244.0.8    kind-control-plane   <none>           <none>
+checkoutservice-79f8799cc9-btv7j         1/1     Running   2 (16h ago)     13d   10.244.0.7    kind-control-plane   <none>           <none>
+currencyservice-64d97ff655-w4kdn         1/1     Running   80 (112m ago)   13d   10.244.0.13   kind-control-plane   <none>           <none>
+emailservice-5fb47f749d-4wvbx            1/1     Running   2 (16h ago)     13d   10.244.0.4    kind-control-plane   <none>           <none>
+frontend-64bd9f678-4mztp                 1/1     Running   2 (16h ago)     13d   10.244.0.9    kind-control-plane   <none>           <none>
+loadgenerator-689ddd76c7-pj4gq           1/1     Running   1 (17h ago)     13d   10.244.0.5    kind-control-plane   <none>           <none>
+paymentservice-8594b8d4d8-ldftj          1/1     Running   71 (88m ago)    13d   10.244.0.12   kind-control-plane   <none>           <none>
+productcatalogservice-54b444b5d9-vf92h   1/1     Running   2 (16h ago)     13d   10.244.0.6    kind-control-plane   <none>           <none>
+recommendationservice-86bbb9c88f-qrrz7   1/1     Running   2 (16h ago)     13d   10.244.0.14   kind-control-plane   <none>           <none>
+redis-cart-9d787759d-gh8tm               1/1     Running   2 (16h ago)     13d   10.244.0.16   kind-control-plane   <none>           <none>
+shippingservice-844448ccd4-crd74         1/1     Running   2 (16h ago)     13d   10.244.0.15   kind-control-plane   <none>           <none>
+
+Mismatch Summary: Mismatch: frontend → adservice:9555 (Expected: True, Actual: False)
+
+LLM Command: bash
+kubectl patch networkpolicy frontend-network-policy -n default --type='json' -p='[{"op": "add", "path": "/spec/ingress/0/from/-", "value": {"podSelector": {"matchLabels": {"app": "adservice"}}}}, {"op": "add", "path": "/spec/ingress/0/ports/-", "value": {"port": 9555, "protocol": "TCP"}}]'
+Output: Error from server (NotFound): networkpolicies.networking.k8s.io "frontend-network-policy" not found
+
+Mismatch Summary: Mismatch: frontend → adservice:9555 (Expected: True, Actual: False)
+
+LLM Command: kubectl get networkpolicy -n default
+Output: NAME                    POD-SELECTOR                AGE
+adservice               app=adservice               13d
+cartservice             app=cartservice             13d
+checkoutservice         app=checkoutservice         13d
+currencyservice         app=currencyservice         13d
+emailservice            app=emailservice            13d
+frontend                app=frontend                13d
+loadgenerator           app=loadgenerator           13d
+paymentservice          app=paymentservice          13d
+productcatalogservice   app=productcatalogservice   13d
+recommendationservice   app=recommendationservice   13d
+redis-cart              app=redis-cart              13d
+shippingservice         app=shippingservice         13d
+
+Mismatch Summary: Mismatch: frontend → adservice:9555 (Expected: True, Actual: False)
+
+LLM Command: kubectl patch networkpolicy frontend -n default --type='json' -p='[{"op": "add", "path": "/spec/ingress/0/from/-", "value": {"podSelector": {"matchLabels": {"app": "adservice"}}}}, {"op": "add", "path": "/spec/ingress/0/ports/-", "value": {"port": 9555, "protocol": "TCP"}}]'
+Output: The request is invalid: the server rejected our request due to an error in our request
+
+Mismatch Summary: Mismatch: frontend → adservice:9555 (Expected: True, Actual: False)
+
+LLM Command: kubectl get networkpolicy frontend -n default -o yaml
+Output: apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"networking.k8s.io/v1","kind":"NetworkPolicy","metadata":{"annotations":{},"name":"frontend","namespace":"default"},"spec":{"egress":[{}],"ingress":[{}],"podSelector":{"matchLabels":{"app":"frontend"}},"policyTypes":["Ingress","Egress"]}}
+  creationTimestamp: "2025-05-01T18:24:50Z"
+  generation: 928
+  name: frontend
+  namespace: default
+  resourceVersion: "1523774"
+  uid: 0974a7ff-3d5d-4ffa-8171-0baa60fe9a18
+spec:
+  egress:
+  - {}
+  ingress:
+  - {}
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+  - Ingress
+  - Egress
+
+Mismatch Summary: Mismatch: frontend → adservice:9555 (Expected: True, Actual: False)
+

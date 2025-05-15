@@ -10,8 +10,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
     parser.add_argument('--llm_agent_type', type=str, default="ReAct_Agent",choices=["GPT-Agent","Qwen/Qwen2.5-72B-Instruct","ReAct_Agent"], help='Choose the LLM agent')#"GPT-Agent"
     parser.add_argument('--num_queries', type=int, default=1, help='Number of queries to generate for each type')
-    parser.add_argument('--complexity_level', type=str, default=['level1'], choices=['level1', 'level2'], help='Complexity level of queries to generate')
-    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/nemo_benchmark/app-route", help='Directory to save output JSONL file')
+    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/netpress_benchmark/app-route", help='Directory to save output JSONL file')
     parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
     parser.add_argument('--vllm', type=int, default=1, choices=[0, 1], help='Enable vllm if set to 1')
     parser.add_argument('--static', type=int, default=1, choices=[0, 1], help='If set to 1, use static benchmark')
