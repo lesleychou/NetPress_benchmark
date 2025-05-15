@@ -148,7 +148,7 @@ Before running the benchmarking script, you need to modify the parameters in run
 
 ### `ROOT_DIR`:
 - **Description**: The root directory where output logs and results will be stored. This path should point to the location on your machine where the benchmark results will be saved. Ensure that the specified directory exists and is accessible.
-- **Example**: `/home/ubuntu/nemo_benchmark/app-k8s`
+- **Example**: `/home/ubuntu/NetPress_benchmark/app-k8s`
 
 ### `MICROSERVICE_DIR`:
 - **Description**: The path to the microservices demo directory. This directory contains the demo application that will be used in conjunction with the benchmarking framework. Ensure you specify the correct path to the `microservices-demo` on your system.
@@ -158,7 +158,7 @@ Before running the benchmarking script, you need to modify the parameters in run
 - **Description**: The maximum number of iterations to run for each query. This helps control the number of times the agent will execute the query in each benchmark run. 
 - **Example**: `10` (Run each query up to 10 iterations)
 
-### `STATIC_GEN`:
+### `CONFIG_GEN`:
 - **Description**: This parameter controls whether a new configuration should be generated for each benchmark. Set it to `1` to generate a new configuration, or `0` to skip this step and use the existing configuration.
 - **Example**: `1` (Generate new configuration)
 
@@ -166,9 +166,12 @@ Before running the benchmarking script, you need to modify the parameters in run
 - **Description**: Specifies the type of prompt to use when interacting with the LLM. The prompt type affects the nature of the queries sent to the LLM. You can choose between basic and more advanced prompts, depending on your test requirements.
 - **Example**: `base` (Use the basic prompt type)
 
+### `AGENT_TEST`:
+- **Description**: Determines whether to test multiple LLM agents and prompt types. Set this to `1` if you want to test multiple agents and prompt variations. If you only wish to test a single LLM with one prompt type, set this to `0`.
+- **Example**: `0` (Test a single LLM agent with one prompt type)
 
 ### 3. Run the Benchmark
 After modifying the parameters, you can execute the benchmarking process by running the script with the following command:
 ```bash
-bash run_app_route.sh
+bash run_app_k8s.sh
 ```

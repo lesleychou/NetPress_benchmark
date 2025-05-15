@@ -4,7 +4,7 @@ cd ../app-k8s
 # Parameter settings
 LLM_AGENT_TYPE="Qwen/Qwen2.5-72B-Instruct"  # Type of LLM agent
 NUM_QUERIES=1                              # Number of queries to generate
-ROOT_DIR="/home/ubuntu/nemo_benchmark/app-k8s"  # Root directory for output
+ROOT_DIR="/home/ubuntu/NetPress_benchmark/app-k8s"  # Root directory for output
 MICROSERVICE_DIR="/home/ubuntu/microservices-demo"  # Directory for microservice demo
 MAX_ITERATION=10                           # Maximum number of iterations for a query
 CONFIG_GEN=1                               # Whether to generate a new configuration (1 = yes, 0 = no)

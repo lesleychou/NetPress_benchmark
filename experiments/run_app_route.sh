@@ -4,7 +4,7 @@ cd app-route  # Enter the application directory
 
 # Define common parameters
 NUM_QUERIES=1
-ROOT_DIR="/home/ubuntu/nemo_benchmark/app-route"
+ROOT_DIR="/home/ubuntu/NetPress_benchmark/app-route"
 MAX_ITERATION=10
 FULL_TEST=1
 STATICGEN=1
