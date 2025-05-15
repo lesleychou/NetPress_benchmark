@@ -624,10 +624,3 @@ def plot_spider_charts_for_agents(save_result_path, number_query):
     for cat, abbrev in zip(categories, category_labels):
         print(f"{abbrev}: {cat}")
 
-if __name__ == "__main__":
-    save_result_path = ""
-    plot_spider_charts_for_agents(save_result_path, 150)
-    
-    plot_summary_results(save_result_path, 10)
-    plot_summary_results(save_result_path, 50)
-    plot_summary_results(save_result_path, 150)

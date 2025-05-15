@@ -115,24 +115,6 @@ class BasePromptAgent:
             str: A JSON-formatted string with 'machine' and 'command' keys.
         """
 
-        # old_prompt = """
-        # You need to behave like a network engineer who find the root cause of the network issue, and fix it in a routing application.
-        # There is a mininet network, but there exists problems in the router r0, 
-        # so the network is not fully connected which means some nodes cannot ping other nodes successfully. 
-        # You need to fix it to make pingall result is all true.
-        # I recommend you to use some commands to know the information of the router and 
-        # the network so that you can know the cause of the problem. But if you think the information is enough 
-        # and you know the reason causing the problem, you have to give commands to fix it.
-        # And when you give the command, you should be careful because your command cannot cause the original connected edge to be disconnected.
-        # You need to give the output in JSON format, which contains the machine and its command.
-        # Please only give me the JSON format output, with key 'machine' and 'command' and their value. 
-        # You can only give one command at a time because I can only execute one command.
-        # You should be careful that the router's name may not be r0, but we may use prefix to identify the router's name, like p29_r0. And also the same for the host's name and the interface's name, so it can be p29_h1, p29_h2, p29_r0-eth1, p29_r0-eth2, etc. However, the prefix may not be p29, it can be other names like p30, p31, etc.
-        # Also please don't include 'sudo', and you are not allowed to use vtysh command, also you can not use ping command because the ping result is already given to you.
-        # Then I will give you the latest PingAll() feedback from the network, and also your 
-        # previous actions to the network and the actions' feedback to let you know more information.
-        # """
-
         prompt = """
         You need to behave like a network engineer who finds the root cause of network issues and fixes them in a routing application.
         

@@ -331,6 +331,3 @@ async def main():
     end_time = time.time()
     print(f"Time taken: {end_time - start_time:.2f} seconds")
     exit(0 if all_match else 1)
-
-if __name__ == "__main__":
-    asyncio.run(main())
