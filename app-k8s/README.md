@@ -175,3 +175,28 @@ After modifying the parameters, you can execute the benchmarking process by runn
 ```bash
 bash run_app_k8s.sh
 ```
+
+### Note: Azure GPT usage
+Obtain GPT resources and endpoints
+If you use Azure GPT on a Azure VM, need to use the following
+```python
+from azure.identity import AzureCliCredential
+# Get the Azure Credential
+credential = AzureCliCredential()
+```
+Otherwise, use the following
+```python
+from azure.identity import DefaultAzureCredential
+# Get the Azure Credential
+credential = DefaultAzureCredential()
+```
+And please update the below with your own endpoint information
+```python
+#Set the API type to `azure_ad`
+os.environ["OPENAI_API_TYPE"] = "azure_ad"
+# Set the API_KEY to the token from the Azure credential
+os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
+# Set the ENDPOINT
+os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
+
+```

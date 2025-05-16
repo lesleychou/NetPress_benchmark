@@ -37,11 +37,15 @@ from azure.identity import DefaultAzureCredential
 # Get the Azure Credential
 credential = DefaultAzureCredential()
 ```
-
-
-### Google Gemini
-Obtain the gemini API key: https://ai.google.dev/gemini-api/docs/api-key
-
+And please update the below with your own endpoint information
+```python
+#Set the API type to `azure_ad`
+os.environ["OPENAI_API_TYPE"] = "azure_ad"
+# Set the API_KEY to the token from the Azure credential
+os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
+# Set the ENDPOINT
+os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
+```
 
 
 

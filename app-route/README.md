@@ -79,8 +79,28 @@ To test your own model, follow these steps:
 
 Once these modifications are complete, your model will be ready to be integrated into the benchmark environment. You can then proceed with testing by following the instructions in the `Running Benchmark Tests` section.
 
-<!-- In React agent.
+
+### Note: Azure GPT usage
+Obtain GPT resources and endpoints
+If you use Azure GPT on a Azure VM, need to use the following
+```python
+from azure.identity import AzureCliCredential
+# Get the Azure Credential
+credential = AzureCliCredential()
 ```
-pip install -U duckduckgo-search
-pip install langchain_experimental
-``` -->
+Otherwise, use the following
+```python
+from azure.identity import DefaultAzureCredential
+# Get the Azure Credential
+credential = DefaultAzureCredential()
+```
+And please update the below with your own endpoint information
+```python
+#Set the API type to `azure_ad`
+os.environ["OPENAI_API_TYPE"] = "azure_ad"
+# Set the API_KEY to the token from the Azure credential
+os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
+# Set the ENDPOINT
+os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
+
+```
