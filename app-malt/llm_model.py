@@ -28,11 +28,10 @@ from modelscope import AutoModelForCausalLM, AutoTokenizer
 from modelscope import GenerationConfig
 import torch.multiprocessing as mp
 
-# Login huggingface
-login(token="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")
 # Load environ variables from .env, will not override existing environ variables
 load_dotenv()
-
+huggingface_token = os.getenv("HUGGINGFACE_TOKEN")
+login(token=huggingface_token)
 # For Azure OpenAI GPT4
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain.chat_models import AzureChatOpenAI
@@ -43,9 +42,9 @@ token_provider = get_bearer_token_provider(
 #Set the API type to `azure_ad`
 os.environ["OPENAI_API_TYPE"] = "azure_ad"
 # Set the API_KEY to the token from the Azure credential
-os.environ["OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
+os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
 # Set the ENDPOINT
-os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-sweden.openai.azure.com/"
+os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
 
 mp.set_start_method('spawn', force=True)
 

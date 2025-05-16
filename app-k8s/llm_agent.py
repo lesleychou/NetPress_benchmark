@@ -23,11 +23,13 @@ token_provider = get_bearer_token_provider(
         DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
     )
 #Set the API type to `azure_ad`
+#Set the API type to `azure_ad`
 os.environ["OPENAI_API_TYPE"] = "azure_ad"
 # Set the API_KEY to the token from the Azure credential
-os.environ["OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
+os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
 # Set the ENDPOINT
-os.environ["AZURE_OPENAI_ENDPOINT"] = "https://ztn-oai-sweden.openai.azure.com/"
+os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
+
 # ReAct agent
 from langchain import hub
 from langchain.agents import Tool, AgentExecutor, create_react_agent
