@@ -624,9 +624,3 @@ def plot_spider_charts_for_agents(save_result_path, number_query):
     for cat, abbrev in zip(categories, category_labels):
         print(f"{abbrev}: {cat}")
 
-if __name__ == "__main__":
-    plot_spider_charts_for_agents("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 150)
-    
-    plot_summary_results("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 10)
-    plot_summary_results("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 50)
-    plot_summary_results("/home/ubuntu/nemo_benchmark/app-k8s/result/GPT-4o/agent_test/20250426_045818", 150)

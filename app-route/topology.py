@@ -86,17 +86,3 @@ def initialize_network(num_hosts_per_subnet, num_switches, unique_id):
     print(f"✅ Process {unique_id}: Mininet started with OVSController on port {controller_port}")
     return subnets, topo, net, router
 
-
-
-
-if __name__ == "__main__":
-    setLogLevel("info")
-    os.makedirs("logs", exist_ok=True)
-
-    num_hosts = 3
-    num_switches = 3
-    unique_id = os.getpid()  # Use process ID to ensure uniqueness
-
-    subnets, topo, net, router = initialize_network(num_hosts, num_switches, unique_id)
-    CLI(net)
-    net.stop()
