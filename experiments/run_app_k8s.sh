@@ -2,14 +2,14 @@
 cd ../app-k8s
 
 # Parameter settings
-LLM_AGENT_TYPE="Qwen/Qwen2.5-72B-Instruct"  # Type of LLM agent
+LLM_AGENT_TYPE="GPT-4o"  # Type of LLM agent
 NUM_QUERIES=1                              # Number of queries to generate
 ROOT_DIR="/home/ubuntu/NetPress_benchmark/app-k8s"  # Root directory for output
 MICROSERVICE_DIR="/home/ubuntu/microservices-demo"  # Directory for microservice demo
 MAX_ITERATION=10                           # Maximum number of iterations for a query
 CONFIG_GEN=1                               # Whether to generate a new configuration (1 = yes, 0 = no)
-PROMPT_TYPE="base"                         # Type of prompt to use
-AGENT_TEST=1                               # Whether to test multiple agents (1 = yes, 0 = no)
+PROMPT_TYPE="few_shot_basic"                         # Type of prompt to use
+AGENT_TEST=0                               # Whether to test multiple agents (1 = yes, 0 = no)
 
 # Replace special characters in LLM_AGENT_TYPE to make it a valid file name
 SAFE_LLM_AGENT_TYPE=$(echo "$LLM_AGENT_TYPE" | tr '/' '_')
