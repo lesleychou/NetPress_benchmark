@@ -69,23 +69,18 @@ class BenchmarkEvaluator:
                 ret = {'type': "error", 'data': 'LLM output is not a valid JSON string.'}
         
         # Ensure LLM output is formatted correctly, and produces a valid graph.
-        # Mark as error so safety checker is not applied. Still pass on data to the verifier.
         ret_graph_copy = None
         if validate_llm_output(ret) and ret['type'] != 'error':
-            # First try getting the graph from 'updated_graph', then try 'data' if that fails.
-            # If ret['type'] is 'graph', and 'data' is not a graph, then use 'updated_graph'.
+            # Even if we cannot recover the graph for safety verification, still pass the output to the ground truth check.
             try:
                 ret_graph_copy = clean_up_updated_graph_data(ret)
             except:
-                try:
-                    ret_graph_copy = clean_up_output_graph_data(ret)
-                except:
-                    ret = {'type': 'error', 'data': ret['data']} 
+                ret = {'type': ret['type'], 'data': ret['data']} 
         else:
             ret = {'type': 'error', 'data': ret}
      
-        # if ret is not error, then clean up the updated graph
-        if ret['type'] != 'error':
+        # Clean up the updated graph (if it exists).
+        if ret_graph_copy is not None:
             verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
             verifier_results, verifier_error = verifier.evaluate_all()
         else:
@@ -172,23 +167,20 @@ class BenchmarkEvaluator:
             "LLM code": ret['reply']
         }
 
-        # Model output not always JSON serializable (nx.Graph, generator objects, etc).
+        # Model output not always JSON serializable (nx.Graph, generator objects, etc), so have to check.
+        model_output = ret['data']
         try:
-            model_output = json.dumps(ret['data'])
-        except:
+            json.dumps(model_output)
+        except (TypeError, OverflowError):
             model_output = str(ret['data'])
-        ret['data'] = model_output
 
         if ret['type'] == 'error':
-            result_object["Error"] = ret['data']  # Execution error details
+            result_object["Error"] = model_output  # Execution error details
         elif ground_truth_ret['type'] == 'graph':
             result_object["Error"] = "Two graphs are not identical."
         else:
-            # Graphs can't be JSON serialized, so convert to string 
-            # (Sometimes LLM mismatches outputs a graph even though the type is not 'graph').
-
             result_object["Ground truth exec"] = ground_truth_ret['data']
-            result_object["LLM code exec"] = ret['data']
+            result_object["LLM code exec"] = model_output
             result_object["Error"] = {
                 "Ground truth": ground_truth_ret['data'],
                 "Model output": model_output
@@ -232,15 +224,5 @@ class BenchmarkEvaluator:
             writer.write(result_object)
         
         return None
-    
-# # example usage for the class
-# if __name__ == "__main__":
-#     evaluator = BenchmarkEvaluator()
-#     query = "What is the capital of France?"
-#     golden_answer = """
-#                     def ground_truth_process_graph(G):
-#                         return {'type': 'text', 'data': 'Paris'}
-#                     """
-#     ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = evaluator.userQuery(query, golden_answer)
-#     evaluator.ground_truth_check(query, "capital_question", ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, os.path.join(OUTPUT_JSONL_DIR, OUTPUT_JSONL_FILE))
+
 
