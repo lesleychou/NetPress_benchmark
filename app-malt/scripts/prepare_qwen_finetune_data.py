@@ -116,7 +116,7 @@ def extract_finetune_data(input_path):
     return all_results, dict(subcategory_counts)
 
 
-def prepend_function_defintions(answer_code):
+def prepend_function_definitions(answer_code):
     """
     Include all solid_step_* function definitions before the answer code.
     """
@@ -182,8 +182,6 @@ def process_example(example):
         if not match:
             return example
         
-        # Add necessary function definitions to the answer.
-        # new_answer = strip_comments(prepend_function_defintions(answer))
         
         # Include the updated graph key in the answer (similar to evaluation format).
         pattern = r"return_object = {'type': ('.*'), 'data': (\S+)}"
@@ -193,6 +191,9 @@ def process_example(example):
 
         # Change answer to match the expected format of the MALT evaluation.
         new_answer = new_answer.replace("def ground_truth_process_graph", "def process_graph")
+
+        # Add necessary function definitions to the answer.
+        new_answer = strip_comments(prepend_function_definitions(answer))
         
         # Create a new example with the converted answer
         new_example = copy.deepcopy(example)
@@ -223,7 +224,7 @@ def process_example(example):
             return example
         
         # Add necessary function definitions to the answer.
-        new_answer = strip_comments(prepend_function_defintions(answer))
+        new_answer = strip_comments(prepend_function_definitions(answer))
         
         # Create a new example with the converted answer
         new_example = copy.deepcopy(example)
