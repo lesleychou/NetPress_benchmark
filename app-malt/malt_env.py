@@ -7,8 +7,10 @@ import pandas as pd
 from prototxt_parser.prototxt import parse
 from collections import Counter
 import os
-from solid_step_helper import getGraphData, clean_up_llm_output_func, check_list_equal, node_attributes_are_equal, clean_up_output_graph_data, clean_up_updated_graph_data, \
-    solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, solid_step_list_child_nodes, solid_step_update_node_value, solid_step_rank_child_nodes
+from solid_step_helper import getGraphData, clean_up_llm_output_func, check_list_equal, \
+    node_attributes_are_equal, clean_up_output_graph_data, clean_up_updated_graph_data, \
+    solid_step_add_node_to_graph, solid_step_counting_query, solid_step_remove_node_from_graph, \
+    solid_step_list_child_nodes, solid_step_update_node_value, solid_step_rank_child_nodes, validate_llm_output
 import networkx as nx
 import jsonlines
 import json
@@ -26,7 +28,7 @@ OUTPUT_JSONL_FILE = 'gpt4.jsonl'
 
 
 class BenchmarkEvaluator:
-    def __init__(self, graph_data, llm_model_type, prompt_type):
+    def __init__(self, graph_data, llm_model_type, prompt_type, model_path=None):
         self.graph_data = graph_data
         # Call the output code from LLM agents file
         if llm_model_type == "AzureGPT4Agent":
@@ -36,7 +38,7 @@ class BenchmarkEvaluator:
         elif llm_model_type == "Qwen2.5-72B-Instruct":
             self.llm_agent = QwenModel(prompt_type)
         elif llm_model_type == "QwenModel_finetuned":
-            self.llm_agent = QwenModel_finetuned(prompt_type)
+            self.llm_agent = QwenModel_finetuned(prompt_type, model_path=model_path)
         elif llm_model_type == "ReAct_Agent":
             self.llm_agent = ReAct_Agent(prompt_type='base')
 
@@ -53,7 +55,7 @@ class BenchmarkEvaluator:
 
         try:
             exec(llm_answer)
-            ret = eval("process_graph(G)")
+            ret = eval("process_graph(copy.deepcopy(G))")
         except Exception:
             ret = {'type': "error", 'data': traceback.format_exc()}
         
@@ -61,12 +63,24 @@ class BenchmarkEvaluator:
 
         # if the type of ret is string, turn it into a json object
         if isinstance(ret, str):
-            ret = json.loads(ret)
+            try:
+                ret = json.loads(ret)
+            except:
+                ret = {'type': "error", 'data': 'LLM output is not a valid JSON string.'}
         
+        # Ensure LLM output is formatted correctly, and produces a valid graph.
         ret_graph_copy = None
-        # if ret is not error, then clean up the updated graph
-        if ret['type'] != 'error':
-            ret_graph_copy = clean_up_updated_graph_data(ret)
+        if validate_llm_output(ret) and ret['type'] != 'error':
+            # Even if we cannot recover the graph for safety verification, still pass the output to the ground truth check.
+            try:
+                ret_graph_copy = clean_up_updated_graph_data(ret)
+            except:
+                ret = {'type': ret['type'], 'data': ret['data']} 
+        else:
+            ret = {'type': 'error', 'data': ret}
+     
+        # Clean up the updated graph (if it exists).
+        if ret_graph_copy is not None:
             verifier = SafetyChecker(ret_graph=ret_graph_copy, ret_list=None)
             verifier_results, verifier_error = verifier.evaluate_all()
         else:
@@ -79,7 +93,7 @@ class BenchmarkEvaluator:
 
         # ground truth answer should already be checked to ensure it can run successfully
         exec(goldenAnswerCode)
-        ground_truth_ret = eval("ground_truth_process_graph(G)")
+        ground_truth_ret = eval("ground_truth_process_graph(copy.deepcopy(G))")
         # if the type of ground_truth_ret is string, turn it into a json object
         if isinstance(ground_truth_ret, str):
             ground_truth_ret = json.loads(ground_truth_ret)
@@ -120,12 +134,12 @@ class BenchmarkEvaluator:
         
         # Define comparison strategies for different types
         comparison_strategies = {
-            'text': lambda: ground_truth_ret['data'] == ret['data'],
-            'list': lambda: check_list_equal(ground_truth_ret['data'], ret['data']),
-            'table': lambda: ground_truth_ret['data'] == ret['data'],
-            'graph': lambda: nx.is_isomorphic(
-                nx.Graph(ground_truth_ret['data']), 
-                nx.Graph(ret_graph_copy), 
+            'text': lambda gt, llm: gt == llm,
+            'list': lambda gt, llm: check_list_equal(gt, llm),
+            'table': lambda gt, llm: gt == llm,
+            'graph': lambda gt, llm: nx.is_isomorphic(
+                nx.Graph(gt), 
+                nx.Graph(llm), 
                 node_match=node_attributes_are_equal
             )
         }
@@ -133,8 +147,13 @@ class BenchmarkEvaluator:
         # Get the appropriate comparison strategy and execute it
         compare_func = comparison_strategies.get(ground_truth_ret['type'])
         if compare_func:
-            is_correct = compare_func()
-            log_result(is_correct)
+            # Sometimes LLM output doesn't fully match the expected data type, so we need this.
+            try:
+                is_correct = compare_func(ground_truth_ret['data'], ret['data'])
+                log_result(is_correct)
+            except:
+                print("Error during comparison: ", traceback.format_exc())
+                log_result(False)
 
     def result_log_wrong(self, current_query, task_label, verifier_results, verifier_error, gt_verifier_results, gt_verifier_error, query_run_latency, ground_truth_ret, ret, output_path):
         result_object = {
@@ -147,16 +166,24 @@ class BenchmarkEvaluator:
             "Ground truth code": ground_truth_ret['reply'],
             "LLM code": ret['reply']
         }
+
+        # Model output not always JSON serializable (nx.Graph, generator objects, etc), so have to check.
+        model_output = ret['data']
+        try:
+            json.dumps(model_output)
+        except (TypeError, OverflowError):
+            model_output = str(ret['data'])
+
         if ret['type'] == 'error':
-            result_object["Error"] = ret['data']  # Execution error details
+            result_object["Error"] = model_output  # Execution error details
         elif ground_truth_ret['type'] == 'graph':
             result_object["Error"] = "Two graphs are not identical."
         else:
             result_object["Ground truth exec"] = ground_truth_ret['data']
-            result_object["LLM code exec"] = ret['data']
+            result_object["LLM code exec"] = model_output
             result_object["Error"] = {
                 "Ground truth": ground_truth_ret['data'],
-                "Model output": ret['data']
+                "Model output": model_output
             }
 
         # Add verifier error details if verification failed
@@ -197,15 +224,5 @@ class BenchmarkEvaluator:
             writer.write(result_object)
         
         return None
-    
-# # example usage for the class
-# if __name__ == "__main__":
-#     evaluator = BenchmarkEvaluator()
-#     query = "What is the capital of France?"
-#     golden_answer = """
-#                     def ground_truth_process_graph(G):
-#                         return {'type': 'text', 'data': 'Paris'}
-#                     """
-#     ret, ground_truth_ret, verifier_results, query_run_latency, ret_graph_copy = evaluator.userQuery(query, golden_answer)
-#     evaluator.ground_truth_check(query, "capital_question", ret, ground_truth_ret, ret_graph_copy, verifier_results, query_run_latency, os.path.join(OUTPUT_JSONL_DIR, OUTPUT_JSONL_FILE))
+
 

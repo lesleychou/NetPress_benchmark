@@ -22,6 +22,7 @@ def parse_args():
                                                                                                                       'Qwen2.5-72B-Instruct', 
                                                                                                                       'QwenModel_finetuned', 
                                                                                                                       'ReAct_Agent'])
+    parser.add_argument('--model_path', type=str, default=None, help='Path to the model (for local models/finetunes).')
     parser.add_argument('--prompt_type', type=str, default='base', help='Choose the prompt type', choices=['base', 'cot', 'few_shot_basic', 'few_shot_semantic', 'few_shot_knn'])
     parser.add_argument('--num_queries', type=int, default=10, help='Number of queries to generate for each type')
     parser.add_argument('--complexity_level', nargs='+', default=['level1', 'level2'], help='Complexity level of queries to generate')
@@ -29,7 +30,8 @@ def parse_args():
     parser.add_argument('--output_file', type=str, default='gpt4o.jsonl', help='Name of the output JSONL file')
     parser.add_argument('--dynamic_benchmark_path', type=str, default='data/benchmark_malt.jsonl', help='Path to save dynamic dataset')
     parser.add_argument('--regenerate_query', action='store_true', help='Whether to regenerate benchmark queries or load existing ones')
-    parser.add_argument('--start_index', type=int, default=0, help='Start index of the queries to run')
+    parser.add_argument('--start_index', type=int, default=0, help='Start index of the queries to run (zero indexed).')
+    parser.add_argument('--end_index', type=int, default=None, help='End index of the queries to run (zero indexed).')
     return parser.parse_args()
 
 # anexample of how to use main.py with input args
@@ -40,6 +42,7 @@ def main(args):
 
     benchmark_config = {
         'llm_model_type': args.llm_model_type,
+        'model_path': args.model_path,
         'prompt_type': args.prompt_type,
         'num_queries': args.num_queries,
         'complexity_level': args.complexity_level,
@@ -47,7 +50,8 @@ def main(args):
         'output_file': args.output_file,
         'dynamic_benchmark_path': args.dynamic_benchmark_path,
         'regenerate_query': args.regenerate_query,
-        'start_index': args.start_index
+        'start_index': args.start_index,
+        'end_index': args.end_index
     }
 
     # create the output directory if it does not exist
@@ -78,7 +82,8 @@ def main(args):
             query_generator.load_queries_from_file(benchmark_path)
 
     # Load the evaluator
-    evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], prompt_type=benchmark_config['prompt_type'])
+    evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], 
+                                   prompt_type=benchmark_config['prompt_type'], model_path=benchmark_config['model_path'])
 
     # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
     benchmark_data = []
@@ -87,13 +92,14 @@ def main(args):
             benchmark_data.append(obj['messages'])
     
     # Skip to start_index if specified
-    start_idx = benchmark_config['start_index']
-    if start_idx > 0:
-        print(f"Starting from query index {start_idx} (skipping {start_idx} queries)")
-        if start_idx >= len(benchmark_data):
-            print(f"Warning: start_index {start_idx} is greater than or equal to the number of queries ({len(benchmark_data)})")
+    start_idx = max(benchmark_config['start_index'], 0)
+    end_idx = len(benchmark_data) if not isinstance(benchmark_config['end_index'], int) else min(benchmark_config['end_index'], len(benchmark_data))
+    if 0 < start_idx or end_idx < len(benchmark_data):
+        print(f"Starting from query index {start_idx} (skipping {start_idx} queries) and ending at {end_idx} (processing {end_idx - start_idx} queries).")
+        if start_idx >= end_idx:
+            print(f"Warning: start_index {start_idx} is greater than or equal to end index ({len(benchmark_data)})")
             return
-        benchmark_data = benchmark_data[start_idx:]
+        benchmark_data = benchmark_data[start_idx:end_idx]
     
     # for each object in the benchmark list, get the question and answer
     for i, obj in enumerate(benchmark_data):

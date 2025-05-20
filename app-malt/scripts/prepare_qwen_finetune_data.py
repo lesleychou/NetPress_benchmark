@@ -116,7 +116,7 @@ def extract_finetune_data(input_path):
     return all_results, dict(subcategory_counts)
 
 
-def prepend_function_defintions(answer_code):
+def prepend_function_definitions(answer_code):
     """
     Include all solid_step_* function definitions before the answer code.
     """
@@ -182,8 +182,18 @@ def process_example(example):
         if not match:
             return example
         
+        
+        # Include the updated graph key in the answer (similar to evaluation format).
+        pattern = r"return_object = {'type': ('.*'), 'data': (\S+)}"
+        ret_match = re.search(pattern, answer)
+        new_answer = re.sub(pattern, f"return_object = {{'type': {ret_match.group(1)}, 'data': {ret_match.group(2)}, \
+                            'updated_graph': nx.readwrite.json_graph.node_link_data(graph_data)}}", answer)
+
+        # Change answer to match the expected format of the MALT evaluation.
+        new_answer = new_answer.replace("def ground_truth_process_graph", "def process_graph")
+
         # Add necessary function definitions to the answer.
-        new_answer = strip_comments(prepend_function_defintions(answer))
+        new_answer = strip_comments(prepend_function_definitions(answer))
         
         # Create a new example with the converted answer
         new_example = copy.deepcopy(example)
@@ -214,7 +224,7 @@ def process_example(example):
             return example
         
         # Add necessary function definitions to the answer.
-        new_answer = strip_comments(prepend_function_defintions(answer))
+        new_answer = strip_comments(prepend_function_definitions(answer))
         
         # Create a new example with the converted answer
         new_example = copy.deepcopy(example)
@@ -256,7 +266,7 @@ if __name__ == "__main__":
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     # Preprocess query answers to also include function definitions for solid_step functions.
-    preprocessed_path = output_file.replace('.json', '_func_defs.json')
+    preprocessed_path = output_file.replace('.json', '_preproc.json')
     
     # Determine file type by extension
     if input_file.endswith('.jsonl'):
