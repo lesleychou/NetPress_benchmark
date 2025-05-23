@@ -109,9 +109,9 @@ def static_benchmark_run_modify(args):
             # Execute LLM command
             if iter != 0:
 
-                lg.output(f"Machine: {machine}")
-                lg.output(f'{iter} iteration')
-                lg.output(f"Command: {commands}")
+                lg.output(f"Machine: {machine}\n")
+                lg.output(f'Iteration: {iter}\n')
+                lg.output(f"Command: {commands}\n")
 
                 if safety_check(commands):
                     try:
@@ -120,10 +120,10 @@ def static_benchmark_run_modify(args):
                         print("LLM command executed successfully")
 
                     except TimeoutError as te:
-                        lg.output(f"Timeout occurred while executing command on {machine}: {te}")
+                        lg.output(f"Timeout occurred while executing command on {machine}: {te}\n")
                     except Exception as e:
                         # Handle exceptions, log the error, and continue
-                        lg.output(f"Error occurred while executing command on {machine}: {e}")
+                        lg.output(f"Error occurred while executing command on {machine}: {e}\n")
 
             # Ping all hosts in the network
             start_time = datetime.now()
@@ -138,10 +138,10 @@ def static_benchmark_run_modify(args):
             
             # Read log file content
             if iter != 0:
-                log_content = f"Machine: {machine}\n" + f"Command: {commands}\n" + command_output + f"Pingall result: {pingall}\n"
+                log_content = f"Machine: {machine}\n" + f"Command: {commands}\n" + f"Command Output: \n{command_output}\n" + f"Pingall result:\n{pingall}\n"
             else:
-                log_content = f"Pingall result: {pingall}\n"
-            print("log_content: ", log_content)
+                log_content = f"Pingall result:\n{pingall}\n"
+            print(f"\n**LOG CONTENT**\n{log_content}")
 
             # Get LLM response
             attempt = 0
@@ -150,7 +150,7 @@ def static_benchmark_run_modify(args):
                 print(f"Attempt {attempt}: Calling LLM...")
                 try:
                     machine, commands = llm_model.model.predict(log_content, result_file_path, json_path)
-                    print(f"Generated LLM command: {machine} {commands}")
+                    print(f"Generated LLM command ([machine] [command]): {machine} {commands}")
                     break
                 except Exception as e:
                     print(f"Error while generating LLM command: {e}")

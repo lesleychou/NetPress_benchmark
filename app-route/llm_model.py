@@ -76,8 +76,9 @@ class LLMModel:
     @staticmethod
     def extract_value(text, keyword):
         """Extract a specific value from the text based on a keyword."""
+        # Format: "keyword": "value" (case insensitive)
         pattern = rf'"{keyword}"\s*:\s*"([^"]+)"'
-        match = re.search(pattern, text)
+        match = re.search(pattern, text, flags=re.IGNORECASE)
         if match:
             return match.group(1)
         return None
@@ -233,6 +234,7 @@ class QwenModel:
             **kwargs
         )
         content = str(self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0])
+        print(f'\n**BEGIN (RAW) LLM OUTPUT**\n{"=" * 50}\n{content}\n{"=" * 50}\n**END (RAW) LLM OUTPUT**\n')
         
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -301,7 +303,9 @@ class Qwen_vllm_Model:
         self.llm = LLM(
             model=self.model_name,
             device=self.device,
-            quantization="gptq"  # Enable GPTQ 4-bit loading
+            quantization="gptq",  # Enable GPTQ 4-bit loading
+            gpu_memory_utilization=0.9,
+            tensor_parallel_size=4
         )
 
         self.sampling_params = SamplingParams(
@@ -339,7 +343,7 @@ class Qwen_vllm_Model:
         # Generate response using vllm
         result = self.llm.generate([prompt], sampling_params=self.sampling_params)
         content = result[0].outputs[0].text
-        print('LLM output:', content)
+        print(f'\n**BEGIN (RAW) LLM OUTPUT**\n{"=" * 50}\n{content}\n{"=" * 50}\n**END (RAW) LLM OUTPUT**\n')
 
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -447,7 +451,7 @@ class GPTAgentModel:
         start_time = time.time()
         chain = LLMChain(llm=self.client, prompt=prompt)
         content = chain.run(input_data)
-        print("LLM output:", content)
+        print(f'\n**BEGIN (RAW) LLM OUTPUT**\n{"=" * 50}\n{content}\n{"=" * 50}\n**END (RAW) LLM OUTPUT**\n')
         # Read LLM output
         machine = LLMModel.extract_value(content, "machine")
         commands = LLMModel.extract_value(content, "command")
