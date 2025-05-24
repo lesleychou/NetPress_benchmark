@@ -5,7 +5,7 @@ cd app-route  # Enter the application directory
 # Define common parameters
 NUM_QUERIES=1
 ROOT_DIR="/home/ubuntu/esw_benchmark/app-route/result"
-BENCHMARK_PATH="error_config.json"
+BENCHMARK_PATH="${ROOT_DIR}/error_config.json"
 MAX_ITERATION=10
 FULL_TEST=1
 STATICGEN=1
