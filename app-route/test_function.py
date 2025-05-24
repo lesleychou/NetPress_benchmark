@@ -23,6 +23,7 @@ def static_benchmark_run_modify(args):
     start_time_2 = datetime.now()
     # Get the unique process ID to distinguish between different instances
     unique_id = os.getpid()
+    original_root_dir = args.root_dir
     if args.parallel == 1:
         args.root_dir = os.path.join(args.root_dir)
         if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
@@ -32,12 +33,12 @@ def static_benchmark_run_modify(args):
         else:      
             result_path = os.path.join(args.root_dir, args.prompt_type+"_GPT")
     else:
-        args.root_dir = os.path.join(args.root_dir, 'result', args.llm_agent_type, datetime.now().strftime("%Y%m%d-%H%M%S"))
+        args.root_dir = os.path.join(args.root_dir, args.llm_agent_type, datetime.now().strftime("%Y%m%d-%H%M%S"))
         result_path = args.root_dir
     os.makedirs(args.root_dir, exist_ok=True)
 
     # Generate or load the error configuration file
-    file_path = os.path.join(args.root_dir, 'error_config.json')
+    file_path = os.path.join(original_root_dir, args.benchmark_path)
     if args.static_benchmark_generation == 1 and args.parallel == 0:
         generate_config(file_path, num_errors_per_type=args.num_queries)
         print(f"Process {unique_id}: Using error configuration file: {file_path}")
