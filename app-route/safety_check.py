@@ -3,6 +3,9 @@ from mininet.log import lg
 def safety_check(commands):
     if commands is None:
         return True
+    if 'sudo' in commands:
+        lg.output("Command containing 'sudo' is not allowed.")
+        return False
     if 'tcpdump' in commands:
         lg.output("Command containing 'tcpdump' is not allowed.")
         return False
