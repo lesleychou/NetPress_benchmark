@@ -52,7 +52,7 @@ def static_benchmark_run_modify(args):
     print(f"Number of queries: {len(queries)}")
 
     # Initialize the LLM model
-    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm, prompt_type=args.prompt_type)
+    llm_model = LLMModel(model=args.llm_agent_type, vllm=args.vllm, prompt_type=args.prompt_type, num_gpus=args.num_gpus)
     print("agenttype", args.llm_agent_type)
     if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
         result_path = os.path.join(args.root_dir, args.prompt_type+"_Qwen")

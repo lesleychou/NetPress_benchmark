@@ -63,7 +63,7 @@ class LLMModel:
             "ReAct_Agent"
         ]
 
-    def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None,vllm: bool = True, prompt_type: str = "cot"):
+    def __init__(self, model: str, max_new_tokens: int = 256, temperature: float = 0.1, device: str = "cuda", api_key: str = None, vllm: bool = True, prompt_type: str = "cot", num_gpus: int = 1):
         self.model_name = model
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
@@ -71,6 +71,7 @@ class LLMModel:
         self.api_key = api_key
         self.vllm = vllm
         self.prompt_type=prompt_type
+        self.num_gpus = num_gpus
         self.model = self._create_model()
 
     @staticmethod
@@ -116,7 +117,8 @@ class LLMModel:
                 model_name="Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4",
                 max_new_tokens=self.max_new_tokens,
                 temperature=self.temperature,
-                device=self.device
+                device=self.device,
+                num_gpus=self.num_gpus
             )
         else:
             return QwenModel(
@@ -277,11 +279,12 @@ class Qwen_vllm_Model:
         The device for inference.
     """
 
-    def __init__(self, model_name, max_new_tokens, temperature, device="cuda", prompt_type="base"):
+    def __init__(self, model_name, max_new_tokens, temperature, device="cuda", prompt_type="base", num_gpus=1):
         self.model_name = model_name
         self.max_new_tokens = max_new_tokens
         self.temperature = temperature
         self.device = device
+        self.num_gpus = num_gpus
         self._load_model()
         self.prompt_type = prompt_type
         if prompt_type == "base":
@@ -304,8 +307,8 @@ class Qwen_vllm_Model:
             model=self.model_name,
             device=self.device,
             quantization="gptq",  # Enable GPTQ 4-bit loading
-            gpu_memory_utilization=0.9,
-            tensor_parallel_size=4
+            gpu_memory_utilization=0.95,
+            tensor_parallel_size=self.num_gpus,
         )
 
         self.sampling_params = SamplingParams(

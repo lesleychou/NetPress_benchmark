@@ -14,6 +14,7 @@ def parse_args():
                         help='The directory where all output files will be saved. The directory will be created if it does not exist.')
     parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
     parser.add_argument('--vllm', type=int, default=1, choices=[0, 1], help='Enable vllm if set to 1')
+    parser.add_argument('--num_gpus', type=int, default=1, help='The number of GPUs to use for tensor parallelism (VLLM).')
     parser.add_argument('--benchmark_path', type=str, default='error_config.json', help='Where to save the generated benchmark relative to root_dir (or where to look for it).')
     parser.add_argument('--static_benchmark_generation', type=int, default=0, choices=[0, 1], help='If set to 1, generate static benchmark')
     parser.add_argument('--prompt_type', type=str, default="base", help='Path to the error configuration file')
