@@ -4,13 +4,15 @@ cd app-route  # Enter the application directory
 
 # Define common parameters
 NUM_QUERIES=1
-ROOT_DIR="/home/ubuntu/NetPress_benchmark/app-route"
+ROOT_DIR="/home/ubuntu/esw_benchmark/app-route/result"
+BENCHMARK_PATH="${ROOT_DIR}/error_config.json"
 MAX_ITERATION=10
 FULL_TEST=1
 STATICGEN=1
 PROMPT_TYPE="base"
 # Define the model and parallel mode parameters
 MODEL="Qwen/Qwen2.5-72B-Instruct"  # Replace with the model you want to use
+NUM_GPUS=4  # Number of GPUs to use for tensor parallelism. Only relevant for models running locally with VLLM.
 PARALLEL=0  # Default to parallel execution. Set to 0 for single process.
 
 # Create a log file with a timestamp to avoid overwriting
@@ -36,7 +38,9 @@ run_benchmark() {
         --root_dir "$ROOT_DIR" \
         --max_iteration $MAX_ITERATION \
         --static_benchmark_generation $STATICGEN \
+        --benchmark_path "$BENCHMARK_PATH" \
         --prompt_type "$PROMPT_TYPE" \
+        --num_gpus $NUM_GPUS \
         --parallel "$PARALLEL" >> "$LOG_FILE" 2>&1 &
 }
 

@@ -10,12 +10,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
     parser.add_argument('--llm_agent_type', type=str, default="ReAct_Agent",choices=["GPT-Agent","Qwen/Qwen2.5-72B-Instruct","ReAct_Agent"], help='Choose the LLM agent')#"GPT-Agent"
     parser.add_argument('--num_queries', type=int, default=1, help='Number of queries to generate for each type')
-    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/netpress_benchmark/app-route", help='Directory to save output JSONL file')
+    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/netpress_benchmark/app-route/result", 
+                        help='The directory where all output files will be saved. The directory will be created if it does not exist.')
     parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
     parser.add_argument('--vllm', type=int, default=1, choices=[0, 1], help='Enable vllm if set to 1')
-    parser.add_argument('--static', type=int, default=1, choices=[0, 1], help='If set to 1, use static benchmark')
+    parser.add_argument('--num_gpus', type=int, default=1, help='The number of GPUs to use for tensor parallelism (VLLM).')
+    parser.add_argument('--benchmark_path', type=str, default='error_config.json', help='Where to save the generated benchmark relative to root_dir (or where to look for it).')
     parser.add_argument('--static_benchmark_generation', type=int, default=0, choices=[0, 1], help='If set to 1, generate static benchmark')
-    parser.add_argument('--agent_test', type=int, default=1, choices=[0, 1], help='If set to 1, run agent test')
     parser.add_argument('--prompt_type', type=str, default="base", help='Path to the error configuration file')
     parser.add_argument('--parallel', type=int, default=1, choices=[0, 1], help='If set to 1, run in parallel')
     return parser.parse_args()
