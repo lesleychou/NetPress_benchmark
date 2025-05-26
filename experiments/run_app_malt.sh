@@ -9,6 +9,8 @@ PROMPT_TYPE="few_shot_semantic"  # Define prompt_type
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
 # PROMPT_TYPE="zero_shot_cot"  # Define prompt_type
 
+export HUGGINGFACE_TOKEN="[YOUR_TOKEN_HERE]"  # Set your Hugging Face token here
+
 # Function to run experiment for a model
 run_experiment() {
     local llm_model_type=$1

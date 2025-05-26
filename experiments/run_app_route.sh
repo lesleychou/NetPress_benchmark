@@ -4,7 +4,7 @@ cd app-route  # Enter the application directory
 
 # Define common parameters
 NUM_QUERIES=1
-ROOT_DIR="/home/ubuntu/esw_benchmark/app-route/result"
+ROOT_DIR="/home/ubuntu/NetPress_benchmark/app-route/results"
 BENCHMARK_PATH="${ROOT_DIR}/error_config.json"
 MAX_ITERATION=10
 FULL_TEST=1
@@ -16,7 +16,10 @@ NUM_GPUS=4  # Number of GPUs to use for tensor parallelism. Only relevant for mo
 PARALLEL=0  # Default to parallel execution. Set to 0 for single process.
 
 # Create a log file with a timestamp to avoid overwriting
-LOG_FILE="experiment_$(date +'%Y-%m-%d_%H-%M-%S').log"
+mkdir -p "$ROOT_DIR"
+LOG_FILE="${ROOT_DIR}/experiment_$(date +'%Y-%m-%d_%H-%M-%S').log"
+
+export HUGGINGFACE_TOKEN="[YOUR_TOKEN_HERE]"  # Set your Hugging Face token here
 
 # Function to clean up existing controller processes
 cleanup_controllers() {

@@ -5,7 +5,7 @@ import itertools
 import json
 from typing import List, Dict
 
-def generate_config(root_dir, policy_names, num_queries):
+def generate_config(config_path, policy_names, num_queries):
     # Define error types and combinations
     basic_errors = ["remove_ingress", "add_ingress", "change_port", "change_protocol", "add_egress"]
     error_combinations = list(itertools.combinations(basic_errors, 2))
@@ -163,8 +163,7 @@ def generate_config(root_dir, policy_names, num_queries):
             })
 
     # Save result to file
-    output_path = os.path.join(root_dir, "error_config.json")
-    with open(output_path, "w") as f:
+    with open(config_path, "w") as f:
         json.dump({"details": error_config}, f, indent=2)
 
     return error_config

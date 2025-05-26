@@ -18,10 +18,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
     parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o", "ReAct_Agent"], help='Choose the LLM agent')
     parser.add_argument('--num_queries', type=int, default=1, help='Number of queries to generate for each type')
-    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/nemo_benchmark/app-k8s", help='Directory to save output JSONL file')
+    parser.add_argument('--root_dir', type=str, default="/home/ubuntu/NetPress_benchmark/app-k8s/results", help='Directory to save output files.')
     parser.add_argument('--microservice_dir', type=str, default="/home/ubuntu/microservices-demo", help='Directory to google microservice demo')
     parser.add_argument('--max_iteration', type=int, default=10, help='Choose maximum trials for a query')
     parser.add_argument('--config_gen', type=int, default=1, help='Choose whether to generate new config')
+    parser.add_argument('--benchmark_path', type=str, default="/home/ubuntu/NetPress_benchmark/app-k8s/results/error_config.json",
+                         help='Where to save the generated benchmark (config), or where to find it if config_gen is 0.')
+    parser.add_argument('--num_gpus', type=int, default=1, help='Number of GPUs to use for tensor parallelism (VLLM). Only applies to locally run models.')
     parser.add_argument('--prompt_type', type=str, default="base", choices=["few_shot_basic", "base", "cot"], help='Choose the prompt type')
     parser.add_argument('--agent_test', type=int, default=0, choices=[0, 1], help='Choose whether to run the agent test')
     return parser.parse_args()
@@ -54,7 +57,7 @@ async def run_correctness_check_async(expected_results, debug_container_mapping)
 # Run the configuration error test
 async def run_config_error(args):
     starttime = datetime.now()
-    llm = LLMAgent(llm_agent_type=args.llm_agent_type, prompt_type=args.prompt_type)
+    llm = LLMAgent(llm_agent_type=args.llm_agent_type, prompt_type=args.prompt_type, num_gpus=args.num_gpus)
     policy_names = [
         "network-policy-adservice", "network-policy-cartservice", "network-policy-checkoutservice",
         "network-policy-currencyservice", "network-policy-emailservice", "network-policy-frontend",
@@ -66,20 +69,21 @@ async def run_config_error(args):
         "loadgenerator", "paymentservice", "productcatalogservice", "recommendationservice", "redis-cart", "shippingservice"
     ]
 
-    # Create the result directory
+    # Create the result directory. Timestamp directory already included when running the agent test.
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S") if args.agent_test == 0 else ""
     if args.llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
-        result_dir = os.path.join(args.root_dir, "Qwen_"+args.prompt_type)
+        result_dir = os.path.join(args.root_dir, "Qwen_" + args.prompt_type, timestamp)
     elif args.llm_agent_type == "GPT-4o":
-        result_dir = os.path.join(args.root_dir, "GPT-4o_"+args.prompt_type)
+        result_dir = os.path.join(args.root_dir, "GPT-4o_" + args.prompt_type, timestamp)
     elif args.llm_agent_type == "ReAct_Agent":
-        result_dir = os.path.join(args.root_dir, "ReAct_Agent")
+        result_dir = os.path.join(args.root_dir, "ReAct_Agent", timestamp)
 
     os.makedirs(result_dir, exist_ok=True)
     if args.config_gen == 1:
-        generate_config(args.root_dir, policy_names, args.num_queries)
+        generate_config(args.benchmark_path, policy_names, args.num_queries)
 
     # Read the error configuration
-    error_config_path = os.path.join(args.root_dir, "error_config.json")
+    error_config_path = args.benchmark_path
 
     with open(error_config_path, 'r') as error_config_file:
         error_config = json.load(error_config_file)
@@ -156,6 +160,9 @@ async def run_config_error(args):
 
             if llm_command is None:
                 print("Error: llm_command is None")
+                continue
+            if "sudo" in llm_command:
+                print("Error: LLM command contains 'sudo'")
                 continue
             if "kubectl apply" in llm_command:
                 print("Error: LLM command contains 'kubectl apply -f'")
@@ -362,5 +369,4 @@ if __name__ == "__main__":
     if args.agent_test == 1:
         asyncio.run(run_agent_test(args))
     else:
-        args.llm_agent_type = "GPT-4o"
         asyncio.run(run_config_error(args))

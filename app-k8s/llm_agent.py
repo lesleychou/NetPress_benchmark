@@ -3,6 +3,7 @@ from vllm import LLM, SamplingParams
 import os
 import re
 import time
+import multiprocessing as mp
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain 
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
@@ -26,9 +27,9 @@ token_provider = get_bearer_token_provider(
 #Set the API type to `azure_ad`
 os.environ["OPENAI_API_TYPE"] = "azure_ad"
 # Set the API_KEY to the token from the Azure credential
-os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
+os.environ["OPENAI_API_KEY"] = credential.get_token("please update").token
 # Set the ENDPOINT
-os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
+os.environ["AZURE_OPENAI_ENDPOINT"] = "please update"
 
 # ReAct agent
 from langchain import hub
@@ -52,10 +53,10 @@ def extract_command(text: str) -> str:
     return ""
 
 class LLMAgent:
-    def __init__(self, llm_agent_type, prompt_type="base"):
+    def __init__(self, llm_agent_type, prompt_type="base", num_gpus=1):
         # Call the output code from LLM agents file
         if llm_agent_type == "Qwen/Qwen2.5-72B-Instruct":
-            self.llm_agent = QwenModel(prompt_type=prompt_type)
+            self.llm_agent = QwenModel(prompt_type=prompt_type, num_gpus=num_gpus)
         if llm_agent_type == "GPT-4o":
             self.llm_agent = AzureGPT4Agent(prompt_type=prompt_type)
         if llm_agent_type == "ReAct_Agent":
@@ -111,22 +112,24 @@ class AzureGPT4Agent:
                 template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
             )
             input_data = {"input": connectivity_status}
-        print("prompt:", prompt)
+        print("prompt:", prompt.format(input=connectivity_status))
         chain = LLMChain(llm=self.llm, prompt=prompt)
         response = chain.run(input_data)
         response = extract_command(response)
         return response
 
 class QwenModel:
-    def __init__(self, prompt_type="base"):
+    def __init__(self, prompt_type="base", num_gpus=1):
         self.prompt_type = prompt_type
         self.model_name = "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
-        self.quantization_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16)
+        os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.llm = LLM(
             model=self.model_name,
             device=self.device,
-            quantization="gptq"  # Enable GPTQ 4-bit loading
+            quantization="gptq",  # Enable GPTQ 4-bit loading
+            gpu_memory_utilization=0.95,
+            tensor_parallel_size=num_gpus
         )
 
         self.sampling_params = SamplingParams(
