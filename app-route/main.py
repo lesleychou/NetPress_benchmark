@@ -8,7 +8,7 @@ from multiprocessing import Process
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default="ReAct_Agent",choices=["GPT-Agent","Qwen/Qwen2.5-72B-Instruct","ReAct_Agent"], help='Choose the LLM agent')#"GPT-Agent"
+    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", help='Choose the LLM agent')# choices=["GPT-Agent","Qwen/Qwen2.5-72B-Instruct","ReAct_Agent"]
     parser.add_argument('--num_queries', type=int, default=1, help='Number of queries to generate for each type')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/NetPress_benchmark/app-route/results", 
                         help='The directory where all output files will be saved. The directory will be created if it does not exist.')

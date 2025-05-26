@@ -61,6 +61,10 @@ class LLMAgent:
             self.llm_agent = AzureGPT4Agent(prompt_type=prompt_type)
         if llm_agent_type == "ReAct_Agent":
             self.llm_agent = ReAct_Agent(prompt_type=prompt_type)
+        if llm_agent_type == "YourModel":
+            # ====== TODO: Replace with your own model initialization if needed ======
+            self.llm_agent = YourModel(prompt_type=prompt_type, num_gpus=num_gpus)
+            # ====== END TODO ======
 
 class AzureGPT4Agent:
     def __init__(self, prompt_type="base"):
@@ -299,5 +303,60 @@ class ReAct_Agent:
             answer = ""
 
         print("Selected answer:", answer)
+        print("model returned")
+        return answer
+
+class YourModel:
+    def __init__(self, prompt_type="base", num_gpus=1):
+        self.prompt_type = prompt_type
+
+        # ====== TODO: Implement your own model initialization here ======
+        # Example: load your model, tokenizer, and set up any required parameters
+        # ====== END TODO ======
+
+        if prompt_type == "base":
+            self.prompt_agent = BasePromptAgent()
+        elif prompt_type == "few_shot_basic":
+            self.prompt_agent = FewShot_Basic_PromptAgent()
+        else:
+            self.prompt_agent = ZeroShot_CoT_PromptAgent()
+
+    def call_agent(self, txt_file_path):
+        with open(txt_file_path, 'r') as txt_file:
+            connectivity_status = txt_file.read()
+        
+        max_length = 127000  
+        if len(connectivity_status) > max_length:
+            connectivity_status = connectivity_status[:max_length]
+
+        if self.prompt_type == "few_shot_semantic":
+            prompt = self.prompt_agent.get_few_shot_prompt(connectivity_status)
+            prompt = prompt.format(input=connectivity_status)
+        elif self.prompt_type in ["few_shot_basic"]:
+            prompt = self.prompt_agent.get_few_shot_prompt()
+            prompt = prompt.format(input=connectivity_status)
+        elif self.prompt_type == "cot":
+            prompt = self.prompt_agent.generate_prompt()
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=prompt + "Here is the connectivity status:\n{input}"
+            )
+            prompt = prompt.format(input=connectivity_status)
+        else:
+            prompt = PromptTemplate(
+                input_variables=["input"],
+                template=self.prompt_agent.prompt_prefix + "Here is the connectivity status:\n{input}"
+            )
+            prompt = prompt.format(input=connectivity_status)
+        print("prompt:", prompt)
+
+        # ====== TODO: Implement your own inference logic here ======
+        # Example: read input, generate prompt, call your model, and return the result
+        # ====== END TODO ======
+
+        print("llm answer:", answer)
+        print("model returned")
+        answer = extract_command(answer)
+        print("extracted command:", answer)
         print("model returned")
         return answer

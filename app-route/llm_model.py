@@ -134,7 +134,10 @@ class LLMModel:
         return GPTAgentModel(prompt_type=self.prompt_type)
 
     def _initialize_YourModel(self):
-        """Initialize the your model."""
+        """Initialize your model."""
+        # ====== TODO: Specify parameters and return your own model instance here ======
+        # Example: return YourModel(prompt_type=self.prompt_type)
+        # ====== END TODO ======
         return YourModel
 
     def __call__(self, input_text: str, **kwargs):
@@ -174,9 +177,6 @@ class QwenModel:
         elif prompt_type == "few_shot_basic":
             print("few_shot_basic")
             self.prompt_agent = FewShot_Basic_PromptAgent()
-        elif prompt_type == "few_shot_semantic":
-            print("few_shot_semantic")
-            self.prompt_agent = FewShot_Semantic_PromptAgent()
 
     def _load_model(self):
         """Load the Qwen model and tokenizer."""
@@ -296,9 +296,6 @@ class Qwen_vllm_Model:
         elif prompt_type == "few_shot_basic":
             print("few_shot_basic")
             self.prompt_agent = FewShot_Basic_PromptAgent()
-        elif prompt_type == "few_shot_semantic":
-            print("few_shot_semantic")
-            self.prompt_agent = FewShot_Semantic_PromptAgent()
 
     def _load_model(self):
         """Load the Qwen model using vllm with GPTQ 4-bit quantization."""
@@ -415,9 +412,6 @@ class GPTAgentModel:
         elif self.prompt_type == "few_shot_basic":
             print("few_shot_basic")
             self.prompt_agent = FewShot_Basic_PromptAgent()
-        elif self.prompt_type == "few_shot_semantic":
-            print("few_shot_semantic")
-            self.prompt_agent = FewShot_Semantic_PromptAgent()
         print("======GPT-4o successfully loaded=======")
 
     def predict(self, log_content, file_path, json_path, **kwargs):
@@ -490,7 +484,6 @@ class ReAct_Agent:
         self.prompt_type = prompt_type
         self.prompt_agent = ReAct_PromptAgent()
         
-
     def predict(self, log_content, file_path, json_path, **kwargs):
         with open(file_path, 'r') as f:
             file_content = f.read()
@@ -632,8 +625,9 @@ class YourModel:
 
     def _load_model(self):
         """Load the your model and tokenizer."""
-
-
+        # ====== TODO: Load your own model and tokenizer here ======
+        # Example: self.llm = AutoTokenizer.from_pretrained(...)
+        # ====== END TODO ======
         # Choose prompt agent based on the prompt type
         if self.prompt_type == "base":
             print("base")
@@ -644,9 +638,6 @@ class YourModel:
         elif self.prompt_type == "few_shot_basic":
             print("few_shot_basic")
             self.prompt_agent = FewShot_Basic_PromptAgent()
-        elif self.prompt_type == "few_shot_semantic":
-            print("few_shot_semantic")
-            self.prompt_agent = FewShot_Semantic_PromptAgent()
 
     def predict(self, log_content, file_path, json_path, **kwargs):
         """Generate a response based on the log content and file content."""
@@ -676,10 +667,10 @@ class YourModel:
 
         start_time = time.time()
 
-        """Generate a response, using the YourModel. Replace with actual inference logic"""
+        # ====== TODO: Replace the following line with your actual inference logic ======
+        # Example: content = self.llm.generate(prompt)
         content = ""
-
-        print('LLM output:', content)
+        # ====== END TODO ======
 
         end_time = time.time()
         elapsed_time = end_time - start_time
