@@ -176,6 +176,7 @@ After modifying the parameters, you can execute the benchmarking process by runn
 bash run_app_k8s.sh
 ```
 
+
 ### Note: Azure GPT usage
 Obtain GPT resources and endpoints
 If you use Azure GPT on a Azure VM, need to use the following
@@ -200,3 +201,25 @@ os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
 os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
 
 ```
+
+# Testing Your Own Model
+
+To integrate and test your own model in this benchmarking framework, you need to make changes in **three places**:
+
+1. **Model Name and Initialization**
+   - In the `llm_agent.py` file, locate the `LLMAgent` class.
+   - Update the section where `"YourModel"` is checked and initialized. Replace the example initialization with your own model's initialization logic.
+   - Look for the `# ====== TODO:` comments in the code to guide you.
+
+2. **Model Loading**
+   - In the `llm_agent.py` file, locate the `YourModel` class.
+   - Update the `__init__` method to load your own model, tokenizer, and any required parameters.
+   - The code contains `# ====== TODO:` comments to indicate where you should add your logic.
+
+3. **Model Inference/Prediction**
+   - In the `llm_agent.py` file, within the `YourModel` class, find the `call_agent` (or similar) method.
+   - Modify this method to implement how your model generates predictions or responses based on the input.
+   - Again, follow the `# ====== TODO:` comments for where to insert your logic.
+
+
+Once you have completed these three steps, your model will be integrated into the benchmarking framework. You can then run the benchmark as described above.

@@ -16,7 +16,7 @@ import asyncio
 # Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
-    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o", "ReAct_Agent"], help='Choose the LLM agent')
+    parser.add_argument('--llm_agent_type', type=str, default="Qwen/Qwen2.5-72B-Instruct", help='Choose the LLM agent')#choices=["Qwen/Qwen2.5-72B-Instruct", "GPT-4o", "ReAct_Agent"]
     parser.add_argument('--num_queries', type=int, default=1, help='Number of queries to generate for each type')
     parser.add_argument('--root_dir', type=str, default="/home/ubuntu/NetPress_benchmark/app-k8s/results", help='Directory to save output files.')
     parser.add_argument('--microservice_dir', type=str, default="/home/ubuntu/microservices-demo", help='Directory to google microservice demo')
