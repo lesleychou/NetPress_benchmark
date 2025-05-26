@@ -17,6 +17,7 @@ AGENT_TEST=0                               # Whether to test multiple agents (1 
 SAFE_LLM_AGENT_TYPE=$(echo "$LLM_AGENT_TYPE" | tr '/' '_')
 
 # Log file path
+mkdir -p "$ROOT_DIR"
 LOG_FILE="${ROOT_DIR}/${SAFE_LLM_AGENT_TYPE}_${PROMPT_TYPE}.log"
 
 export HUGGINGFACE_TOKEN="[YOUR_TOKEN_HERE]"  # Set your Hugging Face token here
