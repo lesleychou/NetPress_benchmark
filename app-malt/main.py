@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument('--regenerate_query', action='store_true', help='Whether to regenerate benchmark queries or load existing ones')
     parser.add_argument('--start_index', type=int, default=0, help='Start index of the queries to run (zero indexed).')
     parser.add_argument('--end_index', type=int, default=None, help='End index of the queries to run (zero indexed).')
+    parser.add_argument('--num_gpus', type=int, default=1, help='Number of GPUs to use for tensor parallelism (VLLM). Only applies to locally run models.')
     return parser.parse_args()
 
 # anexample of how to use main.py with input args
@@ -51,7 +52,8 @@ def main(args):
         'dynamic_benchmark_path': args.dynamic_benchmark_path,
         'regenerate_query': args.regenerate_query,
         'start_index': args.start_index,
-        'end_index': args.end_index
+        'end_index': args.end_index,
+        'num_gpus': args.num_gpus
     }
 
     # create the output directory if it does not exist
@@ -83,7 +85,7 @@ def main(args):
 
     # Load the evaluator
     evaluator = BenchmarkEvaluator(graph_data=query_generator.malt_real_graph, llm_model_type=benchmark_config['llm_model_type'], 
-                                   prompt_type=benchmark_config['prompt_type'], model_path=benchmark_config['model_path'])
+                                   prompt_type=benchmark_config['prompt_type'], model_path=benchmark_config['model_path'], num_gpus=benchmark_config['num_gpus'])
 
     # the format is {"messages": [{"question": "XXX."}, {"answer": "YYY"}]}
     benchmark_data = []

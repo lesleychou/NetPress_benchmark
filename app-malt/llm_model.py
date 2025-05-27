@@ -181,13 +181,16 @@ class AzureGPT4Agent:
         return code
    
 class QwenModel:
-    def __init__(self, prompt_type="base"):
+    def __init__(self, prompt_type="base", num_gpus=1):
         self.model_name = "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
+        os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.llm = LLM(
             model=self.model_name,
             device=self.device,
-            quantization="gptq"
+            quantization="gptq",
+            gpu_memory_utilization=0.95,
+            tensor_parallel_size=num_gpus
         )
         self.sampling_params = SamplingParams(
             temperature=0.0,
