@@ -19,18 +19,9 @@ from datetime import datetime
 from vllm import LLM, SamplingParams
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
 # For Azure OpenAI GPT4
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity import DefaultAzureCredential
 from langchain.chat_models import AzureChatOpenAI
-credential = DefaultAzureCredential()
-token_provider = get_bearer_token_provider(
-        DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
-    )
-#Set the API type to `azure_ad`
-os.environ["OPENAI_API_TYPE"] = "azure_ad"
-# Set the API_KEY to the token from the Azure credential
-os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
-# Set the ENDPOINT
-os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
+import getpass
 # ReAct agent
 from langchain import hub
 from langchain.agents import Tool, AgentExecutor, create_react_agent
@@ -398,11 +389,10 @@ class GPTAgentModel:
 
     def _load_model(self):
         """Initialize the GPT Agent client."""
-
-        self.client = AzureChatOpenAI(
-            openai_api_version="2024-12-01-preview",
-            deployment_name='ztn-sweden-gpt-4o',
-            model_name='ztn-sweden-gpt-4o',
+        self.configure_environment_variables()
+        self.llm = AzureChatOpenAI(
+            openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+            deployment_name=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
             temperature=0.0,
             max_tokens=4000,
         )
@@ -419,6 +409,27 @@ class GPTAgentModel:
             print("few_shot_semantic")
             self.prompt_agent = FewShot_Semantic_PromptAgent()
         print("======GPT-4o successfully loaded=======")
+
+    @staticmethod
+    def configure_environment_variables(self):
+        """Authenticates with Azure OpenAI and sets environment variables if not already set."""
+        # Set the API_KEY to the token from the Azure credential
+        if "AZURE_OPENAI_API_KEY" not in os.environ:
+            try:
+                credential = DefaultAzureCredential()
+                os.environ["AZURE_OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
+            except Exception as e:
+                print("Error retrieving Azure OpenAI API key (authenticating with Entra ID failed):", e)
+                os.environ["AZURE_OPENAI_API_KEY"] = getpass.getpass("Please enter your Azure OpenAI API key: ")
+        # Get the endpoint of deployed AzureGPT model.
+        if "AZURE_OPENAI_ENDPOINT" not in os.environ:
+            os.environ["AZURE_OPENAI_ENDPOINT"] = getpass.getpass("Please enter your Azure OpenAI endpoint: ")
+        # Get the deployment name
+        if "AZURE_OPENAI_DEPLOYMENT_NAME" not in os.environ:
+            os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"] = getpass.getpass("Please enter your Azure OpenAI deployment name: ")
+        # Get the OpenAI API version
+        if "AZURE_OPENAI_API_VERSION" not in os.environ:
+            os.environ["AZURE_OPENAI_API_VERSION"] = self.DEFAULT_AZURE_OPENAI_API_VERSION
 
     def predict(self, log_content, file_path, json_path, **kwargs):
         """Generate a response based on the log content and file content."""
@@ -480,10 +491,10 @@ class GPTAgentModel:
 
 class ReAct_Agent:
     def __init__(self, prompt_type="react"):
+        GPTAgentModel.configure_environment_variables()
         self.llm = AzureChatOpenAI(
-            openai_api_version="2024-12-01-preview",
-            deployment_name='ztn-sweden-gpt-4o',
-            model_name='ztn-sweden-gpt-4o',
+            openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+            deployment_name=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
             temperature=0.0,
             max_tokens=4000,
         )
