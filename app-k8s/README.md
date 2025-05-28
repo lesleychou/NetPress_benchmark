@@ -112,7 +112,7 @@ skaffold run
 
 # App-K8s Benchmarking with LLM Agent
 
-This project provides a benchmarking framework that allows you to test a specific LLM agent within a microservices environment using Kubernetes. After setup, this framework runs Google's Microservices Demo in a Kind simulator within a single VM.
+This project provides a benchmarking framework that allows you to test a specific LLM agent within a microservices environment using Kubernetes. After setup, this framework runs Google's Microservices Demo in a KIND simulator within a single VM.
 
 ## Python Prerequisites
 
@@ -122,11 +122,23 @@ To set up the Python environment, we use `conda` to create a virtual environment
 conda env create -f environment_mininet.yml
 conda activate mininet
 ```
-## Set the environment variable
-You need to set environment variable so that you can access open source LLM. You can do it by using the following command:
-```
+## Authentication
+To run open source LLMs like `Qwen2.5-72B-Instruct` locally you will need to authenticate to Huggingface with your Huggingface access token like so:
+```bash
 export HUGGINGFACE_TOKEN="your_huggingface_token"
 ```
+Information on how to get an acess token can be found on [here](https://huggingface.co/docs/hub/en/security-tokens).
+
+### Azure GPT Usage
+If you want to use Azure GPT on a Azure VM, you will need to create a `GPT-4o` deployment on Azure AI. If you haven't done so already, you can follow the instructions at the Azure GPT [quickstart](https://learn.microsoft.com/en-us/azure/ai-services/openai/chatgpt-quickstart?tabs=keyless%2Ctypescript-keyless%2Cpython-new%2Cbash&pivots=programming-language-python). Once you have a working deployment, you can export the following information:
+```bash
+export AZURE_OPENAI_ENDPOINT="https://your-gpt-4o-deployment.openai.azure.com/"
+export AZURE_OPENAI_DEPLOYMENT_NAME="your-gpt-4o-deployment"
+export AZURE_OPENAI_API_VERSION="YYYY-MM-DD" # Optional. Defaults to "2024-10-01".
+export AZURE_OPENAI_API_KEY="API_KEY" # Not needed if Entra ID is used.
+```
+Instead of explicitly specifying an API key, you can authenticate with Entra ID, which is done via `DefaultAzureCredential`. Using the [Azure CLI](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/managed-identity) with appropriate role assignment or creating a [managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-to-configure-managed-identities?pivots=qs-configure-portal-windows-vm) on the host VM (with similar role assignment) are among a few ways to achieve this. For more information on authentication methods/details refer to the Azure docs (see `DefaultAzureCredential`).
+
 ## Start benchmarking 
 
 The easiest way to run the benchmark is by using the provided shell script `run_app_k8s.sh`. Below are the steps to execute the benchmarking process.
@@ -143,12 +155,12 @@ Before running the benchmarking script, you need to modify the parameters in run
 - **Example**: `Qwen/Qwen2.5-72B-Instruct`
 
 ### `NUM_QUERIES`:
-- **Description**: Defines the number of queries to generate during the benchmarking process. This determines how many individual queries for each error type will be tested.
-- **Example**: `10` (Test with one query)
+- **Description**: Defines the number of queries to generate during the benchmarking process. This determines how many individual queries for each error type will be tested. As of now there are 15 types of errors.
+- **Example**: `10` (Test with 10 queries per type, so 150 queries total)
 
 ### `ROOT_DIR`:
 - **Description**: The root directory where output logs and results will be stored. This path should point to the location on your machine where the benchmark results will be saved. Ensure that the specified directory exists and is accessible.
-- **Example**: `/home/ubuntu/NetPress_benchmark/app-k8s`
+- **Example**: `/home/ubuntu/NetPress_benchmark/app-k8s/results`
 
 ### `MICROSERVICE_DIR`:
 - **Description**: The path to the microservices demo directory. This directory contains the demo application that will be used in conjunction with the benchmarking framework. Ensure you specify the correct path to the `microservices-demo` on your system.
@@ -162,6 +174,10 @@ Before running the benchmarking script, you need to modify the parameters in run
 - **Description**: This parameter controls whether a new configuration should be generated for each benchmark. Set it to `1` to generate a new configuration, or `0` to skip this step and use the existing configuration.
 - **Example**: `1` (Generate new configuration)
 
+### `BENCHMARK_PATH`:
+- **Description**: The path where the above config (benchmark) containing the generated queries will be saved (JSON). If `CONFIG_GEN=0`, then this parameter indicates where the existing config file can be found.
+- **Example**: `/home/ubuntu/NetPress_benchmark/app-k8s/results/error_config.json`
+
 ### `PROMPT_TYPE`:
 - **Description**: Specifies the type of prompt to use when interacting with the LLM. The prompt type affects the nature of the queries sent to the LLM. You can choose between basic and more advanced prompts, depending on your test requirements.
 - **Example**: `base` (Use the basic prompt type)
@@ -170,33 +186,12 @@ Before running the benchmarking script, you need to modify the parameters in run
 - **Description**: Determines whether to test multiple LLM agents and prompt types. Set this to `1` if you want to test multiple agents and prompt variations. If you only wish to test a single LLM with one prompt type, set this to `0`.
 - **Example**: `0` (Test a single LLM agent with one prompt type)
 
+### `NUM_GPUS`:
+- **Description**: The number of GPUs to use with VLLM for tensor parallelism. This parameter only applies to locally run models like `Qwen2.5-72B-Instruct`, and should not used with `AGENT_TEST=1`. Note that the `NUM_GPUS` should evenly divide the number of attention heads of the model to be run. By default, only the first GPU is used, with the rest spilling over to RAM/disk.
+- **Example**: `4`
+
 ### 3. Run the Benchmark
 After modifying the parameters, you can execute the benchmarking process by running the script with the following command:
 ```bash
 bash run_app_k8s.sh
-```
-
-### Note: Azure GPT usage
-Obtain GPT resources and endpoints
-If you use Azure GPT on a Azure VM, need to use the following
-```python
-from azure.identity import AzureCliCredential
-# Get the Azure Credential
-credential = AzureCliCredential()
-```
-Otherwise, use the following
-```python
-from azure.identity import DefaultAzureCredential
-# Get the Azure Credential
-credential = DefaultAzureCredential()
-```
-And please update the below with your own endpoint information
-```python
-#Set the API type to `azure_ad`
-os.environ["OPENAI_API_TYPE"] = "azure_ad"
-# Set the API_KEY to the token from the Azure credential
-os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
-# Set the ENDPOINT
-os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
-
 ```
