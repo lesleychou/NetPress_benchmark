@@ -35,6 +35,7 @@ login(token=huggingface_token)
 # For Azure OpenAI GPT4
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain.chat_models import AzureChatOpenAI
+from langchain.chat_models import ChatGoogleGenerativeAI
 import getpass
 
 mp.set_start_method('spawn', force=True)
