@@ -36,7 +36,7 @@ Now, install KIND using the following command:
 ```bash
 go install sigs.k8s.io/kind@v0.26.0
 ```
-By default, the $GOPATH environment variable might not be set. You can set it manually by running the following commands:
+By default, the `$GOPATH` environment variable might not be set. You can set it manually by running the following commands:
 Then, source your .bashrc file to apply the changes:
 ```bash
 export GOPATH=$HOME/go
