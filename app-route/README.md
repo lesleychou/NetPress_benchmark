@@ -96,15 +96,26 @@ bash run_app_route.sh
 ```
 ## Testing Your Own Model
 
-To test your own model, follow these steps:
+To integrate and test your own model in this benchmark framework, you need to make changes in three places:
 
-1. **Modify Model Name and Initialization Method:**
-   - In the `llm_model.py` file, locate the `LLMModel` class. 
-   - In the `_create_model` and `_initialize_YourModel` methods, update the model name and the initialization method to match your own model.
+1. **Model Name and Initialization**
+   - In the `llm_model.py` file, locate the `LLMModel` class.
+   - Update the `_create_model` and `_initialize_YourModel` methods to use your model's name and initialization logic.
+   - **TODO comments** are provided in the code to indicate where you should make these changes.
 
-2. **Modify Model Loading and Prediction:**
+2. **Model Loading**
    - In the `llm_model.py` file, locate the `YourModel` class.
-   - In the `_load_model` method, update the correct way to load your own model.
-   - In the `predict` method, modify the code to generate results using your LLM based on the provided prompt.
+   - Update the `_load_model` method to correctly load your own model and tokenizer.
+   - Look for the **TODO comments** in the code to guide your modifications.
 
-Once these modifications are complete, your model will be ready to be integrated into the benchmark environment. You can then proceed with testing by following the instructions in the **Running Benchmark Tests** section.
+3. **Model Prediction/Inference**
+   - In the `llm_model.py` file, within the `YourModel` class, find the `predict` method.
+   - Modify this method to generate results using your LLM based on the provided prompt.
+   - Again, follow the **TODO comments** for where to insert your logic.
+
+Once you have completed these three steps, your model will be integrated into the benchmark environment. You can then proceed with testing by following the instructions in the **Running Benchmark Tests** section above.
+
+---
+
+**Tip:**  
+All locations that require your changes are clearly marked with `# ====== TODO:` comments in the code for your convenience.
