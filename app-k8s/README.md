@@ -152,6 +152,7 @@ Before running the benchmarking script, you need to modify the parameters in run
 
 ### `LLM_AGENT_TYPE`:
 - **Description**: Specifies the type of LLM agent to be used in the benchmark. The format typically includes the name and version of the agent, such as `Qwen/Qwen2.5-72B-Instruct`. This determines which LLM model will be evaluated during the benchmarking process.
+- **Possible Values**: `GPT-4o`, `Qwen/Qwen2.5-72B-Instruct`, `ReAct_Agent`
 - **Example**: `Qwen/Qwen2.5-72B-Instruct`
 
 ### `NUM_QUERIES`:
@@ -180,6 +181,7 @@ Before running the benchmarking script, you need to modify the parameters in run
 
 ### `PROMPT_TYPE`:
 - **Description**: Specifies the type of prompt to use when interacting with the LLM. The prompt type affects the nature of the queries sent to the LLM. You can choose between basic and more advanced prompts, depending on your test requirements.
+- **Possible Values**: `base`, `cot`, `few_shot_basic`
 - **Example**: `base` (Use the basic prompt type)
 
 ### `AGENT_TEST`:

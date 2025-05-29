@@ -53,7 +53,7 @@ Before running the benchmarking script, you need to modify the parameters in `ru
 
 ### `MODEL`:
 - **Description**: Specifies the type of LLM agent to be used in the benchmark. The format typically includes the name and version of the agent, such as `Qwen/Qwen2.5-72B-Instruct`. This determines which LLM model will be evaluated during the benchmarking process.
-- **How to modify**: Replace this with the desired LLM model type.
+- **Possible Values**: `GPT-Agent`, `Qwen/Qwen2.5-72B-Instruct`, `ReAct_Agent`, `YourModel`
 - **Example**: `Qwen/Qwen2.5-72B-Instruct`
 
 ### `NUM_QUERIES`:
@@ -78,6 +78,7 @@ Before running the benchmarking script, you need to modify the parameters in `ru
 
 ### `PROMPT_TYPE`:
 - **Description**: Specifies the type of prompt to use when interacting with the LLM. The prompt type affects the nature of the queries sent to the LLM. You can choose between basic and more advanced prompts, depending on your test requirements.
+- **Possible Values**: `base`, `cot`, `few_shot_basic`
 - **Example**: `base` (Use the basic prompt type)
 
 ### `NUM_GPUS`:
@@ -93,7 +94,7 @@ After modifying the parameters, you can execute the benchmarking process by runn
 ```bash
 bash run_app_route.sh
 ```
-# Testing Your Own Model
+## Testing Your Own Model
 
 To test your own model, follow these steps:
 
@@ -106,4 +107,4 @@ To test your own model, follow these steps:
    - In the `_load_model` method, update the correct way to load your own model.
    - In the `predict` method, modify the code to generate results using your LLM based on the provided prompt.
 
-Once these modifications are complete, your model will be ready to be integrated into the benchmark environment. You can then proceed with testing by following the instructions in the `Running Benchmark Tests` section.
+Once these modifications are complete, your model will be ready to be integrated into the benchmark environment. You can then proceed with testing by following the instructions in the **Running Benchmark Tests** section.

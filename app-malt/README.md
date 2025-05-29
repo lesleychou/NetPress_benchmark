@@ -56,11 +56,12 @@ Below is a list of configurable parameters and the relevant details.
 
 ### `--llm_model_type`:
 - **Description**: Specifies the type of LLM agent to be used in the benchmark. The format typically includes the name and version of the agent, such as `Qwen/Qwen2.5-72B-Instruct`. This determines which LLM model will be evaluated during the benchmarking process.
-- **Possible Values**: Replace this with the desired LLM model type.
-- **Example**: `Qwen/Qwen2.5-72B-Instruct`
+- **Possible Values**: `AzureGPT4Agent`, `GoogleGeminiAgent`, `Qwen2.5-72B-Instruct`, `QwenModel_finetuned`, `ReAct_Agent`
+- **Example**: `Qwen2.5-72B-Instruct`
 
 ### `--prompt_type`:
 - **Description**: Specifies the type of prompt to use when interacting with the LLM. The prompt type affects the nature of the queries sent to the LLM. You can choose between basic and more advanced prompts, depending on your test requirements.
+- **Possible Values**: `base`, `cot`, `few_shot_basic`, `few_shot_semantic`
 - **Example**: `base` (Use the basic prompt type)
 
 ### `--complexity_level`:
