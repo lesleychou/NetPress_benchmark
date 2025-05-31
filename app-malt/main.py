@@ -14,7 +14,7 @@ import argparse
 from scipy import stats
 import math
 
-# define a configuration for the benchmark
+# Define a configuration for the benchmark
 def parse_args():
     parser = argparse.ArgumentParser(description="Benchmark Configuration")
     parser.add_argument('--llm_model_type', type=str, default='AzureGPT4Agent', help='Choose the LLM agent', choices=['AzureGPT4Agent', 
@@ -35,7 +35,7 @@ def parse_args():
     parser.add_argument('--num_gpus', type=int, default=1, help='Number of GPUs to use for tensor parallelism (VLLM). Only applies to locally run models.')
     return parser.parse_args()
 
-# anexample of how to use main.py with input args
+# An example of how to use main.py with input args
 # Example usage:
 # python main.py --llm_agent_type AzureGPT4Agent --num_queries 2 --complexity_level level1 --output_dir logs/llm_agents --output_file gpt4o.jsonl --dynamic_benchmark_path data/benchmark_malt.jsonl
 

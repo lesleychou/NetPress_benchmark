@@ -38,9 +38,9 @@ cd experiments
 
 For comprehensive testing instructions, please refer to the following guides:
 
-- [Capacity Planning (CP) Application Guide](../app-malt/README.md)
-- [Routing Application Guide](../app-route/README.md)
-- [Kubernetes (K8s) Application Guide](../app-k8s/README.md)
+- [Capacity Planning (CP) Application Guide](./app-malt/README.md)
+- [Routing Application Guide](./app-route/README.md)
+- [Kubernetes (K8s) Application Guide](./app-k8s/README.md)
 
 ## Results Analysis
 

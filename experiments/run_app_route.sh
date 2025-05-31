@@ -21,6 +21,12 @@ LOG_FILE="${ROOT_DIR}/experiment_$(date +'%Y-%m-%d_%H-%M-%S').log"
 
 export HUGGINGFACE_TOKEN="[YOUR_TOKEN_HERE]"  # Set your Hugging Face token here
 
+# Azure OpenAI configuration
+export AZURE_OPENAI_ENDPOINT="https://your-gpt-4o-deployment.openai.azure.com/"
+export AZURE_OPENAI_DEPLOYMENT_NAME="your-gpt-4o-deployment"
+export AZURE_OPENAI_API_VERSION="YYYY-MM-DD" # Optional. Defaults to "2024-10-01".
+export AZURE_OPENAI_API_KEY="API_KEY" # Not needed if Entra ID is used.
+
 # Function to clean up existing controller processes
 cleanup_controllers() {
     echo "Cleaning up existing controller processes..." | tee -a "$LOG_FILE"
