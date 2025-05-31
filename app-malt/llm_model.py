@@ -35,16 +35,8 @@ login(token=huggingface_token)
 # For Azure OpenAI GPT4
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain.chat_models import AzureChatOpenAI
-credential = DefaultAzureCredential()
-token_provider = get_bearer_token_provider(
-        DefaultAzureCredential(), "https://cognitiveservices.azure.com/.default"
-    )
-#Set the API type to `azure_ad`
-os.environ["OPENAI_API_TYPE"] = "azure_ad"
-# Set the API_KEY to the token from the Azure credential
-os.environ["OPENAI_API_KEY"] = credential.get_token("please_update").token
-# Set the ENDPOINT
-os.environ["AZURE_OPENAI_ENDPOINT"] = "please_update"
+from langchain.chat_models import ChatGoogleGenerativeAI
+import getpass
 
 mp.set_start_method('spawn', force=True)
 
@@ -124,10 +116,10 @@ class GoogleGeminiAgent:
 
 class AzureGPT4Agent:
     def __init__(self, prompt_type="base"):
+        self.configure_environment_variables()
         self.llm = AzureChatOpenAI(
-            openai_api_version="2024-12-01-preview",
-            deployment_name='ztn-sweden-gpt-4o',
-            model_name='ztn-sweden-gpt-4o',
+            openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+            deployment_name=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
             temperature=0.0,
             max_tokens=4000,
         )
@@ -141,6 +133,30 @@ class AzureGPT4Agent:
             self.prompt_agent = FewShot_Semantic_PromptAgent()
         else:
             self.prompt_agent = BasePromptAgent()
+
+    @staticmethod
+    def configure_environment_variables():
+        """Authenticates with Azure OpenAI and sets environment variables (prompting the user when necessary) if not already set."""
+        # TODO: Is there a way to get the latest (stable) version programatically?
+        DEFAULT_AZURE_OPENAI_API_VERSION = "2024-10-01"
+
+        # Set the API_KEY to the token from the Azure credential
+        if "AZURE_OPENAI_API_KEY" not in os.environ:
+            try:
+                credential = DefaultAzureCredential()
+                os.environ["AZURE_OPENAI_API_KEY"] = credential.get_token("https://cognitiveservices.azure.com/.default").token
+            except Exception as e:
+                print("Error retrieving Azure OpenAI API key (authenticating with Entra ID failed):", e)
+                os.environ["AZURE_OPENAI_API_KEY"] = getpass.getpass("Please enter your Azure OpenAI API key: ")
+        # Get the endpoint of deployed AzureGPT model.
+        if "AZURE_OPENAI_ENDPOINT" not in os.environ:
+            os.environ["AZURE_OPENAI_ENDPOINT"] = getpass.getpass("Please enter your Azure OpenAI endpoint: ")
+        # Get the deployment name
+        if "AZURE_OPENAI_DEPLOYMENT_NAME" not in os.environ:
+            os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"] = getpass.getpass("Please enter your Azure OpenAI deployment name: ")
+        # Get the OpenAI API version
+        if "AZURE_OPENAI_API_VERSION" not in os.environ:
+            os.environ["AZURE_OPENAI_API_VERSION"] = DEFAULT_AZURE_OPENAI_API_VERSION
 
     def call_agent(self, query):
         print("Calling GPT-4o with prompt type:", self.prompt_type)
@@ -354,10 +370,10 @@ from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_experimental.tools.python.tool import PythonAstREPLTool
 class ReAct_Agent:
     def __init__(self, prompt_type="react"):
+        AzureGPT4Agent.configure_environment_variables()
         self.llm = AzureChatOpenAI(
-            openai_api_version="2024-12-01-preview",
-            deployment_name='ztn-sweden-gpt-4o',
-            model_name='ztn-sweden-gpt-4o',
+            openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+            deployment_name=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
             temperature=0.0,
             max_tokens=4000,
         )

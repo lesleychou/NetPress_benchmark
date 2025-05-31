@@ -3,13 +3,19 @@ cd ..
 cd app-malt
 
 # Define common parameters
-NUM_QUERIES=500
-BENCHMARK_PATH="data/sampled_500_benchmark_malt.jsonl"
+NUM_QUERIES=1
+BENCHMARK_PATH="data/sampled_1_benchmark_malt.jsonl"
 PROMPT_TYPE="few_shot_semantic"  # Define prompt_type
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
 # PROMPT_TYPE="zero_shot_cot"  # Define prompt_type
 
 export HUGGINGFACE_TOKEN="[YOUR_TOKEN_HERE]"  # Set your Hugging Face token here
+
+# Azure OpenAI configuration
+export AZURE_OPENAI_ENDPOINT="https://your-gpt-4o-deployment.openai.azure.com/"
+export AZURE_OPENAI_DEPLOYMENT_NAME="your-gpt-4o-deployment"
+export AZURE_OPENAI_API_VERSION="YYYY-MM-DD" # Optional. Defaults to "2024-10-01".
+export AZURE_OPENAI_API_KEY="API_KEY" # Not needed if Entra ID is used.
 
 # Function to run experiment for a model
 run_experiment() {
