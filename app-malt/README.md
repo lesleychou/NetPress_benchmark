@@ -88,3 +88,7 @@ Below is a list of configurable parameters and the relevant details.
 - **Description**: The path where the above benchmark containing the generated queries will be saved (JSONL). If `--regenerate_query` is not specified, then this parameter indicates where the existing benchmark file can be found.
 - **Example**: `/home/ubuntu/NetPress_benchmark/app-malt/data/malt_bench_100q_level1.jsonl`
 
+### `--num_gpus`:
+- **Description**: The number of GPUs to use with VLLM for tensor parallelism. This parameter only applies to locally run models like `Qwen2.5-72B-Instruct`. Note that the `--num_gpus` should evenly divide the number of attention heads of the model to be run. By default, only the first GPU is used, with the rest spilling over to RAM/disk.
+- **Example**: `4`
+

@@ -290,7 +290,7 @@ class Qwen_vllm_Model:
 
     def _load_model(self):
         """Load the Qwen model using vllm with GPTQ 4-bit quantization."""
-
+        os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
         self.llm = LLM(
             model=self.model_name,
             device=self.device,

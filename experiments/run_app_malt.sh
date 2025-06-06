@@ -6,6 +6,7 @@ cd app-malt
 NUM_QUERIES=1
 BENCHMARK_PATH="data/sampled_1_benchmark_malt.jsonl"
 PROMPT_TYPE="few_shot_semantic"  # Define prompt_type
+NUM_GPUS=4 # Number of GPUs to use for tensor parallelism (only applicable to Qwen2.5-72B-Instruct).
 # PROMPT_TYPE="few_shot_basic"  # Define prompt_type
 # PROMPT_TYPE="zero_shot_cot"  # Define prompt_type
 
@@ -40,6 +41,7 @@ run_experiment() {
         --output_dir "$agent_output_dir" \
         --output_file "$output_file" \
         --dynamic_benchmark_path "$BENCHMARK_PATH" \
+        --num_gpus "$NUM_GPUS" \
         --regenerate_query
     }
 
